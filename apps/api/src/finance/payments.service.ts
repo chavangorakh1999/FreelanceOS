@@ -21,14 +21,23 @@ export class PaymentsService {
 
   async list(a: AuthContext, q: ListPaymentsQuery) {
     const where: Prisma.PaymentWhereInput = { workspaceId: a.workspaceId, ...(q.clientId ? { clientId: q.clientId } : {}), ...(q.view === 'reversed' ? { reversedAt: { not: null } } : q.view ? { reversedAt: null } : {}) };
-    const rows = await this.prisma.payment.findMany({
-      where, orderBy: [{ receivedAt: 'desc' }, { createdAt: 'desc' }],
-      include: { client: { select: { id: true, name: true } }, allocations: { select: { amountMinor: true, withholdingMinor: true } } },
-    });
-    const all = rows.map((p) => this.present(p, p.allocations)).map((p, i) => ({ ...p, client: rows[i]!.client }));
-    const filtered = q.view === 'unallocated' ? all.filter((p) => BigInt(p.unallocated.amountMinor) > 0n) : all;
-    const start = (q.page - 1) * q.pageSize;
-    return { items: filtered.slice(start, start + q.pageSize), page: q.page, pageSize: q.pageSize, total: filtered.length };
+    if (q.view === 'unallocated') {
+      // Money not yet applied: decided in the database so only one page is ever loaded (PRD §10.2).
+      const ids = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT p."id"::text AS id FROM "payments" p
+         WHERE p."workspaceId" = ${a.workspaceId}::uuid AND p."reversedAt" IS NULL
+           AND (${q.clientId ?? null}::uuid IS NULL OR p."clientId" = ${q.clientId ?? null}::uuid)
+           AND p."amountMinor" > COALESCE((SELECT SUM(x."amountMinor") FROM "payment_allocations" x WHERE x."paymentId" = p."id"), 0)`;
+      where.id = { in: ids.map((r) => r.id) };
+    }
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.payment.count({ where }),
+      this.prisma.payment.findMany({
+        where, orderBy: [{ receivedAt: 'desc' }, { createdAt: 'desc' }], skip: (q.page - 1) * q.pageSize, take: q.pageSize,
+        include: { client: { select: { id: true, name: true } }, allocations: { select: { amountMinor: true, withholdingMinor: true } } },
+      }),
+    ]);
+    return { items: rows.map((p) => ({ ...this.present(p, p.allocations), client: p.client })), page: q.page, pageSize: q.pageSize, total };
   }
 
   async get(a: AuthContext, id: string) {

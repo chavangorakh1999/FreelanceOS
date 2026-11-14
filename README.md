@@ -49,7 +49,7 @@ database with `TEST_DATABASE_URL`; tests wipe it between cases.
 | 4 Finance | invoices, payments + allocations, credit notes — *calculation core already in `packages/shared`* | **done** (see below) |
 | 5 Portal & comms | client portal, comments, email notifications | **done** (see below) |
 | Docs & calendar | document library (PRD §7.11), calendar (§7.14) | **done** (see below) |
-| 6 Hardening | security audit, performance, backup/restore | |
+| 6 Hardening | security audit, performance, backup/restore, export/retention, monitoring, e2e | **done** (see below) |
 
 ### Phase 2 — what is and isn't there
 Built: proposals (7 pricing models, sections, line items with server-computed totals, payment terms, share → lock,
@@ -143,6 +143,20 @@ e-signature provider integration (portal signatures are typed-name evidence, not
   - `.ics` export, with stable event IDs so a re-import updates instead of duplicating.
 
 Not yet: in-browser document preview, an S3 adapter, a real malware scanner, templates for scope documents and client emails, saving generated PDFs into the library automatically, e-signature provider handoff.
+
+### Phase 6: hardening
+
+| Area | What exists | Read |
+|---|---|---|
+| Security audit | a test suite generated from all 181 API routes: no session, forged token, wrong audience (staff vs portal), and another workspace given real ids. Every route is refused and nothing changes. Security headers on API and web. Dependency audit clean and gated in CI | `docs/security.md` |
+| Performance | 23 endpoints benchmarked at about 125,000 rows (5x a heavy workspace): all under 500 ms p95. Finance totals and balance views moved into SQL, calendar bounded, gzip, date indexes | `docs/performance.md` |
+| Backup and restore | `ops/backup.sh`, `ops/restore.sh` (refuses damaged backups and non-empty targets), `ops/verify-restore.sh` (row counts, content fingerprints of money and approval tables, triggers, files). Verified on 125,127 rows and 1,500 files | `docs/operations.md` |
+| Export and retention | owner-only workspace and client JSON exports (no secrets), contact erasure that keeps legal records, daily retention purge | `docs/operations.md` |
+| Monitoring | request ids, JSON access logs without personal data, `/health/live`, `/health/ready` (database, storage, email backlog), token-protected `/metrics` | `docs/operations.md` |
+| End-to-end | `ops/e2e/run.sh`: 44 browser checks over the built apps, also run in CI | `ops/e2e/` |
+
+Still open before inviting staff collaborators: per-role permissions, optimistic concurrency on drafts, a script-src CSP with nonces,
+a real malware scanner and an S3 storage adapter (all listed in `docs/security.md`).
 
 ## Open product decisions
 Carried over from PRD §20 — notably e-signature provider, email provider, GST/TDS invoice rules and invoice

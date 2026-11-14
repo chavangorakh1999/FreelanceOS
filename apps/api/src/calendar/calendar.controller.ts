@@ -17,6 +17,9 @@ class CalendarQuery {
   @IsOptional() @IsUUID() projectId?: string;
 }
 
+/** Bounded result (PRD §10.2: no unbounded queries). Past the cap the response says so, and the app asks for a narrower view. */
+export const CALENDAR_CAP = 1000;
+
 export interface CalendarEvent { id: string; type: EventType; date: string; title: string; subtitle: string; href: string; state: 'open' | 'overdue' | 'done' }
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -29,7 +32,8 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
 export class CalendarController {
   constructor(private readonly prisma: PrismaService) {}
 
-  async events(a: AuthContext, q: CalendarQuery): Promise<CalendarEvent[]> {
+  /** `limit` bounds every query, so a huge workspace never loads more than it can show. */
+  async events(a: AuthContext, q: CalendarQuery, limit = CALENDAR_CAP): Promise<CalendarEvent[]> {
     if (q.to < q.from) throw new DomainError('INVALID_RANGE', 'The end date is before the start date', 422);
     if (q.to.getTime() - q.from.getTime() > 400 * 86_400_000) throw new DomainError('RANGE_TOO_LONG', 'Choose a range of a year or less', 422);
     const w = a.workspaceId;
@@ -40,11 +44,11 @@ export class CalendarController {
     const project = q.projectId ? { projectId: q.projectId } : {};
 
     const [milestones, tasks, proposals, invoices, agreements] = await Promise.all([
-      want('milestone') ? this.prisma.milestone.findMany({ where: { workspaceId: w, dueDate: range, ...project, project: { archivedAt: null } }, select: { id: true, name: true, dueDate: true, status: true, project: { select: { id: true, name: true } } } }) : [],
-      want('task') ? this.prisma.task.findMany({ where: { workspaceId: w, dueDate: range, status: { not: 'CANCELLED' }, ...project, project: { archivedAt: null } }, select: { id: true, title: true, dueDate: true, status: true, project: { select: { id: true, name: true } } } }) : [],
-      want('proposal') && !q.projectId ? this.prisma.proposalVersion.findMany({ where: { workspaceId: w, status: 'SHARED', validUntil: range, proposal: { archivedAt: null } }, select: { validUntil: true, proposal: { select: { id: true, number: true, title: true, client: { select: { name: true } } } } } }) : [],
-      want('invoice') ? this.prisma.invoice.findMany({ where: { workspaceId: w, status: 'ISSUED', dueDate: range, ...project }, select: { id: true, number: true, dueDate: true, totalMinor: true, client: { select: { name: true } } } }) : [],
-      want('agreement') && !q.projectId ? this.prisma.agreement.findMany({ where: { workspaceId: w, archivedAt: null, expiresAt: range, status: { in: ['SENT', 'VIEWED', 'PARTIALLY_SIGNED'] } }, select: { id: true, number: true, title: true, expiresAt: true, client: { select: { name: true } } } }) : [],
+      want('milestone') ? this.prisma.milestone.findMany({ where: { workspaceId: w, dueDate: range, ...project, project: { archivedAt: null } }, orderBy: { dueDate: 'asc' }, take: limit, select: { id: true, name: true, dueDate: true, status: true, project: { select: { id: true, name: true } } } }) : [],
+      want('task') ? this.prisma.task.findMany({ where: { workspaceId: w, dueDate: range, status: { not: 'CANCELLED' }, ...project, project: { archivedAt: null } }, orderBy: { dueDate: 'asc' }, take: limit, select: { id: true, title: true, dueDate: true, status: true, project: { select: { id: true, name: true } } } }) : [],
+      want('proposal') && !q.projectId ? this.prisma.proposalVersion.findMany({ where: { workspaceId: w, status: 'SHARED', validUntil: range, proposal: { archivedAt: null } }, orderBy: { validUntil: 'asc' }, take: limit, select: { validUntil: true, proposal: { select: { id: true, number: true, title: true, client: { select: { name: true } } } } } }) : [],
+      want('invoice') ? this.prisma.invoice.findMany({ where: { workspaceId: w, status: 'ISSUED', dueDate: range, ...project }, orderBy: { dueDate: 'asc' }, take: limit, select: { id: true, number: true, dueDate: true, totalMinor: true, client: { select: { name: true } } } }) : [],
+      want('agreement') && !q.projectId ? this.prisma.agreement.findMany({ where: { workspaceId: w, archivedAt: null, expiresAt: range, status: { in: ['SENT', 'VIEWED', 'PARTIALLY_SIGNED'] } }, orderBy: { expiresAt: 'asc' }, take: limit, select: { id: true, number: true, title: true, expiresAt: true, client: { select: { name: true } } } }) : [],
     ]);
     const paid = await settlements(this.prisma, w, invoices.map((i) => i.id));
     const late = (d: Date) => d < today;
@@ -59,16 +63,36 @@ export class CalendarController {
       }),
       ...agreements.map((g) => ({ id: `agreement:${g.id}`, type: 'agreement' as const, date: ymd(g.expiresAt!), title: `${g.number}: sign by`, subtitle: `${g.title}, ${g.client.name}`, href: `/agreements/${g.id}`, state: late(g.expiresAt!) ? 'overdue' as const : 'open' as const })),
     ];
-    return out.sort((x, y) => x.date.localeCompare(y.date) || x.type.localeCompare(y.type) || x.title.localeCompare(y.title));
+    return out.sort((x, y) => x.date.localeCompare(y.date) || x.type.localeCompare(y.type) || x.title.localeCompare(y.title)).slice(0, limit);
   }
 
-  @Get() list(@Auth() a: AuthContext, @Query() q: CalendarQuery) { return this.events(a, q); }
+  @Get()
+  async list(@Auth() a: AuthContext, @Query() q: CalendarQuery) {
+    const [events, total] = await Promise.all([this.events(a, q), this.count(a, q)]);
+    return { events, total, truncated: total > events.length };
+  }
+
+  /** How many dates the range really holds, counted in the database. */
+  private async count(a: AuthContext, q: CalendarQuery): Promise<number> {
+    const w = a.workspaceId;
+    const want = (t: EventType) => !q.types?.length || q.types.includes(t);
+    const range = { gte: q.from, lte: q.to };
+    const project = q.projectId ? { projectId: q.projectId } : {};
+    const n = await Promise.all([
+      want('milestone') ? this.prisma.milestone.count({ where: { workspaceId: w, dueDate: range, ...project, project: { archivedAt: null } } }) : 0,
+      want('task') ? this.prisma.task.count({ where: { workspaceId: w, dueDate: range, status: { not: 'CANCELLED' }, ...project, project: { archivedAt: null } } }) : 0,
+      want('proposal') && !q.projectId ? this.prisma.proposalVersion.count({ where: { workspaceId: w, status: 'SHARED', validUntil: range, proposal: { archivedAt: null } } }) : 0,
+      want('invoice') ? this.prisma.invoice.count({ where: { workspaceId: w, status: 'ISSUED', dueDate: range, ...project } }) : 0,
+      want('agreement') && !q.projectId ? this.prisma.agreement.count({ where: { workspaceId: w, archivedAt: null, expiresAt: range, status: { in: ['SENT', 'VIEWED', 'PARTIALLY_SIGNED'] } } }) : 0,
+    ]);
+    return n.reduce((x, y) => x + y, 0);
+  }
 
   /** PRD §7.14 P1: export. All-day events in iCalendar, with stable UIDs so a re-import updates instead of duplicating. */
   @Get('export.ics')
   async ics(@Auth() a: AuthContext, @Query() q: CalendarQuery, @Res() res: Response) {
-    const events = await this.events(a, q);
-    const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+    const events = await this.events(a, q, 10_000); // the export is the complete record, bounded only by the one-year range
+    const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
     const day = (d: string) => d.replaceAll('-', '');
     const next = (d: string) => day(new Date(Date.parse(d + 'T00:00:00Z') + 86_400_000).toISOString().slice(0, 10));
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');

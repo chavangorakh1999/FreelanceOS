@@ -49,14 +49,31 @@ export class InvoicesService {
     if (q.view === 'draft') where = { ...base, status: 'DRAFT' };
     else if (q.view === 'void') where = { ...base, status: 'VOID' };
     else if (q.view === 'open' || q.view === 'overdue' || q.view === 'paid') {
-      // Balance-based views are resolved from the records, then paged.
-      const issued = await this.prisma.invoice.findMany({ where: { ...base, status: 'ISSUED' }, select: { id: true, totalMinor: true, dueDate: true } });
-      const s = await settlements(this.prisma, a.workspaceId, issued.map((i) => i.id));
-      const ids = issued.filter((i) => {
-        const open = outstandingMinor(i.totalMinor, settlementOf(s, i.id)) > 0n;
-        return q.view === 'paid' ? !open : q.view === 'open' ? open : open && !!i.dueDate && i.dueDate < today;
-      }).map((i) => i.id);
-      where = { ...base, id: { in: ids } };
+      // Balance-based views are filtered, ordered and paged in the database, so the cost does not grow with the number
+      // of invoices (PRD §10.2). Same definitions as presentBalance: outstanding = total − cash − withholding − credit.
+      const like = q.q ? `%${q.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+      const cond = q.view === 'paid' ? Prisma.sql`"left" <= 0` : q.view === 'open' ? Prisma.sql`"left" > 0` : Prisma.sql`"left" > 0 AND "dueDate" < ${today}::date`;
+      const page = await this.prisma.$queryRaw<{ id: string; total: bigint }[]>`
+        WITH inv AS (
+          SELECT i."id", i."issueDate", i."createdAt", i."dueDate",
+                 i."totalMinor" - COALESCE(al.cash, 0) - COALESCE(al.wh, 0) - COALESCE(cn.cr, 0) AS "left"
+            FROM "invoices" i JOIN "clients" c ON c."id" = i."clientId"
+            LEFT JOIN LATERAL (SELECT SUM(a."amountMinor") AS cash, SUM(a."withholdingMinor") AS wh FROM "payment_allocations" a JOIN "payments" p ON p."id" = a."paymentId"
+                                WHERE a."invoiceId" = i."id" AND p."reversedAt" IS NULL) al ON true
+            LEFT JOIN LATERAL (SELECT SUM(x."amountMinor") AS cr FROM "credit_notes" x WHERE x."invoiceId" = i."id") cn ON true
+           WHERE i."workspaceId" = ${a.workspaceId}::uuid AND i."status" = 'ISSUED'
+             AND (${q.clientId ?? null}::uuid IS NULL OR i."clientId" = ${q.clientId ?? null}::uuid)
+             AND (${q.projectId ?? null}::uuid IS NULL OR i."projectId" = ${q.projectId ?? null}::uuid)
+             AND (${like}::text IS NULL OR i."number" ILIKE ${like} OR c."name" ILIKE ${like}))
+        SELECT "id"::text AS id, COUNT(*) OVER () AS total FROM inv WHERE ${cond}
+         ORDER BY "issueDate" DESC NULLS FIRST, "createdAt" DESC
+         LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}`;
+      const order = new Map(page.map((r, i) => [r.id, i]));
+      const found = await this.prisma.invoice.findMany({ where: { id: { in: page.map((r) => r.id) } }, include: { client: { select: { id: true, name: true } } } });
+      const rows = found.sort((x, y) => order.get(x.id)! - order.get(y.id)!);
+      const total = page.length ? Number(page[0]!.total) : 0;
+      const s = await settlements(this.prisma, a.workspaceId, rows.map((r) => r.id));
+      return { items: rows.map((r) => ({ ...this.header(r), client: r.client, ...presentBalance(r, settlementOf(s, r.id), today) })), page: q.page, pageSize: q.pageSize, total };
     }
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.invoice.count({ where }),

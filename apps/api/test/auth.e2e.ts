@@ -13,7 +13,7 @@ describe('auth', () => {
   });
 
   it('serves health publicly', async () => {
-    await h.http().get('/health').expect(200, { status: 'ok' });
+    expect((await h.http().get('/health').expect(200)).body).toMatchObject({ status: 'ok', checks: { database: 'ok', storage: 'ok' } });
   });
 
   it('reports whether first-run setup is still required', async () => {

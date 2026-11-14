@@ -40,9 +40,9 @@ function CalendarView() {
   const end = new Date(month.getFullYear(), month.getMonth() + 1, 0); end.setDate(end.getDate() + ((7 - end.getDay()) % 7));
   const from = iso(start), to = iso(end);
   const query = { from, to, types: types.join(','), ...(projectId ? { projectId } : {}) };
-  const q = useQuery({ queryKey: ['calendar', query], queryFn: () => api<CalendarEvent[]>('/calendar', { query }), enabled: types.length > 0, placeholderData: (p) => p });
+  const q = useQuery({ queryKey: ['calendar', query], queryFn: () => api<{ events: CalendarEvent[]; total: number; truncated: boolean }>('/calendar', { query }), enabled: types.length > 0, placeholderData: (p) => p });
   const projects = useQuery({ queryKey: ['projects', 'calendar'], queryFn: () => api<Paged<ProjectSummary>>('/projects', { query: { pageSize: 100 } }) });
-  const events = types.length ? q.data ?? [] : [];
+  const events = types.length ? q.data?.events ?? [] : [];
   const byDay = useMemo(() => { const m = new Map<string, CalendarEvent[]>(); for (const e of events) m.set(e.date, [...(m.get(e.date) ?? []), e]); return m; }, [events]);
   const today = iso(new Date());
 
@@ -93,6 +93,7 @@ function CalendarView() {
         {projectId && <p className="self-center text-[13px] text-muted">Proposals and agreements are not tied to a project, so they are hidden while a project is chosen.</p>}
       </fieldset>
       <ErrorNote error={q.error} />
+      {q.data?.truncated && <p role="status" className="rounded-control bg-warn-soft px-4 py-3 text-warn-ink">Showing the first {q.data.events.length} of {q.data.total} dates. Choose a project or fewer types to see them all; the .ics export always includes everything.</p>}
 
       {q.isLoading ? <Spinner /> : mode === 'month' ? (
         <>

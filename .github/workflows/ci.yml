@@ -35,3 +35,41 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Dependency audit (fails on high or critical advisories)
+        run: pnpm audit --prod --audit-level high
+
+  e2e:
+    # Browser regression over the built apps (ops/e2e/run.sh): portal, navigation, search, documents, calendar.
+    runs-on: ubuntu-latest
+    needs: check
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/freelanceos_e2e
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/freelanceos_e2e?schema=public
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @freelanceos/api prisma:generate
+      - run: pnpm --filter @freelanceos/api exec playwright-core install --with-deps chromium
+      - run: pnpm build
+      - run: E2E_OUT=${{ runner.temp }}/e2e ops/e2e/run.sh
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-output
+          path: ${{ runner.temp }}/e2e

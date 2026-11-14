@@ -51,8 +51,8 @@ writing). A route added later is covered without anyone remembering to add a tes
 ## Dependencies
 
 `pnpm audit --prod` reported one high advisory (`deepmerge-ts`, reached only through Prisma's command-line config loader). It is pinned to
-the patched major with a pnpm override; Prisma validate, generate and migrate were re-run and pass. Current result: no known vulnerabilities.
-Run it in CI before each release.
+the patched major with a pnpm override; Prisma validate, generate and migrate were re-run and pass. The audit also caught `compression` 1.8.1 (added in this phase,
+denial of service), upgraded to 1.8.2. Current result: no known vulnerabilities. CI now fails on any high or critical advisory.
 
 ## Known gaps (accepted for launch, tracked)
 

@@ -563,6 +563,7 @@ model ProposalVersion {
 
   @@unique([proposalId, versionNumber])
   @@index([workspaceId, proposalId])
+  @@index([workspaceId, status, validUntil])
   @@map("proposal_versions")
 }
 
@@ -721,6 +722,7 @@ model Agreement {
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId])
   @@index([workspaceId, status])
+  @@index([workspaceId, expiresAt])
   @@map("agreements")
 }
 
@@ -988,6 +990,7 @@ model Milestone {
   invoices     Invoice[]
 
   @@index([workspaceId, projectId, position])
+  @@index([workspaceId, dueDate])
   @@map("milestones")
 }
 
@@ -1047,6 +1050,7 @@ model Task {
 
   @@index([workspaceId, projectId, status])
   @@index([projectId, milestoneId, position])
+  @@index([workspaceId, dueDate])
   @@map("tasks")
 }
 
@@ -1307,6 +1311,7 @@ model Payment {
 
   @@unique([workspaceId, idempotencyKey])
   @@index([workspaceId, clientId, receivedAt])
+  @@index([workspaceId, receivedAt])
   @@map("payments")
 }
 

@@ -170,7 +170,7 @@ describe('calendar', () => {
   it('shows milestones, task deadlines, proposal expiry, invoice due dates and signing deadlines in the range, filterable', async () => {
     const client = (await post('/clients', { type: 'COMPANY', name: 'Northwind', primaryContact: { firstName: 'Priya', email: 'p@nw.test' } }).expect(201)).body;
     const pr = (await post('/projects', { clientId: client.id, name: 'Portal' }).expect(201)).body;
-    await post(`/projects/${pr.id}/milestones`, { name: 'Design', dueDate: day(5) }).expect(201);
+    await post(`/projects/${pr.id}/milestones`, { name: 'Design; phase 1, final', dueDate: day(5) }).expect(201);
     await post(`/projects/${pr.id}/milestones`, { name: 'Too far', dueDate: day(80) }).expect(201);
     await post(`/projects/${pr.id}/tasks`, { title: 'Wireframes', dueDate: day(3) }).expect(201);
     const prop = (await post('/proposals', { clientId: client.id, title: 'Portal' }).expect(201)).body;
@@ -179,13 +179,15 @@ describe('calendar', () => {
     const inv = (await post('/invoices', { clientId: client.id, currency: 'INR', paymentTermsDays: 7, lines: [{ description: 'x', quantity: '1', unitRate: '100', taxBps: 0 }] }).expect(201)).body;
     await post(`/invoices/${inv.id}/issue`).expect(200);
 
-    const all = (await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}`).set(T()).expect(200)).body;
-    expect(all.map((e: { type: string; title: string }) => `${e.type}:${e.title}`)).toEqual(['task:Wireframes', 'milestone:Design', 'invoice:' + (await h.prisma.invoice.findFirstOrThrow()).number + ' due', `proposal:${prop.number} expires`]);
+    const cal = (await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}`).set(T()).expect(200)).body;
+    expect(cal).toMatchObject({ total: 4, truncated: false });
+    const all = cal.events;
+    expect(all.map((e: { type: string; title: string }) => `${e.type}:${e.title}`)).toEqual(['task:Wireframes', 'milestone:Design; phase 1, final', 'invoice:' + (await h.prisma.invoice.findFirstOrThrow()).number + ' due', `proposal:${prop.number} expires`]);
     expect(all[0]).toMatchObject({ date: day(3), state: 'open', href: `/projects/${pr.id}?tab=work` });
 
-    const only = (await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}&types=milestone,invoice`).set(T())).body;
+    const only = (await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}&types=milestone,invoice`).set(T())).body.events;
     expect(only.map((e: { type: string }) => e.type)).toEqual(['milestone', 'invoice']);
-    const byProject = (await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}&projectId=${pr.id}`).set(T())).body;
+    const byProject = (await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}&projectId=${pr.id}`).set(T())).body.events;
     expect(byProject.map((e: { type: string }) => e.type).sort()).toEqual(['milestone', 'task']);
 
     const ics = await h.http().get(`/calendar/export.ics?from=${day(-1)}&to=${day(30)}`).set(T()).expect(200);
@@ -193,10 +195,11 @@ describe('calendar', () => {
     expect(ics.text).toMatch(/^BEGIN:VCALENDAR\r\n/);
     expect(ics.text.match(/BEGIN:VEVENT/g)).toHaveLength(4);
     expect(ics.text).toContain(`DTSTART;VALUE=DATE:${day(5).replaceAll('-', '')}`);
+    expect(ics.text).toContain('SUMMARY:Design\\; phase 1\\, final'); // RFC 5545 text escaping
 
     expect((await h.http().get(`/calendar?from=${day(5)}&to=${day(1)}`).set(T()).expect(422)).body.error.code).toBe('INVALID_RANGE');
     await h.http().get('/calendar').set(T()).expect(400);
     const o = bearer((await seedOtherWorkspace(h)).token);
-    expect((await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}`).set(o).expect(200)).body).toEqual([]);
+    expect((await h.http().get(`/calendar?from=${day(-1)}&to=${day(30)}`).set(o).expect(200)).body.events).toEqual([]);
   });
 });
