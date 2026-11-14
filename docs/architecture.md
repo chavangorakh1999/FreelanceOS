@@ -24,6 +24,12 @@ docs/               PRD, design system, these notes
 | Archive, never cascade-delete (App. B #15) | all FKs `ON DELETE RESTRICT`; clients/contacts/engagements use `archivedAt` |
 | One primary contact per client (§7.3) | partial unique index, not just service logic |
 | Concurrency-safe numbering (App. B #11) | `NumberSequenceService`: single `INSERT … ON CONFLICT DO UPDATE … RETURNING`, run inside the caller's transaction (gap-free on rollback); tested with 60 parallel callers |
+| Accepted proposal versions are immutable (App. B #4) | DB trigger freezes a version and its sections, lines and payment terms once shared; only the status may advance, along allowed transitions; accepted is terminal |
+| Signed agreements are immutable (App. B #5) | DB triggers freeze clauses and the signer list once sent; after that only a signer's own outcome columns may change; signed is terminal; signature events and proposal decisions are append-only |
+| Decision references an exact version (§7.5) | compare-and-set on the version's status inside one transaction + a unique decision per version; a superseded or already-decided version is refused |
+| Acceptance ≠ signature ≠ scope approval (§2 #7) | separate tables and states; an agreement can only be created from an *accepted* proposal and records the accepted version id |
+| Signature events idempotent (§7.6, App. B #18) | `Idempotency-Key` unique per version; the version row is locked (`FOR UPDATE`) so simultaneous signatures cannot both win |
+| Honest about legal weight (§7.6) | manual signatures require an evidence note; templates are labelled a starting point; documents with unresolved `[template guidance]` cannot be shared or sent |
 | Stable error codes (§13) | `{ error: { code, message, details? } }` for every failure |
 | Rate limiting (§10.1) | global throttler; stricter on `/auth/setup`, `/auth/login` |
 

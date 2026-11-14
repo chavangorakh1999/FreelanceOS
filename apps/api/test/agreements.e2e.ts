@@ -73,7 +73,7 @@ describe('agreements', () => {
     const ag = (await h.http().post('/agreements').set(T()).send({ clientId, proposalId: p.id }).expect(201)).body;
     const blocked = await h.http().post(`/agreements/${ag.id}/versions/1/send`).set(T()).expect(422);
     expect(blocked.body.error.code).toBe('NOT_READY_TO_SEND');
-    expect(blocked.body.error.details).toContain('Replace the bracketed placeholders (e.g. [GOVERNING LAW]) before sending');
+    expect(blocked.body.error.details.join(' ')).toMatch(/Replace the bracketed placeholders before sending, in: .*Intellectual property.*Governing law/);
 
     const { ag: sentAg } = await sentAgreement();
     const v = (await h.http().get(`/agreements/${sentAg.id}/versions/1`).set(T())).body;

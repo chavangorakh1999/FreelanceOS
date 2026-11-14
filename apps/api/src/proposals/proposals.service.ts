@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { calculateInvoice, money, Money, parseMoney } from '@freelanceos/shared';
+import { calculateInvoice, hasPlaceholder, money, Money, parseMoney, placeholderTitles } from '@freelanceos/shared';
 import { Prisma, ProposalVersion } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AuthContext } from '../common/auth';
@@ -305,6 +305,9 @@ export class ProposalsService {
     if (!v.validUntil) problems.push('Set a valid-until date');
     else if (v.validUntil < todayUtc()) problems.push('The valid-until date is in the past');
     if (v.paymentTerms.length === 0) problems.push('Add at least one payment term');
+    const unfinished = placeholderTitles(v.sections);
+    if (unfinished.length) problems.push(`Replace the bracketed template guidance in: ${unfinished.join(', ')}`);
+    if (hasPlaceholder(v.summary)) problems.push('Replace the bracketed template guidance in the summary');
     const pct = v.paymentTerms.filter((t) => t.percentageBps != null);
     if (pct.length > 0 && pct.length === v.paymentTerms.length && pct.reduce((s, t) => s + (t.percentageBps ?? 0), 0) !== 10000) {
       problems.push('Percentage payment terms must add up to exactly 100%');

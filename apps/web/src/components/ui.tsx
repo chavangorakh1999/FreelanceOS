@@ -21,7 +21,7 @@ export function Card({ className, ...p }: React.HTMLAttributes<HTMLElement> & { 
   return <section className={cx('rounded-card border border-line bg-card', className)} {...p} />;
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
@@ -61,7 +61,7 @@ export function Badge({ tone = 'neutral', icon, children }: { tone?: Tone; icon?
     info: 'bg-info-soft text-info-ink',
     danger: 'bg-danger-soft text-danger',
   }[tone];
-  return <span className={cx('inline-flex h-[26px] items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium', t)}>{icon}{children}</span>;
+  return <span className={cx('inline-flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium', t)}>{icon}{children}</span>;
 }
 
 /** Native <dialog>: focus trap, Escape to close, and inert background come from the browser. */

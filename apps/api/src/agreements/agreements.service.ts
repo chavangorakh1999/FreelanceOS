@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { formatMoney, money } from '@freelanceos/shared';
+import { formatMoney, hasPlaceholder, money } from '@freelanceos/shared';
 import { AgreementStatus, Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
@@ -159,7 +159,8 @@ export class AgreementsService {
       if (!v.signers.some((s) => s.role === 'FREELANCER')) problems.push('Add yourself as a signer');
       if (!v.signers.some((s) => s.role === 'CLIENT')) problems.push('Add at least one client signer');
       if (ag.expiresAt && ag.expiresAt < todayUtc()) problems.push('The expiry date is in the past');
-      if (v.clauses.some((c) => /\[[A-Z][A-Z /-]{2,}\]/.test(c.body))) problems.push('Replace the bracketed placeholders (e.g. [GOVERNING LAW]) before sending');
+      const unfinished = v.clauses.filter((c) => hasPlaceholder(c.body)).map((c) => c.heading);
+      if (unfinished.length) problems.push(`Replace the bracketed placeholders before sending, in: ${unfinished.join(', ')}`);
       if (problems.length) throw new DomainError('NOT_READY_TO_SEND', 'This agreement is not ready to send', 422, problems);
 
       const hash = contentHash(ag.number, ag.proposalVersionId, v.clauses, v.signers);

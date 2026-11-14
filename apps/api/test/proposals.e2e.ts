@@ -69,6 +69,17 @@ describe('proposals', () => {
     expect(pct.body.error.details).toContain('Percentage payment terms must add up to exactly 100%');
   });
 
+  it('will not share while template guidance text is still in the document', async () => {
+    const p = await create();
+    await save(p.id, 1, CONTENT({ sections: [{ kind: 'SCOPE', title: 'Scope of work', body: '[Describe what is included.]' }, { kind: 'TERMS', title: 'Terms', body: 'Fine. See [1].' }] })).expect(200);
+    const res = await share(p.id, 1).expect(422);
+    expect(res.body.error.details).toEqual(['Replace the bracketed template guidance in: Scope of work']);
+    await save(p.id, 1, CONTENT({ summary: '[Summarise the project]' })).expect(200);
+    expect((await share(p.id, 1).expect(422)).body.error.details).toEqual(['Replace the bracketed template guidance in the summary']);
+    await save(p.id, 1).expect(200);
+    await share(p.id, 1).expect(200);
+  });
+
   it('freezes a shared version: API says 409, and the database refuses even a direct write', async () => {
     const p = await ready();
     await share(p.id, 1).expect(200);

@@ -14,7 +14,8 @@ const STYLE = `
   * { box-sizing: border-box; }
   body { font-family: "Geist", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 10.5pt; line-height: 1.5; color: #121212; font-variant-numeric: tabular-nums; }
   h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4px; letter-spacing: -0.01em; }
-  h2 { font-size: 13pt; margin: 22px 0 6px; }
+  h2 { font-size: 13pt; margin: 22px 0 6px; break-after: avoid; }
+  table, tr, .totals, .sig div { break-inside: avoid; }
   p { margin: 0 0 8px; }
   .meta { color: #5f5f5f; margin-bottom: 18px; }
   .badge { display: inline-block; padding: 1px 8px; border-radius: 6px; background: #f0f0f0; font-size: 9pt; font-weight: 600; margin-left: 8px; vertical-align: middle; }

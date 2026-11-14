@@ -44,11 +44,23 @@ database with `TEST_DATABASE_URL`; tests wipe it between cases.
 |---|---|---|
 | 0 Foundation | monorepo, auth + workspace, migrations, audit foundation, design system + responsive shell, CI | **done** (password reset needs email — pending) |
 | 1 Client & sales | dashboard, clients + contacts, engagements + pipeline, activity | **done** (search/filter, board + list, stage history, interactions) |
-| 2 Commercial docs | proposals + versions, agreements, templates, PDF | next |
+| 2 Commercial docs | proposals + immutable versions, decisions, agreements + signature trail, templates, PDF | **done** (see gaps below) |
 | 3 Delivery & scope | projects, scope versions/freeze, milestones, tasks, change requests | |
 | 4 Finance | invoices, payments + allocations, credit notes — *calculation core already in `packages/shared`* | |
 | 5 Portal & comms | client portal, comments, email | |
 | 6 Hardening | security audit, performance, backup/restore | |
+
+### Phase 2 — what is and isn't there
+Built: proposals (7 pricing models, sections, line items with server-computed totals, payment terms, share → lock,
+negotiation versions, decisions recorded against the exact version, duplicate-as-replacement, expiry), agreements
+(from an accepted proposal, clauses + ordered signers, send → lock with a SHA-256 fingerprint, manual signature
+evidence, idempotent events, decline/void/expiry), starter templates, and PDFs for both.
+
+Not yet: client-side acceptance and e-signature through the portal/provider (Phase 5 — until then the owner *records*
+what the client told them, with channel and evidence), email delivery of shared documents, agreement amendments, version
+comparison, a template editor UI, and stored documents (PDFs are generated on demand, not yet filed in a document library).
+
+PDF generation needs Chromium. Set `CHROMIUM_PATH`, or run `pnpm --filter @freelanceos/api exec playwright-core install chromium`.
 
 ## Open product decisions
 Carried over from PRD §20 — notably e-signature provider, email provider, GST/TDS invoice rules and invoice
