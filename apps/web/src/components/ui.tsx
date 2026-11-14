@@ -7,18 +7,18 @@ const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).jo
 
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger' };
 export function Button({ variant = 'secondary', className, ...p }: BtnProps) {
-  const base = 'inline-flex h-10 items-center justify-center gap-2 rounded-control px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+  const base = 'inline-flex h-10 items-center justify-center gap-2 rounded-control px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50';
   const v = {
-    primary: 'bg-accent text-white shadow-[0_6px_14px_rgba(4,120,87,0.28)] hover:bg-accent-hover',
-    secondary: 'border border-line-strong bg-card text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-stat',
-    ghost: 'text-ink-2 hover:bg-stat',
-    danger: 'border border-line-strong bg-card text-danger hover:bg-danger-soft',
+    primary: 'btn-ink',
+    secondary: 'btn-card',
+    ghost: 'text-ink-2 hover:bg-paper-3',
+    danger: 'btn-card text-danger',
   }[variant];
   return <button type="button" className={cx(base, v, className)} {...p} />;
 }
 
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLElement> & { as?: never }) {
-  return <section className={cx('rounded-card border border-line bg-card', className)} {...p} />;
+  return <section className={cx('rounded-card border border-line bg-card shadow-card', className)} {...p} />;
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
@@ -45,7 +45,7 @@ export function Field({ label, error, children, hint }: { label: string; error?:
   );
 }
 
-const control = 'h-10 rounded-control border border-line-strong bg-card px-3 text-sm text-ink placeholder:text-muted';
+const control = 'h-10 rounded-control border border-muted/60 bg-card px-3 text-sm text-ink placeholder:text-muted';
 // Controls fill their container unless the caller sets an explicit width (a `w-*` class), which must win.
 const widthOf = (className?: string) => (className && /(^|\s)w-/.test(className) ? '' : 'w-full');
 export const Input = ({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) => <input className={cx(control, widthOf(className), className)} {...p} />;
@@ -57,7 +57,7 @@ export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLT
 type Tone = 'neutral' | 'success' | 'warn' | 'info' | 'danger';
 export function Badge({ tone = 'neutral', icon, children }: { tone?: Tone; icon?: React.ReactNode; children: React.ReactNode }) {
   const t = {
-    neutral: 'bg-[#ededed] text-ink-2',
+    neutral: 'bg-paper-3 text-ink-2',
     success: 'bg-accent-soft text-accent-ink',
     warn: 'bg-warn-soft text-warn-ink',
     info: 'bg-info-soft text-info-ink',
@@ -118,7 +118,7 @@ export const Stat = ({ label, value, note, tone }: { label: string; value: React
   <div className="flex flex-col gap-2.5 rounded-stat bg-stat px-6 py-5">
     <div className="text-muted">{label}</div>
     <div className="flex flex-wrap items-baseline gap-2.5">
-      <span className="text-[28px] font-semibold leading-[34px] tracking-tight">{value}</span>
+      <span className="fig text-[26px] font-normal leading-[34px] tracking-tight">{value}</span>
       {note && <span className={cx('text-sm font-medium', tone === 'good' ? 'text-accent-ink' : tone === 'warn' ? 'text-warn-ink' : 'text-muted')}>{note}</span>}
     </div>
   </div>
@@ -133,7 +133,7 @@ export const Th = ({ right, children }: { right?: boolean; children?: React.Reac
   <th scope="col" className={cx('bg-stat px-4 py-3 font-medium text-muted first:rounded-l-xl last:rounded-r-xl', right ? 'text-right' : 'text-left')}>{children}</th>
 );
 export const Td = ({ right, className, ...p }: React.TdHTMLAttributes<HTMLTableCellElement> & { right?: boolean }) => (
-  <td className={cx('border-b border-[#f0f0f0] px-4 py-3.5 align-middle', right && 'text-right', className)} {...p} />
+  <td className={cx('border-b border-line px-4 py-3 align-middle', right && 'fig text-right', className)} {...p} />
 );
 
 /** Progress as a bar plus text, so it never relies on colour alone. */
@@ -142,10 +142,10 @@ export function ProgressBar({ basisPoints, done, total, label = 'Progress' }: { 
   return (
     <div className="flex items-center gap-3">
       <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={total === 0 ? 'No tasks yet' : `${pct}% (${done} of ${total} tasks)`}
-        className="h-2 flex-1 overflow-hidden rounded-full bg-[#e4e4e4]">
+        className="h-2 flex-1 overflow-hidden rounded-full bg-paper-3">
         <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-24 shrink-0 text-right text-[13px] text-muted">{total === 0 ? 'No tasks yet' : `${pct}% · ${done}/${total}`}</span>
+      <span className="w-24 shrink-0 text-right text-[13px] text-muted">{total === 0 ? 'No tasks yet' : `${pct}%, ${done}/${total}`}</span>
     </div>
   );
 }

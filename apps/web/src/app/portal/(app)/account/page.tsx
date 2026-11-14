@@ -20,14 +20,14 @@ export default function PortalAccount() {
 
   return (
     <>
-      <title>Your account · Client portal</title>
+      <title>Your account, Client portal</title>
       <PageHeader title="Your account" subtitle={me.user.email} />
       <Card className="p-5 sm:p-6" aria-labelledby="org-h">
         <h2 id="org-h" className="mb-3 text-lg font-semibold">Organisations</h2>
         <ul className="divide-y divide-line">
           {orgs.data?.map((o) => (
             <li key={o.membershipId} className="flex flex-wrap items-center justify-between gap-3 py-3">
-              <div className="min-w-0"><div className="font-medium">{o.organizationName}</div><div className="text-[13px] text-muted">via {o.businessName} · {o.role === 'APPROVER' ? 'can approve' : 'read-only'}</div></div>
+              <div className="min-w-0"><div className="font-medium">{o.organizationName}</div><div className="text-[13px] text-muted">via {o.businessName}, {o.role === 'APPROVER' ? 'can approve' : 'read-only'}</div></div>
               {o.organizationName === me.organization.name && o.businessName === me.businessName ? <Badge tone="success">Current</Badge> : <Button onClick={() => switchTo.mutate(o.membershipId)} disabled={switchTo.isPending}>Switch</Button>}
             </li>
           ))}

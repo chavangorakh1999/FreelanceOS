@@ -43,9 +43,9 @@ function ProjectView() {
 
   return (
     <>
-      <title>{`${p.name} · FreelanceOS`}</title>
+      <title>{`${p.name}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/projects" className="hover:underline">Projects</Link></nav>
-      <PageHeader title={p.name} subtitle={<>{p.number} · <Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></>}
+      <PageHeader title={p.name} subtitle={<>{p.number}, <Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></>}
         actions={<div className="flex flex-wrap items-center gap-2"><ProjectBadge status={p.status} />
           <Link href={`/finance?tab=invoices&new=1&clientId=${p.client.id}&projectId=${p.id}`} className="inline-flex h-10 items-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">Create invoice</Link>
           {NEXT[p.status].length > 0 && <Select aria-label="Change project status" value="" className="w-44" onChange={(e) => e.target.value && setMoving(e.target.value as ProjectStatus)}>
@@ -63,7 +63,7 @@ function ProjectView() {
       {tab === 'overview' && (
         <div className="flex flex-col gap-6">
           <section aria-label="Summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
-            <Stat label="Progress" value={p.progress.total === 0 ? '—' : `${Math.round(p.progress.basisPoints / 100)}%`} note={p.progress.total === 0 ? 'No tasks yet' : `${p.progress.done} of ${p.progress.total} tasks`} />
+            <Stat label="Progress" value={p.progress.total === 0 ? 'None' : `${Math.round(p.progress.basisPoints / 100)}%`} note={p.progress.total === 0 ? 'No tasks yet' : `${p.progress.done} of ${p.progress.total} tasks`} />
             <Stat label="Approved scope" value={p.baseline ? `v${p.baseline.versionNumber}` : 'None'} note={p.baseline ? 'Frozen baseline' : 'Needs approval to start'} tone={p.baseline ? 'good' : 'warn'} />
             <Stat label="Milestones" value={p.milestoneCount} />
             <Stat label="Open change requests" value={p.openChangeRequests} tone={p.openChangeRequests > 0 ? 'warn' : undefined} />
@@ -75,19 +75,19 @@ function ProjectView() {
               <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
               <dl className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-3">
                 <dt className="text-muted">Client</dt><dd><Link href={`/clients/${p.client.id}`} className="text-accent hover:underline">{p.client.name}</Link></dd>
-                <dt className="text-muted">Engagement</dt><dd>{p.engagement ? <Link href={`/engagements/${p.engagement.id}`} className="text-accent hover:underline">{p.engagement.title}</Link> : '—'}</dd>
-                <dt className="text-muted">Proposal</dt><dd>{p.proposal ? <Link href={`/proposals/${p.proposal.id}`} className="text-accent hover:underline">{p.proposal.number}</Link> : '—'}</dd>
-                <dt className="text-muted">Agreement</dt><dd>{p.agreement ? <Link href={`/agreements/${p.agreement.id}`} className="text-accent hover:underline">{p.agreement.number}</Link> : '—'}</dd>
-                <dt className="text-muted">Start</dt><dd>{p.startDate ? fmtDate(p.startDate) : '—'}</dd>
-                <dt className="text-muted">Target</dt><dd>{p.targetDate ? fmtDate(p.targetDate) : '—'}</dd>
-                <dt className="text-muted">Scope</dt><dd>{p.latestScopeVersion ? <span className="inline-flex items-center gap-2">v{p.latestScopeVersion.versionNumber} <ScopeBadge status={p.latestScopeVersion.status} /></span> : '—'}</dd>
+                <dt className="text-muted">Engagement</dt><dd>{p.engagement ? <Link href={`/engagements/${p.engagement.id}`} className="text-accent hover:underline">{p.engagement.title}</Link> : 'None'}</dd>
+                <dt className="text-muted">Proposal</dt><dd>{p.proposal ? <Link href={`/proposals/${p.proposal.id}`} className="text-accent hover:underline">{p.proposal.number}</Link> : 'None'}</dd>
+                <dt className="text-muted">Agreement</dt><dd>{p.agreement ? <Link href={`/agreements/${p.agreement.id}`} className="text-accent hover:underline">{p.agreement.number}</Link> : 'None'}</dd>
+                <dt className="text-muted">Start</dt><dd>{p.startDate ? fmtDate(p.startDate) : 'None'}</dd>
+                <dt className="text-muted">Target</dt><dd>{p.targetDate ? fmtDate(p.targetDate) : 'None'}</dd>
+                <dt className="text-muted">Scope</dt><dd>{p.latestScopeVersion ? <span className="inline-flex items-center gap-2">v{p.latestScopeVersion.versionNumber} <ScopeBadge status={p.latestScopeVersion.status} /></span> : 'None'}</dd>
               </dl>
             </Card>
             <Card className="min-w-0 flex-[1_1_320px] p-6" aria-labelledby="vis-h">
               <h2 id="vis-h" className="mb-1 text-lg font-semibold">Client portal</h2>
               <p className="mb-3 text-[13px] text-muted">Clients only see this project if it is visible <em>and</em> you have granted them access from the client page. Task visibility is set per task.</p>
               <Select aria-label="Project visibility" value={p.visibility === 'CLIENT_VISIBLE' ? 'CLIENT_VISIBLE' : 'INTERNAL'} disabled={setVisibility.isPending} onChange={(e) => setVisibility.mutate(e.target.value)}>
-                <option value="INTERNAL">Internal — hidden from clients</option><option value="CLIENT_VISIBLE">Visible to client</option></Select>
+                <option value="INTERNAL">Internal, hidden from clients</option><option value="CLIENT_VISIBLE">Visible to client</option></Select>
               <div className="mt-3"><ErrorNote error={setVisibility.error} /></div>
             </Card>
             {p.description && <Card className="min-w-0 flex-[1_1_320px] p-6"><h2 className="mb-2 text-lg font-semibold">Description</h2><p className="whitespace-pre-wrap text-ink-2">{p.description}</p></Card>}

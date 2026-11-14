@@ -23,11 +23,11 @@ export function ChangesTab({ projectId, closed, hasBaseline, onChanged }: { proj
           <thead><tr><Th>Request</Th><Th>Status</Th><Th>From</Th><Th right>Cost</Th><Th right>Time</Th></tr></thead>
           <tbody>{list.data?.map((c) => (
             <tr key={c.id}>
-              <Td><Link href={`/change-requests/${c.id}`} className="font-medium hover:text-accent hover:underline">{c.number} · {c.title}</Link><div className="text-[13px] text-muted">Raised {fmtDate(c.requestedAt)}</div></Td>
+              <Td><Link href={`/change-requests/${c.id}`} className="font-medium hover:text-accent hover:underline">{c.number}, {c.title}</Link><div className="text-[13px] text-muted">Raised {fmtDate(c.requestedAt)}</div></Td>
               <Td><ChangeBadge status={c.status} /></Td>
               <Td>{c.requestedBy === 'CLIENT' ? 'Client' : 'You'}</Td>
               <Td right>{c.latestAssessment ? `${BigInt(c.latestAssessment.costDelta.amountMinor) > 0n ? '+' : ''}${fmtMoney(c.latestAssessment.costDelta)}` : <span className="text-muted">Not assessed</span>}</Td>
-              <Td right>{c.latestAssessment ? `${c.latestAssessment.timelineDeltaDays > 0 ? '+' : ''}${c.latestAssessment.timelineDeltaDays} d` : '—'}</Td>
+              <Td right>{c.latestAssessment ? `${c.latestAssessment.timelineDeltaDays > 0 ? '+' : ''}${c.latestAssessment.timelineDeltaDays} d` : 'None'}</Td>
             </tr>))}
           </tbody></Table></Card>
       )}

@@ -24,9 +24,9 @@ export default function PaymentPage() {
 
   return (
     <>
-      <title>{`Payment · FreelanceOS`}</title>
+      <title>{`Payment, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/finance" className="hover:underline">Finance</Link> / <Link href="/finance?tab=payments" className="hover:underline">Payments</Link></nav>
-      <PageHeader title={`Payment of ${fmtMoney(p.amount)}`} subtitle={<>{p.client.name} · received {fmtDate(p.receivedAt)} · {label(p.method)}{p.reference ? ` · ${p.reference}` : ''}</>}
+      <PageHeader title={`Payment of ${fmtMoney(p.amount)}`} subtitle={<>{p.client.name}, received {fmtDate(p.receivedAt)}, {label(p.method)}{p.reference ? `, ${p.reference}` : ''}</>}
         actions={<div className="flex items-center gap-2">{p.reversed ? <Badge>Reversed</Badge> : <Button variant="danger" onClick={() => setReversing(true)}>Reverse payment</Button>}</div>} />
       {p.reversed && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">Reversed {p.reversedAt && fmtDateTime(p.reversedAt)}: {p.reversalReason}. The record is kept; its allocations no longer count toward any invoice.</p>}
       <section aria-label="Summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
@@ -39,7 +39,7 @@ export default function PaymentPage() {
         <h2 id="al-h" className="px-6 pb-4 text-lg font-semibold">Applied to</h2>
         {p.allocations.length === 0 ? <p className="px-6 text-muted">Not applied to any invoice yet.</p> : (
           <Table minWidth={560}><thead><tr><Th>Invoice</Th><Th>When</Th><Th right>Cash</Th><Th right>TDS withheld</Th></tr></thead>
-            <tbody>{p.allocations.map((a) => <tr key={a.id}><Td><Link href={`/invoices/${a.invoice.id}`} className="font-medium hover:text-accent hover:underline">{a.invoice.number}</Link></Td><Td>{fmtDateTime(a.createdAt)}</Td><Td right className={p.reversed ? 'text-muted line-through' : 'font-medium'}>{fmtMoney(a.cash)}</Td><Td right>{a.withholding.amountMinor === '0' ? '—' : fmtMoney(a.withholding)}</Td></tr>)}</tbody></Table>)}
+            <tbody>{p.allocations.map((a) => <tr key={a.id}><Td><Link href={`/invoices/${a.invoice.id}`} className="font-medium hover:text-accent hover:underline">{a.invoice.number}</Link></Td><Td>{fmtDateTime(a.createdAt)}</Td><Td right className={p.reversed ? 'text-muted line-through' : 'font-medium'}>{fmtMoney(a.cash)}</Td><Td right>{a.withholding.amountMinor === '0' ? 'None' : fmtMoney(a.withholding)}</Td></tr>)}</tbody></Table>)}
       </Card>
       {!p.reversed && left && <ApplyMore payment={p} onDone={refresh} />}
       {p.note && <Card className="p-6"><h2 className="mb-2 text-lg font-semibold">Note</h2><p className="whitespace-pre-wrap text-ink-2">{p.note}</p></Card>}
@@ -58,7 +58,7 @@ function ApplyMore({ payment: p, onDone }: { payment: PaymentDetail; onDone: () 
       <h2 id="ap-h" className="mb-1 text-lg font-semibold">Apply the remaining {fmtMoney(p.unallocated)}</h2>
       <p className="mb-4 text-[13px] text-muted">Choose an open invoice. Cash comes from this payment; TDS withheld settles the invoice but isn’t cash.</p>
       <form className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] items-end gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
-        <Field label="Invoice">{(i) => <Select id={i} required value={f.invoiceId} onChange={(e) => setF({ ...f, invoiceId: e.target.value })}><option value="" disabled>Choose…</option>{open.map((x) => <option key={x.id} value={x.id}>{x.number} · {fmtMoney(x.balance.outstanding)} due</option>)}</Select>}</Field>
+        <Field label="Invoice">{(i) => <Select id={i} required value={f.invoiceId} onChange={(e) => setF({ ...f, invoiceId: e.target.value })}><option value="" disabled>Choose…</option>{open.map((x) => <option key={x.id} value={x.id}>{x.number}, {fmtMoney(x.balance.outstanding)} due</option>)}</Select>}</Field>
         <Field label="Cash applied">{(i) => <Input id={i} inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} placeholder="0.00" />}</Field>
         <Field label="TDS withheld">{(i) => <Input id={i} inputMode="decimal" value={f.withholding} onChange={(e) => setF({ ...f, withholding: e.target.value })} placeholder="0.00" />}</Field>
         <Button type="submit" variant="primary" disabled={m.isPending || !f.invoiceId}>Apply</Button>

@@ -19,7 +19,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <title>Notifications · FreelanceOS</title>
+      <title>Notifications, FreelanceOS</title>
       <PageHeader title="Notifications" subtitle="Client decisions, signatures, comments and invoice reminders." actions={unread > 0 ? <Button onClick={() => readAll.mutate()} disabled={readAll.isPending}>Mark all read</Button> : undefined} />
       <ErrorNote error={list.error} />
       <Card className="overflow-hidden">
@@ -27,7 +27,7 @@ export default function NotificationsPage() {
           <ul className="divide-y divide-line">
             {list.data?.map((n) => (
               <li key={n.id}><button type="button" className="flex w-full items-start gap-3 px-5 py-4 text-left hover:bg-stat" onClick={() => { open.mutate(n); router.push(n.linkPath); }}>
-                <span aria-hidden="true" className={`mt-2 size-2.5 shrink-0 rounded-full ${n.readAt ? 'bg-transparent' : 'bg-accent'}`} />
+                <span aria-hidden="true" className={`mt-1 h-5 w-[3px] shrink-0 rounded-sm ${n.readAt ? 'bg-line' : 'bg-accent'}`} />
                 <span className="min-w-0"><span className={`block ${n.readAt ? '' : 'font-semibold'}`}>{n.title}</span><span className="block truncate text-muted">{n.body}</span><span className="text-[13px] text-muted">{fmtDateTime(n.createdAt)}{!n.readAt && <span className="sr-only"> (unread)</span>}</span></span>
               </button></li>
             ))}

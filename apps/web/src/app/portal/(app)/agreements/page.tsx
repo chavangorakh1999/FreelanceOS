@@ -11,7 +11,7 @@ export default function PortalAgreements() {
   const q = useQuery({ queryKey: ['portal', 'agreements'], queryFn: () => papi<PAgreementItem[]>('/portal/agreements') });
   return (
     <>
-      <title>Agreements · Client portal</title>
+      <title>Agreements, Client portal</title>
       <PageHeader title="Agreements" subtitle="Contracts to read and sign." />
       <ErrorNote error={q.error} />
       <Card className="overflow-hidden">
@@ -19,7 +19,7 @@ export default function PortalAgreements() {
           <ul className="divide-y divide-line">
             {q.data?.map((a) => (
               <li key={a.id}><Link href={`/portal/agreements/${a.id}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-stat">
-                <div className="min-w-0"><div className="truncate font-medium">{a.title}</div><div className="text-[13px] text-muted">{a.number}{a.sentAt ? ` · sent ${fmtDate(a.sentAt)}` : ''}{a.signedAt ? ` · signed ${fmtDate(a.signedAt)}` : ''}</div></div>
+                <div className="min-w-0"><div className="truncate font-medium">{a.title}</div><div className="text-[13px] text-muted">{a.number}{a.sentAt ? `, sent ${fmtDate(a.sentAt)}` : ''}{a.signedAt ? `, signed ${fmtDate(a.signedAt)}` : ''}</div></div>
                 <div className="flex items-center gap-2">{a.needsMySignature && <Badge tone="warn">Needs your signature</Badge>}<AgreementBadge status={a.status} /></div>
               </Link></li>
             ))}

@@ -62,7 +62,7 @@ export function ScopeTab({ projectId, closed, onChanged, goChanges }: { projectI
               <button type="button" onClick={() => { setPicked(x.versionNumber); setCompare(''); }} aria-current={x.versionNumber === n ? 'true' : undefined}
                 className={`flex w-full items-center justify-between gap-3 rounded-control border px-3 py-2.5 text-left ${x.versionNumber === n ? 'border-line-strong bg-stat' : 'border-transparent hover:bg-stat'}`}>
                 <span><span className="font-medium">Version {x.versionNumber}</span>
-                  <span className="block text-[13px] text-muted">{x.itemCount} items{x.changeRequest ? ` · ${x.changeRequest.number}` : ''}</span></span>
+                  <span className="block text-[13px] text-muted">{x.itemCount} items{x.changeRequest ? `, ${x.changeRequest.number}` : ''}</span></span>
                 <ScopeBadge status={x.status} />
               </button>
             </li>))}
@@ -78,11 +78,11 @@ export function ScopeTab({ projectId, closed, onChanged, goChanges }: { projectI
           <Card className="p-6" aria-labelledby="ap-h">
             <h2 id="ap-h" className="mb-2 text-lg font-semibold">Decision</h2>
             <div className="font-medium">{label(v.approval.decision)}{v.approval.approverName ? ` by ${v.approval.approverName}` : ''}</div>
-            <div className="text-[13px] text-muted">{label(v.approval.channel)} · {fmtDateTime(v.approval.decidedAt)}</div>
+            <div className="text-[13px] text-muted">{label(v.approval.channel)}, {fmtDateTime(v.approval.decidedAt)}</div>
             {v.approval.note && <p className="mt-2 text-ink-2">{v.approval.note}</p>}
           </Card>
         )}
-        {v?.resultOfRequest && <Card className="p-6"><h2 className="mb-1 text-lg font-semibold">From a change request</h2><Link href={`/change-requests/${v.resultOfRequest.id}`} className="text-accent hover:underline">{v.resultOfRequest.number} · {v.resultOfRequest.title}</Link></Card>}
+        {v?.resultOfRequest && <Card className="p-6"><h2 className="mb-1 text-lg font-semibold">From a change request</h2><Link href={`/change-requests/${v.resultOfRequest.id}`} className="text-accent hover:underline">{v.resultOfRequest.number}, {v.resultOfRequest.title}</Link></Card>}
       </div>
       {v && <DecisionDialog open={deciding} onClose={() => setDeciding(false)} projectId={projectId} version={v} onDone={() => { setDeciding(false); refresh(); }} />}
     </div>
@@ -124,8 +124,8 @@ export function DiffCard({ diff, emptyMessage }: { diff: Pick<ScopeDiff, 'added'
       <h2 className="mb-3 text-lg font-semibold">{diff.from ? `Changes from version ${diff.from}` : 'Changes from the approved scope'}</h2>
       {empty ? <p className="text-muted">{emptyMessage ?? `No differences. ${diff.unchangedCount} items are identical.`}</p> : (
         <ul className="flex flex-col gap-3">
-          {diff.added.map((i) => <li key={i.itemKey} className="flex gap-3"><Badge tone="success">Added</Badge><span><span className="font-medium">{i.title}</span><span className="text-muted"> · {label(i.kind)}</span></span></li>)}
-          {diff.removed.map((i) => <li key={i.itemKey} className="flex gap-3"><Badge tone="danger">Removed</Badge><span><span className="font-medium line-through">{i.title}</span><span className="text-muted"> · {label(i.kind)}</span></span></li>)}
+          {diff.added.map((i) => <li key={i.itemKey} className="flex gap-3"><Badge tone="success">Added</Badge><span><span className="font-medium">{i.title}</span><span className="text-muted">, {label(i.kind)}</span></span></li>)}
+          {diff.removed.map((i) => <li key={i.itemKey} className="flex gap-3"><Badge tone="danger">Removed</Badge><span><span className="font-medium line-through">{i.title}</span><span className="text-muted">, {label(i.kind)}</span></span></li>)}
           {diff.changed.map((c) => <li key={c.after.itemKey} className="flex gap-3"><Badge tone="warn">Changed</Badge>
             <span><span className="font-medium">{c.after.title}</span>{c.before.title !== c.after.title && <span className="text-muted"> (was “{c.before.title}”)</span>}
               {c.before.description !== c.after.description && <span className="block text-[13px] text-muted">Description updated</span>}</span></li>)}
@@ -174,7 +174,7 @@ function Editor({ projectId, version: v, onChanged }: { projectId: string; versi
       <div><Button onClick={() => setItems((a) => [...a, { kind: 'REQUIREMENT', title: '', description: '' }])}><Plus size={16} aria-hidden="true" />Add item</Button></div>
 
       <ErrorNote error={save.error && !problems(save.error) ? save.error : null} />
-      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
+      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
         {save.isSuccess && !dirty && <span role="status" className="mr-auto text-sm text-accent-ink">Draft saved</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="primary" onClick={() => { submit.reset(); setSubmitting(true); }}>Submit for review…</Button>

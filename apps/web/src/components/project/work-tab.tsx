@@ -35,7 +35,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
   const ms = milestones.data ?? [];
   const all = tasks.data ?? [];
   const shown = all.filter((t) => !filter || (filter === 'none' ? !t.milestoneId : t.milestoneId === filter));
-  const msName = (id: string | null) => ms.find((m) => m.id === id)?.name ?? '—';
+  const msName = (id: string | null) => ms.find((m) => m.id === id)?.name ?? 'None';
   const byId = new Map(all.map((t) => [t.id, t]));
   const Visible = ({ t }: { t: Task }) => (
     <label className="inline-flex items-center gap-1.5 text-[13px] text-muted"><input type="checkbox" className="size-4" disabled={closed} checked={t.visibility === 'CLIENT_VISIBLE'} onChange={(e) => showTask.mutate({ id: t.id, visible: e.target.checked })} />Show to client</label>
@@ -56,7 +56,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
           <Card key={m.id} className="p-6" aria-label={`Milestone ${m.name}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><div className="flex flex-wrap items-center gap-2"><h3 className="text-base font-semibold">{m.name}</h3><MilestoneBadge status={m.status} />{m.status === 'ACCEPTED' && <Badge icon={<Lock size={14} aria-hidden="true" />}>Final</Badge>}</div>
-                <div className="text-[13px] text-muted">{m.dueDate ? `Due ${fmtDate(m.dueDate)}` : 'No due date'}{m.description ? ` · ${m.description}` : ''}</div></div>
+                <div className="text-[13px] text-muted">{m.dueDate ? `Due ${fmtDate(m.dueDate)}` : 'No due date'}{m.description ? `, ${m.description}` : ''}</div></div>
               {!closed && MOVES[m.status].length > 0 && <Select aria-label={`Move ${m.name}`} value="" className="w-44" onChange={(e) => e.target.value && moveMs.mutate({ id: m.id, status: e.target.value as MilestoneStatus })}><option value="">Move to…</option>{MOVES[m.status].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select>}
             </div>
             <div className="mt-4"><ProgressBar basisPoints={m.progress.basisPoints} done={m.progress.done} total={m.progress.total} label={`${m.name} task progress`} /></div>
@@ -84,7 +84,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
                     <button type="button" onClick={() => setDepsFor(t)} className="inline-flex items-center gap-1 hover:text-ink hover:underline"><Link2 size={13} aria-hidden="true" />{t.dependsOn.length ? `${t.dependsOn.length} ${t.dependsOn.length === 1 ? 'dependency' : 'dependencies'}` : 'Dependencies'}</button><Visible t={t} /></div></Td>
                 <Td>{msName(t.milestoneId)}</Td>
                 <Td><Badge tone={PRIORITY_TONE[t.priority]}>{label(t.priority)}</Badge></Td>
-                <Td>{t.dueDate ? fmtDate(t.dueDate) : <span className="text-muted">—</span>}</Td>
+                <Td>{t.dueDate ? fmtDate(t.dueDate) : <span className="text-muted">None</span>}</Td>
                 <Td><Status t={t} /></Td>
               </tr>))}
             </tbody></Table></Card>
@@ -99,7 +99,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
                     <article key={t.id} className="flex flex-col gap-2 rounded-xl border border-line bg-card p-3.5">
                       <div className="font-medium">{t.title}</div>
                       <div className="flex flex-wrap items-center gap-1.5"><Badge tone={PRIORITY_TONE[t.priority]}>{label(t.priority)}</Badge>{t.blockedBy.length > 0 && t.status !== 'DONE' && <Badge tone="warn" icon={<Lock size={14} aria-hidden="true" />}>Blocked</Badge>}</div>
-                      <div className="text-[13px] text-muted">{msName(t.milestoneId)}{t.dueDate ? ` · ${fmtDate(t.dueDate)}` : ''}</div>
+                      <div className="text-[13px] text-muted">{msName(t.milestoneId)}{t.dueDate ? `, ${fmtDate(t.dueDate)}` : ''}</div>
                       <Status t={t} />
                       <Visible t={t} />
                     </article>))}
@@ -125,7 +125,7 @@ function Deliverables({ milestone: m, locked, onToggle, onAdded }: { milestone: 
       <div className="mb-1 text-sm font-medium text-ink-2">Deliverables</div>
       {m.deliverables.length === 0 && <p className="text-[13px] text-muted">None listed.</p>}
       <ul className="flex flex-col gap-1">{m.deliverables.map((d) => (
-        <li key={d.id}><label className="flex min-h-9 items-center gap-3"><input type="checkbox" className="size-4 accent-[#047857]" checked={d.done} disabled={locked} onChange={(e) => onToggle(d.id, e.target.checked)} /><span className={d.done ? 'text-muted line-through' : ''}>{d.title}</span></label></li>))}
+        <li key={d.id}><label className="flex min-h-9 items-center gap-3"><input type="checkbox" className="size-4 accent-accent" checked={d.done} disabled={locked} onChange={(e) => onToggle(d.id, e.target.checked)} /><span className={d.done ? 'text-muted line-through' : ''}>{d.title}</span></label></li>))}
       </ul>
       {!locked && <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (title.trim()) add.mutate(); }}>
         <Input aria-label={`Add a deliverable to ${m.name}`} placeholder="Add a deliverable" value={title} onChange={(e) => setTitle(e.target.value)} /><Button type="submit" disabled={add.isPending || !title.trim()}>Add</Button></form>}

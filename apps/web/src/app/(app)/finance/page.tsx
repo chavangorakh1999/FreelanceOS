@@ -30,7 +30,7 @@ function FinanceView() {
 
   return (
     <>
-      <title>Finance · FreelanceOS</title>
+      <title>Finance, FreelanceOS</title>
       <PageHeader title="Finance" subtitle="Invoices, payments and what you are owed. Every figure is derived from the records behind it."
         actions={<><Button onClick={() => setRecording(true)}>Record payment</Button><Button variant="primary" onClick={() => router.replace(`/finance?tab=invoices&new=1`)}>New invoice</Button></>} />
       <div role="tablist" aria-label="Finance sections" className="-mt-2 flex gap-1 border-b border-line">
@@ -101,9 +101,9 @@ function Invoices() {
               <Td><Link href={`/invoices/${i.id}`} className="font-medium hover:text-accent hover:underline">{i.number ?? 'Draft'}</Link><div className="text-[13px] text-muted">{i.issueDate ? `Issued ${fmtDate(i.issueDate)}` : 'Not issued'}</div></Td>
               <Td><Link href={`/clients/${i.client.id}`} className="hover:underline">{i.client.name}</Link></Td>
               <Td><InvoiceBadge status={i.status} /></Td>
-              <Td>{i.dueDate ? fmtDate(i.dueDate) : <span className="text-muted">—</span>}</Td>
+              <Td>{i.dueDate ? fmtDate(i.dueDate) : <span className="text-muted">None</span>}</Td>
               <Td right>{fmtMoney(i.total)}</Td>
-              <Td right className="font-medium">{i.stored === 'ISSUED' ? fmtMoney(i.balance.outstanding) : <span className="font-normal text-muted">—</span>}</Td>
+              <Td right className="font-medium">{i.stored === 'ISSUED' ? fmtMoney(i.balance.outstanding) : <span className="font-normal text-muted">None</span>}</Td>
             </tr>))}
           </tbody>
         </Table>)}

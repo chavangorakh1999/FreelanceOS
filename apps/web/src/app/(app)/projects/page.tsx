@@ -22,7 +22,7 @@ function ProjectsView() {
 
   return (
     <>
-      <title>Projects · FreelanceOS</title>
+      <title>Projects, FreelanceOS</title>
       <PageHeader title="Projects" subtitle="Delivery of agreed work: scope, milestones, tasks and changes."
         actions={<Button variant="primary" onClick={() => router.push('/projects?new=1')}>New project</Button>} />
       <Card className="py-6" aria-label="Projects">
@@ -42,7 +42,7 @@ function ProjectsView() {
                 <Td><Link href={`/projects/${p.id}`} className="font-medium hover:text-accent hover:underline">{p.name}</Link><div className="text-[13px] text-muted">{p.number}</div></Td>
                 <Td><Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></Td>
                 <Td><ProjectBadge status={p.status} /></Td>
-                <Td>{p.targetDate ? fmtDate(p.targetDate) : <span className="text-muted">—</span>}</Td>
+                <Td>{p.targetDate ? fmtDate(p.targetDate) : <span className="text-muted">None</span>}</Td>
                 <Td className="min-w-[200px]"><ProgressBar basisPoints={p.progress.basisPoints} done={p.progress.done} total={p.progress.total} label={`${p.name} progress`} /></Td>
               </tr>))}
             </tbody>
@@ -76,7 +76,7 @@ function NewProjectDialog({ open, onClose, defaultClientId, defaultEngagementId,
         <Field label="Client">{(id) => <Select id={id} required value={clientId} onChange={(e) => setF({ ...f, clientId: e.target.value, engagementId: '', proposalId: '' })}><option value="" disabled>Select a client…</option>{clients.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>}</Field>
         <Field label="Engagement (optional)">{(id) => <Select id={id} value={f.engagementId} onChange={(e) => setF({ ...f, engagementId: e.target.value })} disabled={!clientId}><option value="">None</option>{engagements.data?.items.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}</Select>}</Field>
         <Field label="Accepted proposal (optional)" hint={picked ? 'The first scope draft is built from this proposal’s scope, deliverables, assumptions and exclusions.' : clientId && proposals.data?.items.length === 0 ? 'This client has no accepted proposals yet.' : undefined}>
-          {(id, d) => <Select id={id} aria-describedby={d} value={f.proposalId} onChange={(e) => setF({ ...f, proposalId: e.target.value })} disabled={!clientId}><option value="">None</option>{proposals.data?.items.map((p) => <option key={p.id} value={p.id}>{p.number} · {p.title}</option>)}</Select>}
+          {(id, d) => <Select id={id} aria-describedby={d} value={f.proposalId} onChange={(e) => setF({ ...f, proposalId: e.target.value })} disabled={!clientId}><option value="">None</option>{proposals.data?.items.map((p) => <option key={p.id} value={p.id}>{p.number}, {p.title}</option>)}</Select>}
         </Field>
         <Field label="Project name" hint="Defaults to the proposal or engagement title.">{(id, d) => <Input id={id} aria-describedby={d} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />}</Field>
         <ErrorNote error={err} />

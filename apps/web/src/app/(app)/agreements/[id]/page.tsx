@@ -35,10 +35,10 @@ export default function AgreementPage() {
 
   return (
     <>
-      <title>{`${ag.title} · FreelanceOS`}</title>
+      <title>{`${ag.title}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/agreements" className="hover:underline">Agreements</Link></nav>
       <PageHeader title={ag.title}
-        subtitle={<>{ag.number} · <Link href={`/clients/${ag.client.id}`} className="hover:underline">{ag.client.name}</Link>{ag.proposal && <> · from <Link href={`/proposals/${ag.proposal.id}`} className="hover:underline">{ag.proposal.number}</Link></>}</>}
+        subtitle={<>{ag.number}, <Link href={`/clients/${ag.client.id}`} className="hover:underline">{ag.client.name}</Link>{ag.proposal && <>, from <Link href={`/proposals/${ag.proposal.id}`} className="hover:underline">{ag.proposal.number}</Link></>}</>}
         actions={<div className="flex flex-wrap items-center gap-2"><AgreementBadge status={ag.status} />
           <Button onClick={() => { setPdfError(null); downloadFile(`/agreements/${id}/versions/${n}/pdf`, `${ag.number}-v${n}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button>
           {canVoid && <Button variant="danger" onClick={() => setVoiding(true)}>Void</Button>}</div>} />
@@ -60,7 +60,7 @@ export default function AgreementPage() {
               <ul className="flex flex-col divide-y divide-line">{v.signers.map((s) => (
                 <li key={s.id} className="py-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0"><div className="font-medium">{s.signingOrder}. {s.name}</div><div className="truncate text-[13px] text-muted">{label(s.role)} · {s.email}</div>{s.signedAt && <div className="text-[13px] text-muted">Signed {fmtDate(s.signedAt)}</div>}</div>
+                    <div className="min-w-0"><div className="font-medium">{s.signingOrder}. {s.name}</div><div className="truncate text-[13px] text-muted">{label(s.role)}, {s.email}</div>{s.signedAt && <div className="text-[13px] text-muted">Signed {fmtDate(s.signedAt)}</div>}</div>
                     {s.status === 'SIGNED' ? <Badge tone="success">Signed</Badge> : s.status === 'DECLINED' ? <Badge tone="danger">Declined</Badge> : <Badge tone="warn">Pending</Badge>}
                   </div>
                   {s.declineReason && <p className="mt-1 text-[13px] text-ink-2">{s.declineReason}</p>}
@@ -72,8 +72,8 @@ export default function AgreementPage() {
             <Card className="p-6" aria-labelledby="trail-h">
               <h2 id="trail-h" className="mb-4 text-lg font-semibold">Signature trail</h2>
               <ol className="flex flex-col gap-4">{[...v.events].reverse().map((e, i) => (
-                <li key={e.id} className="flex gap-3"><span aria-hidden="true" className={`mt-[5px] size-2.5 shrink-0 rounded-full ${i === 0 ? 'bg-accent' : 'bg-[#bdbdbd]'}`} />
-                  <div><div className="font-medium">{label(e.type)}{e.signerId && ` · ${v.signers.find((s) => s.id === e.signerId)?.name ?? ''}`}</div>{e.evidence && <div className="text-ink-2">{e.evidence}</div>}<div className="text-[13px] text-muted">{label(e.method)} · {fmtDateTime(e.occurredAt)}</div></div></li>))}
+                <li key={e.id} className="flex gap-3"><span aria-hidden="true" className={`mt-1 h-5 w-[3px] shrink-0 rounded-sm ${i === 0 ? 'bg-accent' : 'bg-line-strong'}`} />
+                  <div><div className="font-medium">{label(e.type)}{e.signerId && `, ${v.signers.find((s) => s.id === e.signerId)?.name ?? ''}`}</div>{e.evidence && <div className="text-ink-2">{e.evidence}</div>}<div className="text-[13px] text-muted">{label(e.method)}, {fmtDateTime(e.occurredAt)}</div></div></li>))}
               </ol>
             </Card>
           </div>
@@ -133,7 +133,7 @@ function DraftEditor({ agreementId, version: v, onChanged }: { agreementId: stri
       <div><Button onClick={() => setClauses((a) => [...a, { heading: 'New clause', body: '' }])}><Plus size={16} aria-hidden="true" />Add clause</Button></div>
 
       <ErrorNote error={save.error} />
-      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
+      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
         {unfinished > 0 && <span className="mr-auto text-sm text-warn-ink" role="status">Bracketed placeholders remain in {unfinished} {unfinished === 1 ? 'clause' : 'clauses'}</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="primary" onClick={() => { send.reset(); setConfirm(true); }}>Send for signature…</Button>

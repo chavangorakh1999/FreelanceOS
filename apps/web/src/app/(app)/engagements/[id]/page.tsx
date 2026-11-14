@@ -25,11 +25,11 @@ export default function EngagementDetailPage() {
   if (q.isLoading) return <Spinner />;
   if (q.error || !q.data) return <><PageHeader title="Engagement not found" /><ErrorNote error={q.error} /><Link href="/engagements" className="text-accent hover:underline">Back to engagements</Link></>;
   const e = q.data;
-  const stageName = (sid: string | null) => stages.data?.find((s) => s.id === sid)?.name ?? '—';
+  const stageName = (sid: string | null) => stages.data?.find((s) => s.id === sid)?.name ?? 'None';
 
   return (
     <>
-      <title>{`${e.title} · FreelanceOS`}</title>
+      <title>{`${e.title}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/engagements" className="hover:underline">Engagements</Link></nav>
       <PageHeader title={e.title}
         subtitle={e.description ?? undefined}
@@ -40,7 +40,7 @@ export default function EngagementDetailPage() {
       <div className="-mt-3 flex flex-wrap items-center gap-2">
         <Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'info'}>{e.stage.name}</Badge>
         <Link href={`/clients/${e.client.id}`} className="font-medium text-accent hover:underline">{e.client.name}</Link>
-        <span className="text-muted">· Estimated {fmtMoney(e.estimatedValue)}</span>
+        <span className="text-muted"> Estimated {fmtMoney(e.estimatedValue)}</span>
         <Link href={`/projects?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className="ml-auto inline-flex h-9 items-center rounded-control border border-line-strong bg-card px-3 text-sm font-medium hover:bg-stat">Convert to project</Link>
       </div>
       {e.lostReason && <p className="rounded-control bg-danger-soft px-3 py-2 text-danger">Lost: {e.lostReason}</p>}
@@ -68,7 +68,7 @@ export default function EngagementDetailPage() {
             <ol className="flex flex-col gap-4">
               {e.stageHistory?.map((h, i) => (
                 <li key={h.id} className="flex gap-3">
-                  <span aria-hidden="true" className={`mt-[5px] size-2.5 shrink-0 rounded-full ${i === 0 ? 'bg-accent' : 'bg-[#bdbdbd]'}`} />
+                  <span aria-hidden="true" className={`mt-1 h-5 w-[3px] shrink-0 rounded-sm ${i === 0 ? 'bg-accent' : 'bg-line-strong'}`} />
                   <div>
                     <div className="font-medium">{h.fromStageId ? `${stageName(h.fromStageId)} → ${stageName(h.toStageId)}` : `Created in ${stageName(h.toStageId)}`}</div>
                     {h.reason && <div className="text-ink-2">{h.reason}</div>}
@@ -81,9 +81,9 @@ export default function EngagementDetailPage() {
           <Card className="p-6" aria-labelledby="d-h">
             <h2 id="d-h" className="mb-4 text-lg font-semibold">Details</h2>
             <dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-y-3">
-              <dt className="text-muted">Category</dt><dd>{e.serviceCategory ?? '—'}</dd>
-              <dt className="text-muted">Source</dt><dd>{e.source ?? '—'}</dd>
-              <dt className="text-muted">Follow-up</dt><dd>{e.followUpAt ? fmtDate(e.followUpAt) : '—'}</dd>
+              <dt className="text-muted">Category</dt><dd>{e.serviceCategory ?? 'None'}</dd>
+              <dt className="text-muted">Source</dt><dd>{e.source ?? 'None'}</dd>
+              <dt className="text-muted">Follow-up</dt><dd>{e.followUpAt ? fmtDate(e.followUpAt) : 'None'}</dd>
               <dt className="text-muted">Currency</dt><dd>{e.currency}</dd>
             </dl>
           </Card>

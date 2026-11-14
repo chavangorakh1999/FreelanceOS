@@ -37,7 +37,7 @@ function ClientsView() {
 
   return (
     <>
-      <title>Clients · FreelanceOS</title>
+      <title>Clients, FreelanceOS</title>
       <PageHeader title="Clients" subtitle="Companies and individuals you work with."
         actions={<Button variant="primary" onClick={() => router.push('/clients?new=1')}>New client</Button>} />
 
@@ -70,9 +70,9 @@ function ClientsView() {
                 <tr key={c.id}>
                   <Td>
                     <Link href={`/clients/${c.id}`} className="font-medium text-ink hover:text-accent hover:underline">{c.name}</Link>
-                    <div className="text-[13px] text-muted">{c.type === 'COMPANY' ? 'Company' : 'Individual'}{c.tags.length > 0 && ` · ${c.tags.join(', ')}`}</div>
+                    <div className="text-[13px] text-muted">{c.type === 'COMPANY' ? 'Company' : 'Individual'}{c.tags.length > 0 && `, ${c.tags.join(', ')}`}</div>
                   </Td>
-                  <Td>{c.primaryContact ? <><div>{[c.primaryContact.firstName, c.primaryContact.lastName].filter(Boolean).join(' ')}</div><div className="text-[13px] text-muted">{c.primaryContact.email ?? '—'}</div></> : <span className="text-muted">—</span>}</Td>
+                  <Td>{c.primaryContact ? <><div>{[c.primaryContact.firstName, c.primaryContact.lastName].filter(Boolean).join(' ')}</div><div className="text-[13px] text-muted">{c.primaryContact.email ?? 'None'}</div></> : <span className="text-muted">None</span>}</Td>
                   <Td><Badge tone={c.status === 'ACTIVE' ? 'success' : 'neutral'}>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</Badge></Td>
                   <Td right>{c.engagementCount}</Td>
                 </tr>
@@ -82,7 +82,7 @@ function ClientsView() {
         )}
         {list.data && list.data.total > list.data.pageSize && (
           <div className="flex items-center justify-between px-7 pt-5 text-muted">
-            <span>Page {page} of {pages} · {list.data.total} clients</span>
+            <span>Page {page} of {pages}, {list.data.total} clients</span>
             <div className="flex gap-2"><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button><Button disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</Button></div>
           </div>
         )}

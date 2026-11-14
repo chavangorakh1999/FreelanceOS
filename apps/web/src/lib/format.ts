@@ -12,6 +12,12 @@ export const fmtDateTime = (iso: string | Date) =>
 
 const LABELS: Record<string, (m: Record<string, unknown> | null) => string> = {
   'workspace.created': () => 'Workspace created',
+  'portal.invited': () => 'Client invited to the portal',
+  'portal.invitation_revoked': () => 'Portal invitation cancelled',
+  'portal.invitation_accepted': () => 'Client joined the portal',
+  'portal.access_revoked': () => 'Portal access removed',
+  'portal.access_updated': () => 'Portal access changed',
+  'change_request.shared': () => 'Change request shared with the client',
   'auth.signed_in': () => 'Signed in',
   'auth.session_revoked': () => 'A session was revoked',
   'auth.password_changed': () => 'Password changed',

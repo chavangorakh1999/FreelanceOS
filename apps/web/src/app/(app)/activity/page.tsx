@@ -16,7 +16,7 @@ export default function ActivityPage() {
 
   return (
     <>
-      <title>Activity · FreelanceOS</title>
+      <title>Activity, FreelanceOS</title>
       <PageHeader title="Activity" subtitle="An append-only record of important actions in your workspace." />
       <ErrorNote error={q.error} />
       <Card className="p-6">
@@ -24,8 +24,8 @@ export default function ActivityPage() {
           <ol className="flex flex-col gap-4">
             {items.map((a) => (
               <li key={a.id} className="flex gap-3">
-                <span aria-hidden="true" className="mt-[5px] size-2.5 shrink-0 rounded-full bg-[#bdbdbd]" />
-                <div><div className="font-medium">{describeAction(a.action, a.metadata)}</div><div className="text-[13px] text-muted">{a.targetType.replace('_', ' ')} · {fmtDateTime(a.createdAt)}</div></div>
+                <span aria-hidden="true" className="mt-1 h-5 w-[3px] shrink-0 rounded-sm bg-line-strong" />
+                <div><div className="font-medium">{describeAction(a.action, a.metadata)}</div><div className="text-[13px] text-muted">{a.targetType.replace('_', ' ')}, {fmtDateTime(a.createdAt)}</div></div>
               </li>
             ))}
           </ol>

@@ -28,10 +28,10 @@ export function PortalAccessCard({ clientId, archived }: { clientId: string; arc
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0"><div className="truncate font-medium">{c.name}</div><div className="truncate text-[13px] text-muted">{c.email ?? 'No email address'}</div></div>
                 {c.membership?.status === 'ACTIVE' ? <Badge tone="success">{c.membership.role === 'APPROVER' ? 'Can approve' : 'View only'}</Badge>
-                  : c.invitation ? <Badge tone={c.invitation.status === 'PENDING' ? 'info' : 'warn'}>{c.invitation.status === 'PENDING' ? `Invited · expires ${fmtDate(c.invitation.expiresAt)}` : 'Invitation expired'}</Badge>
+                  : c.invitation ? <Badge tone={c.invitation.status === 'PENDING' ? 'info' : 'warn'}>{c.invitation.status === 'PENDING' ? `Invited, expires ${fmtDate(c.invitation.expiresAt)}` : 'Invitation expired'}</Badge>
                   : c.membership?.status === 'REVOKED' ? <Badge>Access removed</Badge> : <Badge>No access</Badge>}
               </div>
-              {c.membership?.status === 'ACTIVE' && <p className="text-[13px] text-muted">{c.membership.lastActive ? `Last active ${fmtDateTime(c.membership.lastActive)}` : 'Hasn’t signed in since accepting'} · {c.projectIds.length} {c.projectIds.length === 1 ? 'project' : 'projects'}</p>}
+              {c.membership?.status === 'ACTIVE' && <p className="text-[13px] text-muted">{c.membership.lastActive ? `Last active ${fmtDateTime(c.membership.lastActive)}` : 'Hasn’t signed in since accepting'}, {c.projectIds.length} {c.projectIds.length === 1 ? 'project' : 'projects'}</p>}
               {!archived && (
                 <div className="flex flex-wrap gap-1">
                   {c.membership?.status === 'ACTIVE' ? (
@@ -75,7 +75,7 @@ function AccessDialog({ clientId, contact, projects, onClose, onDone }: { client
         <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium text-ink-2">Projects they can see</legend>
           {projects.length === 0 ? <p className="text-muted">This client has no projects yet. They’ll still see shared proposals, agreements and invoices.</p> : projects.map((p) => (
             <label key={p.id} className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-0.5 size-4" checked={granted.includes(p.id)} onChange={() => toggle(p.id)} />
-              <span>{p.name} <span className="text-muted">· {p.number}</span>{p.visibility !== 'CLIENT_VISIBLE' && <span className="block text-[13px] text-warn-ink">Not shared with clients yet — they won’t see it until you set it to “Visible to client”.</span>}</span></label>
+              <span>{p.name} <span className="text-muted">({p.number})</span>{p.visibility !== 'CLIENT_VISIBLE' && <span className="block text-[13px] text-warn-ink">Not shared with clients yet, they won’t see it until you set it to “Visible to client”.</span>}</span></label>
           ))}
         </fieldset>
         <ErrorNote error={save.error} />

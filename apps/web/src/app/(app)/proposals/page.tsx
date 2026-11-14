@@ -26,7 +26,7 @@ function ProposalsView() {
 
   return (
     <>
-      <title>Proposals · FreelanceOS</title>
+      <title>Proposals, FreelanceOS</title>
       <PageHeader title="Proposals" subtitle="Priced offers, versioned so you always know exactly what the client saw."
         actions={<Button variant="primary" onClick={() => router.push('/proposals?new=1')}>New proposal</Button>} />
       <Card className="py-6" aria-label="Proposals">
@@ -46,7 +46,7 @@ function ProposalsView() {
             <thead><tr><Th>Proposal</Th><Th>Client</Th><Th>Status</Th><Th>Valid until</Th><Th right>Total (latest version)</Th></tr></thead>
             <tbody>{list.data?.items.map((p) => (
               <tr key={p.id}>
-                <Td><Link href={`/proposals/${p.id}`} className="font-medium hover:text-accent hover:underline">{p.title}</Link><div className="text-[13px] text-muted">{p.number} · v{p.latestVersion.versionNumber}</div></Td>
+                <Td><Link href={`/proposals/${p.id}`} className="font-medium hover:text-accent hover:underline">{p.title}</Link><div className="text-[13px] text-muted">{p.number}, v{p.latestVersion.versionNumber}</div></Td>
                 <Td><Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></Td>
                 <Td><ProposalBadge status={p.status} /></Td>
                 <Td>{p.latestVersion.validUntil ? fmtDate(p.latestVersion.validUntil) : <span className="text-muted">Not set</span>}</Td>

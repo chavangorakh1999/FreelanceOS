@@ -22,7 +22,7 @@ function AgreementsView() {
 
   return (
     <>
-      <title>Agreements · FreelanceOS</title>
+      <title>Agreements, FreelanceOS</title>
       <PageHeader title="Agreements" subtitle="Contracts built from accepted proposals, with a signature trail you can rely on."
         actions={<Button variant="primary" onClick={() => router.push('/agreements?new=1')}>New agreement</Button>} />
       <Card className="py-6" aria-label="Agreements">
@@ -41,9 +41,9 @@ function AgreementsView() {
               <tr key={a.id}>
                 <Td><Link href={`/agreements/${a.id}`} className="font-medium hover:text-accent hover:underline">{a.title}</Link><div className="text-[13px] text-muted">{a.number}</div></Td>
                 <Td><Link href={`/clients/${a.client.id}`} className="hover:underline">{a.client.name}</Link></Td>
-                <Td>{a.proposal ? <Link href={`/proposals/${a.proposal.id}`} className="hover:underline">{a.proposal.number}</Link> : <span className="text-muted">—</span>}</Td>
+                <Td>{a.proposal ? <Link href={`/proposals/${a.proposal.id}`} className="hover:underline">{a.proposal.number}</Link> : <span className="text-muted">None</span>}</Td>
                 <Td><AgreementBadge status={a.status} /></Td>
-                <Td>{a.expiresAt ? fmtDate(a.expiresAt) : <span className="text-muted">—</span>}</Td>
+                <Td>{a.expiresAt ? fmtDate(a.expiresAt) : <span className="text-muted">None</span>}</Td>
               </tr>))}
             </tbody>
           </Table>
@@ -73,7 +73,7 @@ function NewAgreementDialog({ open, onClose, defaultClientId, defaultProposalId 
       <form id="new-agreement" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         <Field label="Client">{(id) => <Select id={id} required value={clientId} onChange={(e) => setF({ ...f, clientId: e.target.value, proposalId: '' })}><option value="" disabled>Select a client…</option>{clients.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>}</Field>
         <Field label="Accepted proposal" hint={clientId && proposals.data?.items.length === 0 ? 'This client has no accepted proposals yet.' : 'The agreement records the exact accepted version.'}>
-          {(id, d) => <Select id={id} aria-describedby={d} value={f.proposalId} onChange={(e) => setF({ ...f, proposalId: e.target.value })} disabled={!clientId}><option value="">None (standalone)</option>{proposals.data?.items.map((p) => <option key={p.id} value={p.id}>{p.number} · {p.title}</option>)}</Select>}
+          {(id, d) => <Select id={id} aria-describedby={d} value={f.proposalId} onChange={(e) => setF({ ...f, proposalId: e.target.value })} disabled={!clientId}><option value="">None (standalone)</option>{proposals.data?.items.map((p) => <option key={p.id} value={p.id}>{p.number}, {p.title}</option>)}</Select>}
         </Field>
         <Field label="Template" hint={templates.data?.find((t) => t.id === f.templateId)?.description ?? 'Clause text is a starting point; have it reviewed before use.'}>
           {(id, d) => <Select id={id} aria-describedby={d} value={f.templateId} onChange={(e) => setF({ ...f, templateId: e.target.value })}><option value="">Default</option>{templates.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select>}

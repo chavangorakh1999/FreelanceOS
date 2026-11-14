@@ -37,7 +37,7 @@ export function NewEngagementDialog({ open, onClose, defaultClientId }: { open: 
           </Select>)}</Field>
         <Field label="Title">{(id) => <Input id={id} required value={f.title} onChange={set('title')} placeholder="e.g. Billing portal rebuild" />}</Field>
         <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-3">
-          <Field label="Estimated value" hint="Estimate only — not revenue.">{(id, d) => <Input id={id} aria-describedby={d} inputMode="decimal" pattern="\d+(\.\d{1,3})?" value={f.estimatedValue} onChange={set('estimatedValue')} placeholder="150000.00" />}</Field>
+          <Field label="Estimated value" hint="Estimate only, not revenue.">{(id, d) => <Input id={id} aria-describedby={d} inputMode="decimal" pattern="\d+(\.\d{1,3})?" value={f.estimatedValue} onChange={set('estimatedValue')} placeholder="150000.00" />}</Field>
           <Field label="Currency">{(id) => <Select id={id} value={f.currency} onChange={set('currency')}>{['INR', 'USD', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'SGD'].map((c) => <option key={c}>{c}</option>)}</Select>}</Field>
         </div>
         <Field label="Description">{(id) => <Textarea id={id} value={f.description} onChange={set('description')} />}</Field>

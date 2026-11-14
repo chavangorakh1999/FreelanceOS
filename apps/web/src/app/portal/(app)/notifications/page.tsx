@@ -21,7 +21,7 @@ export default function PortalNotifications() {
 
   return (
     <>
-      <title>Notifications · Client portal</title>
+      <title>Notifications, Client portal</title>
       <PageHeader title="Notifications" subtitle="What’s changed since you last looked." actions={unread > 0 ? <Button onClick={() => readAll.mutate()} disabled={readAll.isPending}>Mark all read</Button> : undefined} />
       <ErrorNote error={list.error} />
       <Card className="overflow-hidden">
@@ -29,7 +29,7 @@ export default function PortalNotifications() {
           <ul className="divide-y divide-line">
             {list.data?.map((n) => (
               <li key={n.id}><button type="button" className="flex w-full items-start gap-3 px-5 py-4 text-left hover:bg-stat" onClick={() => { open.mutate(n); router.push(n.linkPath); }}>
-                <span aria-hidden="true" className={`mt-2 size-2.5 shrink-0 rounded-full ${n.readAt ? 'bg-transparent' : 'bg-accent'}`} />
+                <span aria-hidden="true" className={`mt-1 h-5 w-[3px] shrink-0 rounded-sm ${n.readAt ? 'bg-line' : 'bg-accent'}`} />
                 <span className="min-w-0"><span className={`block ${n.readAt ? '' : 'font-semibold'}`}>{n.title}</span><span className="block truncate text-muted">{n.body}</span><span className="text-[13px] text-muted">{fmtDateTime(n.createdAt)}{!n.readAt && <span className="sr-only"> (unread)</span>}</span></span>
               </button></li>
             ))}
@@ -42,7 +42,7 @@ export default function PortalNotifications() {
         <ul className="divide-y divide-line">
           {prefs.data?.filter((p) => CLIENT_CATEGORIES.includes(p.category)).map((p) => (
             <li key={p.category} className="flex items-center justify-between gap-4 py-3">
-              <label htmlFor={`pf-${p.category}`} className="min-w-0">{p.label}{p.locked && <span className="block text-[13px] text-muted">Always sent — it protects your account.</span>}</label>
+              <label htmlFor={`pf-${p.category}`} className="min-w-0">{p.label}{p.locked && <span className="block text-[13px] text-muted">Always sent, it protects your account.</span>}</label>
               <input id={`pf-${p.category}`} type="checkbox" className="size-5 shrink-0" checked={p.emailEnabled} disabled={p.locked || setPref.isPending} onChange={(e) => setPref.mutate({ category: p.category, emailEnabled: e.target.checked })} />
             </li>
           ))}

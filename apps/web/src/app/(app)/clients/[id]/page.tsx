@@ -33,14 +33,14 @@ export default function ClientDetailPage() {
 
   return (
     <>
-      <title>{`${c.name} · FreelanceOS`}</title>
+      <title>{`${c.name}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/clients" className="hover:underline">Clients</Link></nav>
       <PageHeader title={c.name}
-        subtitle={[c.type === 'COMPANY' ? 'Company' : 'Individual', c.email, c.phone].filter(Boolean).join(' · ')}
+        subtitle={[c.type === 'COMPANY' ? 'Company' : 'Individual', c.email, c.phone].filter(Boolean).join(', ')}
         actions={archived
           ? <Button onClick={() => archive.mutate(false)} disabled={archive.isPending}>Restore client</Button>
-          : <><Button variant="danger" onClick={() => setConfirmArchive(true)}>Archive</Button><Link href={`/finance?tab=invoices&new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">New invoice</Link><Link href={`/engagements?new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control bg-accent px-4 text-sm font-medium text-white shadow-[0_6px_14px_rgba(4,120,87,0.28)] hover:bg-accent-hover">New engagement</Link></>} />
-      {archived && <Badge tone="warn">Archived — restore to edit or create engagements. History is preserved.</Badge>}
+          : <><Button variant="danger" onClick={() => setConfirmArchive(true)}>Archive</Button><Link href={`/finance?tab=invoices&new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">New invoice</Link><Link href={`/engagements?new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control bg-board px-4 text-sm font-medium text-board-type hover:bg-ink-2">New engagement</Link></>} />
+      {archived && <Badge tone="warn">Archived, restore to edit or create engagements. History is preserved.</Badge>}
       <ErrorNote error={archive.error ?? primary.error ?? archiveContact.error} />
 
       <div className="flex flex-wrap items-start gap-6">
@@ -62,7 +62,7 @@ export default function ClientDetailPage() {
             <LogInteraction clientId={id} disabled={archived} onDone={() => void qc.invalidateQueries({ queryKey: ['interactions', id] })} />
             <ul className="mt-5 flex flex-col gap-4">
               {interactions.data?.map((i) => (
-                <li key={i.id} className="flex gap-3"><span aria-hidden="true" className="mt-[5px] size-2.5 shrink-0 rounded-full bg-[#bdbdbd]" />
+                <li key={i.id} className="flex gap-3"><span aria-hidden="true" className="mt-1 h-5 w-[3px] shrink-0 rounded-sm bg-line-strong" />
                   <div><div><Badge>{i.type.charAt(0) + i.type.slice(1).toLowerCase()}</Badge> <span className="ml-1">{i.summary}</span></div><div className="mt-1 text-[13px] text-muted">{fmtDateTime(i.occurredAt)}</div></div></li>
               ))}
               {interactions.data?.length === 0 && <li className="text-muted">No interactions logged.</li>}
@@ -80,7 +80,7 @@ export default function ClientDetailPage() {
                   <li key={p.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
                     <div className="min-w-0">
                       <div className="font-medium">{[p.firstName, p.lastName].filter(Boolean).join(' ')} {p.isPrimary && <Badge tone="success">Primary</Badge>}</div>
-                      <div className="truncate text-[13px] text-muted">{[p.jobTitle, p.email, p.phone].filter(Boolean).join(' · ') || '—'}</div>
+                      <div className="truncate text-[13px] text-muted">{[p.jobTitle, p.email, p.phone].filter(Boolean).join(', ') || 'None'}</div>
                     </div>
                     {!archived && <div className="flex gap-1">
                       {!p.isPrimary && <Button variant="ghost" className="h-8 px-2 text-[13px]" onClick={() => primary.mutate(p.id)}>Make primary</Button>}
@@ -96,9 +96,9 @@ export default function ClientDetailPage() {
             <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
             <dl className="grid grid-cols-[100px_minmax(0,1fr)] gap-y-3">
               <dt className="text-muted">Status</dt><dd>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</dd>
-              <dt className="text-muted">Website</dt><dd className="truncate">{c.website ?? '—'}</dd>
-              <dt className="text-muted">Tax ID</dt><dd>{c.taxIdentifier ?? '—'}</dd>
-              <dt className="text-muted">Tags</dt><dd>{c.tags.length ? c.tags.join(', ') : '—'}</dd>
+              <dt className="text-muted">Website</dt><dd className="truncate">{c.website ?? 'None'}</dd>
+              <dt className="text-muted">Tax ID</dt><dd>{c.taxIdentifier ?? 'None'}</dd>
+              <dt className="text-muted">Tags</dt><dd>{c.tags.length ? c.tags.join(', ') : 'None'}</dd>
               <dt className="text-muted">Added</dt><dd>{fmtDateTime(c.createdAt)}</dd>
             </dl>
           </Card>

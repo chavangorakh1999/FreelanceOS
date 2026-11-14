@@ -29,7 +29,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <title>Settings · FreelanceOS</title>
+      <title>Settings, FreelanceOS</title>
       <PageHeader title="Settings" subtitle="Your workspace and account security." />
 
       <Card className="p-6" aria-labelledby="ws-h">
@@ -64,7 +64,7 @@ export default function SettingsPage() {
             {failed.data?.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0"><div className="truncate font-medium">{d.subject} <Badge tone={d.status === 'DEAD' ? 'danger' : 'warn'}>{d.status === 'DEAD' ? 'Gave up' : 'Retrying'}</Badge></div>
-                  <div className="truncate text-[13px] text-muted">To {d.toEmail} · {d.attempts} {d.attempts === 1 ? 'attempt' : 'attempts'}{d.lastError ? ` · ${d.lastError}` : ''}</div></div>
+                  <div className="truncate text-[13px] text-muted">To {d.toEmail}, {d.attempts} {d.attempts === 1 ? 'attempt' : 'attempts'}{d.lastError ? `, ${d.lastError}` : ''}</div></div>
                 <Button onClick={() => retry.mutate(d.id)} disabled={retry.isPending}>Try again</Button>
               </li>
             ))}
@@ -81,7 +81,7 @@ export default function SettingsPage() {
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <div className="truncate font-medium">{s.userAgent ?? 'Unknown device'} {s.current && <Badge tone="success">This device</Badge>}</div>
-                  <div className="text-[13px] text-muted">{s.ipAddress ?? 'Unknown IP'} · last active {fmtDateTime(s.lastUsedAt)}</div>
+                  <div className="text-[13px] text-muted">{s.ipAddress ?? 'Unknown IP'}, last active {fmtDateTime(s.lastUsedAt)}</div>
                 </div>
                 {!s.current && <Button variant="danger" onClick={() => revoke.mutate(s.id)} disabled={revoke.isPending}>Revoke</Button>}
               </li>

@@ -29,7 +29,7 @@ export default function PortalHome() {
 
   return (
     <>
-      <title>{`${d.organizationName} · Client portal`}</title>
+      <title>{`${d.organizationName}, Client portal`}</title>
       <PageHeader title={`Hello, ${me.user.name.split(' ')[0]}`} subtitle={`Everything ${d.businessName} has shared with ${d.organizationName}.`} />
 
       <section aria-label="At a glance" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -42,10 +42,10 @@ export default function PortalHome() {
           <p className="flex items-center gap-2 px-5 py-6 text-muted"><CheckCircle2 size={18} aria-hidden="true" className="text-accent" />You’re all caught up.</p>
         ) : (
           <ul className="divide-y divide-line">
-            {a.proposals.map((p) => <Row key={p.id} href={`/portal/proposals/${p.id}`} title={p.title} meta={`${p.number} · ${fmtMoney(p.total)}${p.validUntil ? ` · valid until ${fmtDate(p.validUntil)}` : ''}`} tag={<Badge tone="info">{canAct ? 'Review & decide' : 'To review'}</Badge>} />)}
+            {a.proposals.map((p) => <Row key={p.id} href={`/portal/proposals/${p.id}`} title={p.title} meta={`${p.number}, ${fmtMoney(p.total)}${p.validUntil ? `, valid until ${fmtDate(p.validUntil)}` : ''}`} tag={<Badge tone="info">{canAct ? 'Review & decide' : 'To review'}</Badge>} />)}
             {a.agreements.map((x) => <Row key={x.id} href={`/portal/agreements/${x.id}`} title={x.title} meta={x.number} tag={<Badge tone="warn">Needs your signature</Badge>} />)}
             {a.scopeReviews.map((s) => <Row key={s.projectId} href={`/portal/projects/${s.projectId}`} title={s.projectName} meta={`Scope version ${s.versionNumber}`} tag={<Badge tone="info">Scope to review</Badge>} />)}
-            {a.changes.map((c) => <Row key={c.id} href={`/portal/changes/${c.id}`} title={`${c.number} · ${c.title}`} meta={c.project.name} tag={<Badge tone="info">Change to decide</Badge>} />)}
+            {a.changes.map((c) => <Row key={c.id} href={`/portal/changes/${c.id}`} title={`${c.number}, ${c.title}`} meta={c.project.name} tag={<Badge tone="info">Change to decide</Badge>} />)}
             {a.invoices.map((i) => <Row key={i.id} href={`/portal/invoices/${i.id}`} title={`Invoice ${i.number}`} meta={`${fmtMoney(i.outstanding)} due${i.dueDate ? ` ${fmtDate(i.dueDate)}` : ''}`} tag={i.status === 'OVERDUE' ? <Badge tone="danger">Overdue</Badge> : <Badge tone="warn">Due</Badge>} />)}
           </ul>
         )}

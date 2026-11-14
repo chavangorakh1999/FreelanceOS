@@ -41,9 +41,9 @@ export default function ProposalPage() {
 
   return (
     <>
-      <title>{`${p.title} · FreelanceOS`}</title>
+      <title>{`${p.title}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/proposals" className="hover:underline">Proposals</Link></nav>
-      <PageHeader title={p.title} subtitle={`${p.number} · ${p.client.name}${p.engagement ? ` · ${p.engagement.title}` : ''}`}
+      <PageHeader title={p.title} subtitle={`${p.number}, ${p.client.name}${p.engagement ? `, ${p.engagement.title}` : ''}`}
         actions={<div className="flex flex-wrap items-center gap-2"><ProposalBadge status={p.status} />
           <Button onClick={() => { setPdfError(null); downloadFile(`/proposals/${id}/versions/${n}/pdf`, `${p.number}-v${n}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button></div>} />
       <ErrorNote error={pdfError ?? newVersion.error ?? duplicate.error} />
@@ -61,7 +61,7 @@ export default function ProposalPage() {
             <div className="flex flex-col gap-2">
               {isLive && <Button variant="primary" onClick={() => setDeciding(true)}>Record client decision</Button>}
               {p.status === 'ACCEPTED' && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className="inline-flex h-10 items-center justify-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">Start project</Link>}
-              {p.status === 'ACCEPTED' && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white shadow-[0_6px_14px_rgba(4,120,87,0.25)] hover:bg-accent-hover"><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
+              {p.status === 'ACCEPTED' && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-board px-4 text-sm font-medium text-board-type hover:bg-ink-2"><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
               {latest.status === 'DRAFT' && <p className="text-[13px] text-muted">Finish the draft, then share it from the bar at the bottom of the page.</p>}
               {p.status !== 'ACCEPTED' && latest.status !== 'DRAFT' && <Button onClick={() => newVersion.mutate()} disabled={newVersion.isPending}>Start new version</Button>}
               <Button variant="ghost" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>{p.status === 'ACCEPTED' ? 'Duplicate as replacement' : 'Duplicate proposal'}</Button>
@@ -76,7 +76,7 @@ export default function ProposalPage() {
                 <li key={x.id}>
                   <button type="button" onClick={() => setPicked(x.versionNumber)} aria-current={x.versionNumber === n ? 'true' : undefined}
                     className={`flex w-full items-center justify-between gap-3 rounded-control border px-3 py-2.5 text-left ${x.versionNumber === n ? 'border-line-strong bg-stat' : 'border-transparent hover:bg-stat'}`}>
-                    <span><span className="font-medium">Version {x.versionNumber}</span><span className="block text-[13px] text-muted">{fmtMoney(x.totals.total)}{x.sharedAt ? ` · shared ${fmtDate(x.sharedAt)}` : ''}</span></span>
+                    <span><span className="font-medium">Version {x.versionNumber}</span><span className="block text-[13px] text-muted">{fmtMoney(x.totals.total)}{x.sharedAt ? `, shared ${fmtDate(x.sharedAt)}` : ''}</span></span>
                     <ProposalBadge status={x.status} />
                   </button>
                 </li>))}
@@ -87,8 +87,8 @@ export default function ProposalPage() {
             <Card className="p-6" aria-labelledby="dec-h">
               <h2 id="dec-h" className="mb-3 text-lg font-semibold">Decisions</h2>
               <ul className="flex flex-col gap-4">{p.decisions.map((d) => (
-                <li key={d.id}><div className="font-medium">{label(d.decision)} <span className="font-normal text-muted">· version {p.versions.find((x) => x.id === d.versionId)?.versionNumber}</span></div>
-                  <div className="text-[13px] text-muted">{label(d.channel)} · {fmtDateTime(d.decidedAt)}</div>{d.note && <div className="mt-1 text-ink-2">{d.note}</div>}</li>))}
+                <li key={d.id}><div className="font-medium">{label(d.decision)} <span className="font-normal text-muted"> version {p.versions.find((x) => x.id === d.versionId)?.versionNumber}</span></div>
+                  <div className="text-[13px] text-muted">{label(d.channel)}, {fmtDateTime(d.decidedAt)}</div>{d.note && <div className="mt-1 text-ink-2">{d.note}</div>}</li>))}
               </ul>
             </Card>
           )}
@@ -110,14 +110,14 @@ function VersionView({ version: v }: { version: ProposalVersion }) {
         <ProposalBadge status={v.status} />
         <LockedBadge>Version {v.versionNumber} is locked</LockedBadge>
         {v.expired && <Badge tone="warn">Expired {v.validUntil && fmtDate(v.validUntil)}</Badge>}
-        <span className="text-[13px] text-muted">{v.sharedAt ? `Shared ${fmtDateTime(v.sharedAt)}` : ''}{v.validUntil && !v.expired ? ` · valid until ${fmtDate(v.validUntil)}` : ''}</span>
+        <span className="text-[13px] text-muted">{v.sharedAt ? `Shared ${fmtDateTime(v.sharedAt)}` : ''}{v.validUntil && !v.expired ? `, valid until ${fmtDate(v.validUntil)}` : ''}</span>
       </div>
       {v.summary && <Card className="p-6"><p className="whitespace-pre-wrap">{v.summary}</p></Card>}
       {v.sections.map((s, i) => (
-        <Card key={i} className="p-6"><h2 className="mb-2 text-lg font-semibold">{s.title}</h2><p className="whitespace-pre-wrap text-ink-2">{s.body || '—'}</p></Card>
+        <Card key={i} className="p-6"><h2 className="mb-2 text-lg font-semibold">{s.title}</h2><p className="whitespace-pre-wrap text-ink-2">{s.body || 'None'}</p></Card>
       ))}
       <Card className="py-6" aria-labelledby="price-h">
-        <h2 id="price-h" className="px-6 pb-4 text-lg font-semibold">Pricing <span className="text-sm font-normal text-muted">· {label(v.pricingModel)}</span></h2>
+        <h2 id="price-h" className="px-6 pb-4 text-lg font-semibold">Pricing <span className="text-sm font-normal text-muted"> {label(v.pricingModel)}</span></h2>
         <Table minWidth={560}>
           <thead><tr><Th>Description</Th><Th right>Qty</Th><Th right>Rate</Th><Th right>Amount</Th></tr></thead>
           <tbody>{v.lineItems.map((l, i) => (<tr key={i}><Td>{l.description}{l.taxBps > 0 && <div className="text-[13px] text-muted">GST {l.taxBps / 100}%</div>}</Td><Td right>{l.quantity} {l.unitLabel}</Td><Td right>{fmtMoney(l.unitRate)}</Td><Td right>{fmtMoney(l.net)}</Td></tr>))}</tbody>
@@ -126,13 +126,13 @@ function VersionView({ version: v }: { version: ProposalVersion }) {
           <Row k="Subtotal" v={fmtMoney(v.totals.subtotal)} />
           {BigInt(v.totals.discount.amountMinor) > 0n && <Row k="Discounts" v={`−${fmtMoney(v.totals.discount)}`} />}
           <Row k="Tax" v={fmtMoney(v.totals.tax)} />
-          <div className="flex justify-between border-t border-dashed border-[#d0d0d0] pt-3 text-lg font-semibold"><span>Total</span><span>{fmtMoney(v.totals.total)}</span></div>
+          <div className="flex justify-between border-t border-dashed border-line-strong pt-3 text-lg font-semibold"><span>Total</span><span>{fmtMoney(v.totals.total)}</span></div>
         </div>
       </Card>
       <Card className="p-6" aria-labelledby="terms-h">
         <h2 id="terms-h" className="mb-3 text-lg font-semibold">Payment terms</h2>
         <ul className="flex flex-col divide-y divide-line">{v.paymentTerms.map((t, i) => (
-          <li key={i} className="flex justify-between gap-4 py-2.5"><span>{t.label}</span><span className="text-ink-2">{[t.percentageBps != null ? `${t.percentageBps / 100}%` : null, t.amount ? fmtMoney(t.amount) : null, t.dueInDays != null ? `within ${t.dueInDays} days` : null].filter(Boolean).join(' · ')}</span></li>))}
+          <li key={i} className="flex justify-between gap-4 py-2.5"><span>{t.label}</span><span className="text-ink-2">{[t.percentageBps != null ? `${t.percentageBps / 100}%` : null, t.amount ? fmtMoney(t.amount) : null, t.dueInDays != null ? `within ${t.dueInDays} days` : null].filter(Boolean).join(', ')}</span></li>))}
         </ul>
       </Card>
     </>
@@ -239,7 +239,7 @@ function DraftEditor({ proposalId, version: v, onChanged }: { proposalId: string
               <Field label="Discount %">{(id) => <Input id={id} inputMode="decimal" value={l.discountPct} onChange={(e) => upd(setLines, i, { discountPct: e.target.value })} />}</Field>
               <Field label="Tax %">{(id) => <Input id={id} inputMode="decimal" value={l.taxPct} onChange={(e) => upd(setLines, i, { taxPct: e.target.value })} />}</Field>
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{preview.ok && preview.c.lines[i] ? formatMoney(preview.c.lines[i]!.net, { locale: 'en-IN' }) : '—'}</span>
+                <span className="font-medium">{preview.ok && preview.c.lines[i] ? formatMoney(preview.c.lines[i]!.net, { locale: 'en-IN' }) : 'None'}</span>
                 <Button variant="ghost" aria-label={`Remove line ${i + 1}`} onClick={() => setLines((a) => a.filter((_, k) => k !== i))} className="px-2.5"><Trash2 size={16} aria-hidden="true" /></Button>
               </div>
             </fieldset>
@@ -250,7 +250,7 @@ function DraftEditor({ proposalId, version: v, onChanged }: { proposalId: string
           {preview.ok ? (<>
             <Row k="Subtotal" v={formatMoney(preview.c.subtotal, { locale: 'en-IN' })} />
             <Row k="Tax" v={formatMoney(preview.c.taxTotal, { locale: 'en-IN' })} />
-            <div className="flex justify-between border-t border-dashed border-[#d0d0d0] pt-3 text-lg font-semibold"><span>Total</span><span>{formatMoney(preview.c.total, { locale: 'en-IN' })}</span></div>
+            <div className="flex justify-between border-t border-dashed border-line-strong pt-3 text-lg font-semibold"><span>Total</span><span>{formatMoney(preview.c.total, { locale: 'en-IN' })}</span></div>
           </>) : <p role="alert" className="text-sm text-danger">{preview.message}</p>}
         </div>
       </Card>
@@ -270,12 +270,12 @@ function DraftEditor({ proposalId, version: v, onChanged }: { proposalId: string
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button onClick={() => setTerms((a) => [...a, { label: '', kind: 'MILESTONE', percent: '', dueInDays: '' }])}><Plus size={16} aria-hidden="true" />Add term</Button>
-          {pctSum != null && <span className={pctSum === 10000 ? 'text-accent-ink' : 'text-warn-ink'} role="status">{pctSum === 10000 ? 'Percentages total 100%' : `Percentages total ${pctSum / 100}% — they must add up to 100% to share`}</span>}
+          {pctSum != null && <span className={pctSum === 10000 ? 'text-accent-ink' : 'text-warn-ink'} role="status">{pctSum === 10000 ? 'Percentages total 100%' : `Percentages total ${pctSum / 100}%, they must add up to 100% to share`}</span>}
         </div>
       </Card>
 
       <ErrorNote error={save.error && !problems(save.error) ? save.error : null} />
-      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
+      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
         {save.isSuccess && !dirty && <span role="status" className="mr-auto text-sm text-accent-ink">Draft saved</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="primary" onClick={() => { share.reset(); setSharing(true); }}>Share with client…</Button>

@@ -11,7 +11,7 @@ export default function PortalProposals() {
   const q = useQuery({ queryKey: ['portal', 'proposals'], queryFn: () => papi<PProposalItem[]>('/portal/proposals') });
   return (
     <>
-      <title>Proposals · Client portal</title>
+      <title>Proposals, Client portal</title>
       <PageHeader title="Proposals" subtitle="Quotes and plans shared with you." />
       <ErrorNote error={q.error} />
       <Card className="overflow-hidden">
@@ -19,7 +19,7 @@ export default function PortalProposals() {
           <ul className="divide-y divide-line">
             {q.data?.map((p) => (
               <li key={p.id}><Link href={`/portal/proposals/${p.id}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-stat">
-                <div className="min-w-0"><div className="truncate font-medium">{p.title}</div><div className="text-[13px] text-muted">{p.number} · version {p.versionNumber}{p.validUntil ? ` · valid until ${fmtDate(p.validUntil)}` : ''}</div></div>
+                <div className="min-w-0"><div className="truncate font-medium">{p.title}</div><div className="text-[13px] text-muted">{p.number}, version {p.versionNumber}{p.validUntil ? `, valid until ${fmtDate(p.validUntil)}` : ''}</div></div>
                 <div className="flex items-center gap-3"><span className="font-medium">{fmtMoney(p.total)}</span>{p.expired ? <Badge tone="warn">Expired</Badge> : <ProposalBadge status={p.status} />}</div>
               </Link></li>
             ))}

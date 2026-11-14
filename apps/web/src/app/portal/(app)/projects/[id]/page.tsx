@@ -42,9 +42,9 @@ export default function PortalProjectPage() {
 
   return (
     <>
-      <title>{`${p.name} · Client portal`}</title>
+      <title>{`${p.name}, Client portal`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/portal/projects" className="hover:underline">Projects</Link></nav>
-      <PageHeader title={p.name} subtitle={`${p.number}${p.startDate ? ` · started ${fmtDate(p.startDate)}` : ''}${p.targetDate ? ` · target ${fmtDate(p.targetDate)}` : ''}`} actions={<ProjectBadge status={p.status} />} />
+      <PageHeader title={p.name} subtitle={`${p.number}${p.startDate ? `, started ${fmtDate(p.startDate)}` : ''}${p.targetDate ? `, target ${fmtDate(p.targetDate)}` : ''}`} actions={<ProjectBadge status={p.status} />} />
       <Card className="p-5 sm:p-6">{p.description && <p className="mb-4 whitespace-pre-wrap text-ink-2">{p.description}</p>}<ProgressBar basisPoints={p.progress.basisPoints} done={p.progress.done} total={p.progress.total} label="Overall progress" /></Card>
 
       {review && (
@@ -59,7 +59,7 @@ export default function PortalProjectPage() {
       {s?.baseline && (
         <Card className="p-5 sm:p-6" aria-labelledby="bl-h">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 id="bl-h" className="text-lg font-semibold">Agreed scope</h2><ScopeBadge status="APPROVED" /></div>
-          <p className="mb-3 text-[13px] text-muted">Version {s.baseline.versionNumber}{s.baseline.approvedAt ? ` · approved ${fmtDate(s.baseline.approvedAt)}` : ''}</p>
+          <p className="mb-3 text-[13px] text-muted">Version {s.baseline.versionNumber}{s.baseline.approvedAt ? `, approved ${fmtDate(s.baseline.approvedAt)}` : ''}</p>
           <ScopeList version={s.baseline} />
         </Card>
       )}
@@ -73,9 +73,9 @@ export default function PortalProjectPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{m.name}</span><div className="flex items-center gap-2 text-[13px] text-muted">{m.dueDate && `due ${fmtDate(m.dueDate)}`}<MilestoneBadge status={m.status} /></div></div>
                 {m.description && <p className="text-ink-2">{m.description}</p>}
                 <ProgressBar basisPoints={m.progress.basisPoints} done={m.progress.done} total={m.progress.total} label={`${m.name} progress`} />
-                {m.deliverables.length > 0 && <ul className="ml-1 flex flex-col gap-1 text-sm">{m.deliverables.map((d) => <li key={d.id} className="flex items-center gap-2"><span aria-hidden="true">{d.done ? '☑' : '☐'}</span><span className={d.done ? 'text-muted line-through' : ''}>{d.title}</span></li>)}</ul>}
+                {m.deliverables.length > 0 && <ul className="ml-1 flex flex-col gap-1 text-sm">{m.deliverables.map((d) => <li key={d.id} className="flex items-center gap-2"><input type="checkbox" disabled readOnly checked={d.done} aria-label={d.done ? 'Done' : 'Not done'} className="size-4 accent-accent" /><span className={d.done ? 'text-muted line-through' : ''}>{d.title}</span></li>)}</ul>}
                 <ul className="flex flex-col divide-y divide-line">
-                  {p.tasks.filter((t) => t.milestoneId === m.id).map((t) => <li key={t.id} className="flex justify-between gap-3 py-2 text-sm"><span>{t.title}</span><span className="shrink-0 text-muted">{TASK[t.status]}{t.dueDate ? ` · ${fmtDate(t.dueDate)}` : ''}</span></li>)}
+                  {p.tasks.filter((t) => t.milestoneId === m.id).map((t) => <li key={t.id} className="flex justify-between gap-3 py-2 text-sm"><span>{t.title}</span><span className="shrink-0 text-muted">{TASK[t.status]}{t.dueDate ? `, ${fmtDate(t.dueDate)}` : ''}</span></li>)}
                 </ul>
               </li>
             ))}
@@ -92,7 +92,7 @@ export default function PortalProjectPage() {
           {me.role === 'APPROVER' && s?.baseline && <Button onClick={() => setRaising(true)}><Plus size={16} aria-hidden="true" />Request a change</Button>}</div>
         {changes.data?.length === 0 ? <p className="text-muted">No change requests. If you need something added or altered after scope was agreed, request it here.</p> : (
           <ul className="divide-y divide-line">{changes.data?.map((c) => (
-            <li key={c.id}><Link href={`/portal/changes/${c.id}`} className="flex flex-wrap items-center justify-between gap-2 py-3 hover:text-accent"><span className="font-medium">{c.number} · {c.title}</span><span className="flex items-center gap-2">{c.canDecide && <Badge tone="warn">Needs your decision</Badge>}<ChangeBadge status={c.status} /></span></Link></li>
+            <li key={c.id}><Link href={`/portal/changes/${c.id}`} className="flex flex-wrap items-center justify-between gap-2 py-3 hover:text-accent"><span className="font-medium">{c.number}, {c.title}</span><span className="flex items-center gap-2">{c.canDecide && <Badge tone="warn">Needs your decision</Badge>}<ChangeBadge status={c.status} /></span></Link></li>
           ))}</ul>
         )}
       </Card>

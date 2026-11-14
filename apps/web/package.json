@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource/geist-mono": "^5.3.0",
     "@freelanceos/shared": "workspace:*",
     "@tanstack/react-query": "^5.107.1",
     "lucide-react": "^1.73.0",

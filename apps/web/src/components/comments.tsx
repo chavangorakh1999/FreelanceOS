@@ -37,7 +37,7 @@ export function CommentsPanel({ title = 'Comments', queryKey, load, post, staff,
             <li key={c.id} className={`flex flex-col gap-1 rounded-control px-3.5 py-3 ${c.mine ? 'bg-accent-soft/50' : 'bg-stat'}`}>
               <div className="flex flex-wrap items-center gap-2 text-[13px]">
                 <span className="font-medium text-ink">{c.mine ? 'You' : c.authorName}</span>
-                <span className="text-muted">{c.authorKind === 'CLIENT' ? 'client' : 'team'} · {fmtDateTime(c.createdAt)}</span>
+                <span className="text-muted">{c.authorKind === 'CLIENT' ? 'client' : 'team'}, {fmtDateTime(c.createdAt)}</span>
                 {staff && c.visibility === 'INTERNAL' && <Badge icon={<Lock size={12} aria-hidden="true" />}>Internal</Badge>}
               </div>
               <p className="whitespace-pre-wrap">{c.body}</p>
@@ -53,7 +53,7 @@ export function CommentsPanel({ title = 'Comments', queryKey, load, post, staff,
             <Button type="submit" variant="primary" disabled={send.isPending || !body.trim()}>Post comment</Button>
             {staff && (
               <Select aria-label="Who can see this comment" className="w-56" value={visibility} onChange={(e) => setVisibility(e.target.value as typeof visibility)}>
-                <option value="INTERNAL">Internal — only your team</option>
+                <option value="INTERNAL">Internal, only your team</option>
                 <option value="CLIENT_VISIBLE" disabled={!shared}>Visible to the client{shared ? '' : ' (not shared yet)'}</option>
               </Select>
             )}

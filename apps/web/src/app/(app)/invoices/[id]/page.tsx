@@ -37,13 +37,13 @@ export default function InvoicePage() {
 
   return (
     <>
-      <title>{`${inv.number ?? 'Draft invoice'} · FreelanceOS`}</title>
+      <title>{`${inv.number ?? 'Draft invoice'}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/finance" className="hover:underline">Finance</Link> / <Link href="/finance?tab=invoices" className="hover:underline">Invoices</Link></nav>
       <PageHeader title={inv.number ?? 'Draft invoice'}
-        subtitle={<>{inv.client.name}{inv.project && <> · <Link href={`/projects/${inv.project.id}`} className="hover:underline">{inv.project.name}</Link></>}{inv.milestone && <> · {inv.milestone.name}</>}{inv.changeRequest && <> · <Link href={`/change-requests/${inv.changeRequest.id}`} className="hover:underline">{inv.changeRequest.number}</Link></>}</>}
+        subtitle={<>{inv.client.name}{inv.project && <>, <Link href={`/projects/${inv.project.id}`} className="hover:underline">{inv.project.name}</Link></>}{inv.milestone && <>, {inv.milestone.name}</>}{inv.changeRequest && <>, <Link href={`/change-requests/${inv.changeRequest.id}`} className="hover:underline">{inv.changeRequest.number}</Link></>}</>}
         actions={<div className="flex flex-wrap items-center gap-2">
           <InvoiceBadge status={inv.status} />
-          {!draft && <Badge icon={<Lock size={14} aria-hidden="true" />}>Issued · locked</Badge>}
+          {!draft && <Badge icon={<Lock size={14} aria-hidden="true" />}>Issued, locked</Badge>}
           {!draft && <Button onClick={() => { setPdfError(null); downloadFile(`/invoices/${id}/pdf`, `${inv.number}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button>}
           {inv.stored === 'ISSUED' && inv.visibility === 'INTERNAL' && <Button onClick={() => share.mutate()} disabled={share.isPending}>Share with client</Button>}
           {open && <Button variant="primary" onClick={() => setDialog('pay')}>Record payment</Button>}
@@ -59,26 +59,26 @@ export default function InvoicePage() {
             <Stat label="Invoice total" value={fmtMoney(inv.balance.total)} />
             <Stat label="Cash received" value={fmtMoney(inv.balance.cashReceived)} note={inv.balance.withheld.amountMinor !== '0' ? `+ ${fmtMoney(inv.balance.withheld)} TDS` : BigInt(inv.balance.total.amountMinor) > 0n ? `${Math.round(Number((BigInt(inv.balance.cashReceived.amountMinor) * 100n) / BigInt(inv.balance.total.amountMinor)))}% received` : undefined} tone="good" />
             <Stat label="Outstanding" value={fmtMoney(inv.balance.outstanding)} note={inv.balance.credited.amountMinor !== '0' ? `${fmtMoney(inv.balance.credited)} credited` : undefined} />
-            <Stat label="Due date" value={inv.dueDate ? fmtDate(inv.dueDate, { day: '2-digit', month: 'short' }) : '—'} note={!open ? (inv.status === 'PAID' ? 'Settled' : undefined) : late > 0 ? `${late} ${late === 1 ? 'day' : 'days'} overdue` : late === 0 ? 'Due today' : `in ${-late} days`} tone={late > 0 && open ? 'warn' : undefined} />
+            <Stat label="Due date" value={inv.dueDate ? fmtDate(inv.dueDate, { day: '2-digit', month: 'short' }) : 'None'} note={!open ? (inv.status === 'PAID' ? 'Settled' : undefined) : late > 0 ? `${late} ${late === 1 ? 'day' : 'days'} overdue` : late === 0 ? 'Due today' : `in ${-late} days`} tone={late > 0 && open ? 'warn' : undefined} />
           </section>
-          <div aria-hidden="true" className="border-t border-dashed border-[#d0d0d0]" />
+          <div aria-hidden="true" className="border-t border-dashed border-line-strong" />
           <div className="flex flex-wrap items-start gap-6">
             <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
               <Card className="py-6" aria-labelledby="inv-h">
-                <div className="px-6 pb-4"><h2 id="inv-h" className="text-lg font-semibold">Invoice</h2><div className="text-muted">Issued {inv.issueDate ? fmtDate(inv.issueDate) : '—'}</div></div>
+                <div className="px-6 pb-4"><h2 id="inv-h" className="text-lg font-semibold">Invoice</h2><div className="text-muted">Issued {inv.issueDate ? fmtDate(inv.issueDate) : 'None'}</div></div>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6 px-6 pb-5">
                   <div><div className="mb-1 text-[13px] text-muted">From</div><div className="font-semibold">{inv.supplier.name}</div><div className="whitespace-pre-line text-ink-2">{inv.supplier.address}</div>{inv.supplier.taxId && <div className="text-ink-2">Tax ID {inv.supplier.taxId}</div>}</div>
                   <div><div className="mb-1 text-[13px] text-muted">Bill to</div><div className="font-semibold">{inv.billTo.name}</div><div className="whitespace-pre-line text-ink-2">{inv.billTo.address}</div>{inv.billTo.taxId && <div className="text-ink-2">Tax ID {inv.billTo.taxId}</div>}</div>
                 </div>
                 <Table minWidth={560}>
                   <thead><tr><Th>Description</Th><Th right>Qty</Th><Th right>Rate</Th><Th right>Tax</Th><Th right>Amount</Th></tr></thead>
-                  <tbody>{inv.lines.map((l) => <tr key={l.id}><Td>{l.description}</Td><Td right>{l.quantity} {l.unitLabel}</Td><Td right>{fmtMoney(l.unitRate)}</Td><Td right>{l.taxBps ? `${l.taxBps / 100}%` : '—'}</Td><Td right>{fmtMoney(l.net)}</Td></tr>)}</tbody>
+                  <tbody>{inv.lines.map((l) => <tr key={l.id}><Td>{l.description}</Td><Td right>{l.quantity} {l.unitLabel}</Td><Td right>{fmtMoney(l.unitRate)}</Td><Td right>{l.taxBps ? `${l.taxBps / 100}%` : 'None'}</Td><Td right>{fmtMoney(l.net)}</Td></tr>)}</tbody>
                 </Table>
                 <div className="ml-auto mt-4 flex w-[320px] max-w-full flex-col gap-2 px-6">
                   <Row k="Subtotal" v={fmtMoney(inv.totals.subtotal)} />
                   {inv.totals.discount.amountMinor !== '0' && <Row k="Discounts" v={`−${fmtMoney(inv.totals.discount)}`} />}
                   <Row k="Tax" v={fmtMoney(inv.totals.tax)} />
-                  <div className="flex justify-between border-t border-dashed border-[#d0d0d0] pt-3 text-lg font-semibold"><span>Total</span><span>{fmtMoney(inv.totals.total)}</span></div>
+                  <div className="flex justify-between border-t border-dashed border-line-strong pt-3 text-lg font-semibold"><span>Total</span><span>{fmtMoney(inv.totals.total)}</span></div>
                 </div>
                 {inv.notes && <p className="mt-5 whitespace-pre-wrap px-6 text-ink-2">{inv.notes}</p>}
               </Card>
@@ -94,7 +94,7 @@ export default function InvoicePage() {
                         <Td>{a.payment.reversed ? <Badge tone="neutral">Reversed</Badge> : <Badge tone="success">Applied</Badge>}</Td>
                         <Td>{label(a.payment.method)}</Td>
                         <Td right className={a.payment.reversed ? 'text-muted line-through' : 'font-medium'}>{fmtMoney(a.cash)}</Td>
-                        <Td right className={a.payment.reversed ? 'text-muted line-through' : ''}>{a.withholding.amountMinor === '0' ? '—' : fmtMoney(a.withholding)}</Td>
+                        <Td right className={a.payment.reversed ? 'text-muted line-through' : ''}>{a.withholding.amountMinor === '0' ? 'None' : fmtMoney(a.withholding)}</Td>
                       </tr>))}
                     </tbody>
                   </Table>)}
@@ -113,9 +113,9 @@ export default function InvoicePage() {
                 <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
                 <dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-y-3">
                   <dt className="text-muted">Client</dt><dd><Link href={`/clients/${inv.client.id}`} className="text-accent hover:underline">{inv.client.name}</Link></dd>
-                  <dt className="text-muted">Project</dt><dd>{inv.project ? <Link href={`/projects/${inv.project.id}`} className="text-accent hover:underline">{inv.project.name}</Link> : '—'}</dd>
-                  <dt className="text-muted">Issued</dt><dd>{inv.issueDate ? fmtDate(inv.issueDate) : '—'}</dd>
-                  <dt className="text-muted">Due</dt><dd>{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</dd>
+                  <dt className="text-muted">Project</dt><dd>{inv.project ? <Link href={`/projects/${inv.project.id}`} className="text-accent hover:underline">{inv.project.name}</Link> : 'None'}</dd>
+                  <dt className="text-muted">Issued</dt><dd>{inv.issueDate ? fmtDate(inv.issueDate) : 'None'}</dd>
+                  <dt className="text-muted">Due</dt><dd>{inv.dueDate ? fmtDate(inv.dueDate) : 'None'}</dd>
                   <dt className="text-muted">Terms</dt><dd>Net {inv.paymentTermsDays}</dd>
                   <dt className="text-muted">Currency</dt><dd>{inv.currency}</dd>
                   <dt className="text-muted">Visibility</dt><dd>{inv.visibility === 'INTERNAL' ? <Badge>Internal only</Badge> : <Badge tone="info" icon={<Eye size={14} aria-hidden="true" />}>Client visible</Badge>}</dd>
@@ -128,7 +128,7 @@ export default function InvoicePage() {
               <Card className="p-6" aria-labelledby="act-h">
                 <h2 id="act-h" className="mb-4 text-lg font-semibold">Activity</h2>
                 {!activity.data ? <Spinner /> : <ol className="flex flex-col gap-4">{activity.data.items.map((a, i) => (
-                  <li key={a.id} className="flex gap-3"><span aria-hidden="true" className={`mt-[5px] size-2.5 shrink-0 rounded-full ${i === 0 ? 'bg-accent' : 'bg-[#bdbdbd]'}`} /><div><div className="font-medium">{describeAction(a.action, a.metadata)}</div><div className="text-[13px] text-muted">{fmtDateTime(a.createdAt)}</div></div></li>))}</ol>}
+                  <li key={a.id} className="flex gap-3"><span aria-hidden="true" className={`mt-1 h-5 w-[3px] shrink-0 rounded-sm ${i === 0 ? 'bg-accent' : 'bg-line-strong'}`} /><div><div className="font-medium">{describeAction(a.action, a.metadata)}</div><div className="text-[13px] text-muted">{fmtDateTime(a.createdAt)}</div></div></li>))}</ol>}
               </Card>
             </div>
           </div>
@@ -183,7 +183,7 @@ function DraftEditor({ invoice: inv, onSaved, onIssue, onDeleted }: { invoice: I
               <Field label={`Rate (${currency})`}>{(id) => <Input id={id} inputMode="decimal" value={l.unitRate} onChange={(e) => upd(i, { unitRate: e.target.value })} />}</Field>
               <Field label="Discount %">{(id) => <Input id={id} inputMode="decimal" value={l.discountPct} onChange={(e) => upd(i, { discountPct: e.target.value })} />}</Field>
               <Field label="Tax %">{(id) => <Input id={id} inputMode="decimal" value={l.taxPct} onChange={(e) => upd(i, { taxPct: e.target.value })} />}</Field>
-              <div className="flex items-center justify-between gap-2"><span className="font-medium">{preview.ok && preview.c.lines[i] ? formatMoney(preview.c.lines[i]!.net, { locale: 'en-IN' }) : '—'}</span>
+              <div className="flex items-center justify-between gap-2"><span className="font-medium">{preview.ok && preview.c.lines[i] ? formatMoney(preview.c.lines[i]!.net, { locale: 'en-IN' }) : 'None'}</span>
                 <Button variant="ghost" aria-label={`Remove line ${i + 1}`} onClick={() => setLines((a) => a.filter((_, k) => k !== i))} className="px-2.5"><Trash2 size={16} aria-hidden="true" /></Button></div>
             </fieldset>))}
         </div>
@@ -191,7 +191,7 @@ function DraftEditor({ invoice: inv, onSaved, onIssue, onDeleted }: { invoice: I
         <div className="ml-auto mt-5 flex w-[320px] max-w-full flex-col gap-2">
           {preview.ok ? (<>
             <Row k="Subtotal" v={formatMoney(preview.c.subtotal, { locale: 'en-IN' })} /><Row k="Tax" v={formatMoney(preview.c.taxTotal, { locale: 'en-IN' })} />
-            <div className="flex justify-between border-t border-dashed border-[#d0d0d0] pt-3 text-lg font-semibold"><span>Total</span><span>{formatMoney(preview.c.total, { locale: 'en-IN' })}</span></div></>
+            <div className="flex justify-between border-t border-dashed border-line-strong pt-3 text-lg font-semibold"><span>Total</span><span>{formatMoney(preview.c.total, { locale: 'en-IN' })}</span></div></>
           ) : <p role="alert" className="text-sm text-danger">{preview.message}</p>}
         </div>
       </Card>
@@ -202,7 +202,7 @@ function DraftEditor({ invoice: inv, onSaved, onIssue, onDeleted }: { invoice: I
         </div>
       </Card>
       <ErrorNote error={save.error ?? del.error} />
-      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur">
+      <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
         <Button variant="ghost" className="mr-auto" onClick={() => setDeleting(true)}>Delete draft</Button>
         {save.isSuccess && !dirty && <span role="status" className="text-sm text-accent-ink">Draft saved</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>

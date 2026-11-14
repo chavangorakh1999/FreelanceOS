@@ -36,7 +36,7 @@ export function NewInvoiceDialog({ open, onClose, defaultClientId, defaultProjec
         {f.projectId && (
           <div className="grid grid-cols-2 gap-3">
             <Field label="Milestone (optional)">{(id) => <Select id={id} value={f.milestoneId} onChange={(e) => setF({ ...f, milestoneId: e.target.value })}><option value="">None</option>{milestones.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>}</Field>
-            <Field label="Approved change (optional)" hint="For approved additional work.">{(id, d) => <Select id={id} aria-describedby={d} value={f.changeRequestId} onChange={(e) => setF({ ...f, changeRequestId: e.target.value })}><option value="">None</option>{approved.map((x) => <option key={x.id} value={x.id}>{x.number} · {x.title}</option>)}</Select>}</Field>
+            <Field label="Approved change (optional)" hint="For approved additional work.">{(id, d) => <Select id={id} aria-describedby={d} value={f.changeRequestId} onChange={(e) => setF({ ...f, changeRequestId: e.target.value })}><option value="">None</option>{approved.map((x) => <option key={x.id} value={x.id}>{x.number}, {x.title}</option>)}</Select>}</Field>
           </div>)}
         <Field label="Currency">{(id) => <Select id={id} value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select>}</Field>
         <ErrorNote error={err} />

@@ -36,9 +36,9 @@ export default function PortalProposalPage() {
 
   return (
     <>
-      <title>{`${p.title} · Client portal`}</title>
+      <title>{`${p.title}, Client portal`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/portal/proposals" className="hover:underline">Proposals</Link></nav>
-      <PageHeader title={p.title} subtitle={`${p.number} · version ${v.versionNumber}${v.validUntil ? ` · valid until ${fmtDate(v.validUntil)}` : ''}`}
+      <PageHeader title={p.title} subtitle={`${p.number}, version ${v.versionNumber}${v.validUntil ? `, valid until ${fmtDate(v.validUntil)}` : ''}`}
         actions={<div className="flex flex-wrap items-center gap-2">{v.expired ? <Badge tone="warn">Expired</Badge> : <ProposalBadge status={v.status} />}
           <Button onClick={() => void portalDownload(`/portal/proposals/${id}/pdf?version=${v.versionNumber}`, `${p.number}.pdf`)}><Download size={16} aria-hidden="true" />PDF</Button></div>} />
 
@@ -60,7 +60,7 @@ export default function PortalProposalPage() {
         <h2 id="price-h" className="mb-4 text-lg font-semibold">Pricing</h2>
         <ul className="divide-y divide-line">
           {v.lineItems.map((l) => (
-            <li key={l.id} className="flex items-start justify-between gap-4 py-3"><div className="min-w-0"><div className="font-medium">{l.description}</div><div className="text-[13px] text-muted">{l.quantity} {l.unitLabel} × {fmtMoney(l.unitRate)}{l.taxBps ? ` · tax ${l.taxBps / 100}%` : ''}</div></div><div className="shrink-0 font-medium">{fmtMoney(l.net)}</div></li>
+            <li key={l.id} className="flex items-start justify-between gap-4 py-3"><div className="min-w-0"><div className="font-medium">{l.description}</div><div className="text-[13px] text-muted">{l.quantity} {l.unitLabel} × {fmtMoney(l.unitRate)}{l.taxBps ? `, tax ${l.taxBps / 100}%` : ''}</div></div><div className="shrink-0 font-medium">{fmtMoney(l.net)}</div></li>
           ))}
         </ul>
         <dl className="mt-4 ml-auto grid max-w-xs grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 text-sm">
@@ -72,7 +72,7 @@ export default function PortalProposalPage() {
       </Card>
       <Card className="p-5 sm:p-6" aria-labelledby="terms-h">
         <h2 id="terms-h" className="mb-3 text-lg font-semibold">Payment terms</h2>
-        <ul className="flex flex-col gap-2">{v.paymentTerms.map((t) => <li key={t.id} className="flex justify-between gap-4"><span>{t.label}</span><span className="text-ink-2">{t.percentageBps != null ? `${t.percentageBps / 100}%` : t.amount ? fmtMoney(t.amount) : ''}{t.dueInDays != null ? ` · ${t.dueInDays} days` : ''}</span></li>)}</ul>
+        <ul className="flex flex-col gap-2">{v.paymentTerms.map((t) => <li key={t.id} className="flex justify-between gap-4"><span>{t.label}</span><span className="text-ink-2">{t.percentageBps != null ? `${t.percentageBps / 100}%` : t.amount ? fmtMoney(t.amount) : ''}{t.dueInDays != null ? `, ${t.dueInDays} days` : ''}</span></li>)}</ul>
       </Card>
 
       <CommentsPanel queryKey={['portal', 'comments', 'proposal', id]} load={() => papi<CommentItem[]>(`/portal/proposals/${id}/comments`)} post={(body) => papi(`/portal/proposals/${id}/comments`, { body: { body } })} />

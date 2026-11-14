@@ -13,7 +13,7 @@ export default function ChangesPage() {
   const list = useQuery({ queryKey: ['changes', 'all', status], queryFn: () => api<ChangeSummary[]>('/change-requests', { query: { status } }) });
   return (
     <>
-      <title>Scope &amp; Changes · FreelanceOS</title>
+      <title>Scope &amp; Changes, FreelanceOS</title>
       <PageHeader title="Scope & Changes" subtitle="Every change request across your projects. Scope itself is managed inside each project." />
       <Card className="py-6" aria-label="Change requests">
         <div className="w-60 px-6 pb-5"><Field label="Status">{(id) => (
@@ -26,11 +26,11 @@ export default function ChangesPage() {
             <thead><tr><Th>Request</Th><Th>Project</Th><Th>Status</Th><Th right>Cost</Th><Th right>Time</Th></tr></thead>
             <tbody>{list.data?.map((c) => (
               <tr key={c.id}>
-                <Td><Link href={`/change-requests/${c.id}`} className="font-medium hover:text-accent hover:underline">{c.number} · {c.title}</Link><div className="text-[13px] text-muted">Raised {fmtDate(c.requestedAt)}</div></Td>
+                <Td><Link href={`/change-requests/${c.id}`} className="font-medium hover:text-accent hover:underline">{c.number}, {c.title}</Link><div className="text-[13px] text-muted">Raised {fmtDate(c.requestedAt)}</div></Td>
                 <Td>{c.project && <><Link href={`/projects/${c.project.id}?tab=changes`} className="hover:underline">{c.project.name}</Link><div className="text-[13px] text-muted">{c.project.client.name}</div></>}</Td>
                 <Td><ChangeBadge status={c.status} /></Td>
                 <Td right>{c.latestAssessment ? `${BigInt(c.latestAssessment.costDelta.amountMinor) > 0n ? '+' : ''}${fmtMoney(c.latestAssessment.costDelta)}` : <span className="text-muted">Not assessed</span>}</Td>
-                <Td right>{c.latestAssessment ? `${c.latestAssessment.timelineDeltaDays > 0 ? '+' : ''}${c.latestAssessment.timelineDeltaDays} d` : '—'}</Td>
+                <Td right>{c.latestAssessment ? `${c.latestAssessment.timelineDeltaDays > 0 ? '+' : ''}${c.latestAssessment.timelineDeltaDays} d` : 'None'}</Td>
               </tr>))}
             </tbody>
           </Table>)}

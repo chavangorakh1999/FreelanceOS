@@ -36,9 +36,9 @@ export default function ChangeRequestPage() {
 
   return (
     <>
-      <title>{`${c.number} · FreelanceOS`}</title>
+      <title>{`${c.number}, FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/changes" className="hover:underline">Scope &amp; Changes</Link> / <Link href={`/projects/${c.project.id}?tab=changes`} className="hover:underline">{c.project.name}</Link></nav>
-      <PageHeader title={`${c.number} · ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ? `${c.requesterName} (client)` : 'the client') : 'you'} · based on scope v${c.baseScopeVersion.versionNumber}`}
+      <PageHeader title={`${c.number}, ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ? `${c.requesterName} (client)` : 'the client') : 'you'}, based on scope v${c.baseScopeVersion.versionNumber}`}
         actions={<div className="flex flex-wrap items-center gap-2"><ChangeBadge status={c.status} />
           {c.visibility === 'CLIENT_VISIBLE' ? <Badge tone="info">Visible to client</Badge> : <Button onClick={() => share.mutate()} disabled={share.isPending}>Share with client</Button>}</div>} />
       <ErrorNote error={share.error} />
@@ -104,7 +104,7 @@ export default function ChangeRequestPage() {
             {c.decisions.length === 0 ? <p className="text-muted">None yet.</p> : (
               <ol className="flex flex-col gap-4">{c.decisions.map((d) => (
                 <li key={d.id}><div className="font-medium">{d.party === 'CLIENT' ? 'Client' : 'You'}: {label(d.decision)}</div>
-                  <div className="text-[13px] text-muted">{label(d.channel)} · {fmtDateTime(d.decidedAt)}</div>{d.note && <p className="mt-1 text-ink-2">{d.note}</p>}</li>))}</ol>)}
+                  <div className="text-[13px] text-muted">{label(d.channel)}, {fmtDateTime(d.decidedAt)}</div>{d.note && <p className="mt-1 text-ink-2">{d.note}</p>}</li>))}</ol>)}
           </Card>
         </div>
       </div>
@@ -140,7 +140,7 @@ function AssessDialog({ open, id, onClose, onDone }: { open: boolean; id: string
           <Field label="Risk">{(id2) => <Select id={id2} value={f.risk} onChange={(e) => setF({ ...f, risk: e.target.value })}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></Select>}</Field>
           <Field label="Risk notes (optional)">{(id2) => <Input id={id2} value={f.riskNotes} onChange={(e) => setF({ ...f, riskNotes: e.target.value })} />}</Field>
         </div>
-        <label className="flex items-start gap-3"><input type="checkbox" className="mt-1 size-4 accent-[#047857]" checked={f.requiresAddendum} onChange={(e) => setF({ ...f, requiresAddendum: e.target.checked })} /><span>This change needs an <strong>addendum</strong> to the signed agreement before the work can begin.</span></label>
+        <label className="flex items-start gap-3"><input type="checkbox" className="mt-1 size-4 accent-accent" checked={f.requiresAddendum} onChange={(e) => setF({ ...f, requiresAddendum: e.target.checked })} /><span>This change needs an <strong>addendum</strong> to the signed agreement before the work can begin.</span></label>
         <ErrorNote error={friendly(m.error)} />
       </form>
     </Dialog>

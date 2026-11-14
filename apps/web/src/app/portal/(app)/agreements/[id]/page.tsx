@@ -32,9 +32,9 @@ export default function PortalAgreementPage() {
 
   return (
     <>
-      <title>{`${a.title} · Client portal`}</title>
+      <title>{`${a.title}, Client portal`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/portal/agreements" className="hover:underline">Agreements</Link></nav>
-      <PageHeader title={a.title} subtitle={`${a.number}${a.expiresAt ? ` · sign by ${fmtDate(a.expiresAt)}` : ''}`}
+      <PageHeader title={a.title} subtitle={`${a.number}${a.expiresAt ? `, sign by ${fmtDate(a.expiresAt)}` : ''}`}
         actions={<div className="flex flex-wrap items-center gap-2"><AgreementBadge status={a.status} /><Button onClick={() => void portalDownload(`/portal/agreements/${id}/pdf`, `${a.number}.pdf`)}><Download size={16} aria-hidden="true" />PDF</Button></div>} />
 
       {a.canSign && (
@@ -63,7 +63,7 @@ export default function PortalAgreementPage() {
         <h2 id="sg-h" className="mb-3 text-lg font-semibold">Signatures</h2>
         <ul className="divide-y divide-line">
           {a.signers.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><span>{s.name}{s.isYou && <span className="text-muted"> (you)</span>}<span className="text-[13px] text-muted"> · {s.role.toLowerCase()}</span></span>
+            <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><span>{s.name}{s.isYou && <span className="text-muted"> (you)</span>}<span className="text-[13px] text-muted">, {s.role.toLowerCase()}</span></span>
               {s.status === 'SIGNED' ? <Badge tone="success">Signed {s.signedAt ? fmtDateTime(s.signedAt) : ''}</Badge> : s.status === 'DECLINED' ? <Badge tone="danger">Declined</Badge> : <Badge tone="warn">Waiting</Badge>}</li>
           ))}
         </ul>

@@ -32,9 +32,9 @@ export default function PortalChangePage() {
 
   return (
     <>
-      <title>{`${c.number} · Client portal`}</title>
+      <title>{`${c.number}, Client portal`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href={`/portal/projects/${c.project.id}`} className="hover:underline">{c.project.name}</Link></nav>
-      <PageHeader title={`${c.number} · ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ?? 'you') : 'the team'}`} actions={<ChangeBadge status={c.status} />} />
+      <PageHeader title={`${c.number}, ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ?? 'you') : 'the team'}`} actions={<ChangeBadge status={c.status} />} />
 
       {c.canDecide && (
         <Card className="flex flex-wrap items-center justify-between gap-4 border-accent/30 bg-accent-soft/40 p-5">
@@ -63,7 +63,7 @@ export default function PortalChangePage() {
 
       {c.decisions.length > 0 && (
         <Card className="p-5 sm:p-6"><h2 className="mb-3 text-lg font-semibold">History</h2>
-          <ul className="flex flex-col gap-2">{c.decisions.map((d, i) => <li key={i} className="text-ink-2"><span className="font-medium text-ink">{d.party === 'CLIENT' ? (d.byYou ? 'You' : 'Your organisation') : 'The team'}</span> {d.decision.toLowerCase().replace(/_/g, ' ')} · {fmtDate(d.decidedAt)}{d.note ? ` — “${d.note}”` : ''}</li>)}</ul></Card>
+          <ul className="flex flex-col gap-2">{c.decisions.map((d, i) => <li key={i} className="text-ink-2"><span className="font-medium text-ink">{d.party === 'CLIENT' ? (d.byYou ? 'You' : 'Your organisation') : 'The team'}</span> {d.decision.toLowerCase().replace(/_/g, ' ')}, {fmtDate(d.decidedAt)}{d.note ? `, “${d.note}”` : ''}</li>)}</ul></Card>
       )}
 
       <CommentsPanel queryKey={['portal', 'comments', 'change', id]} load={() => papi<CommentItem[]>(`/portal/changes/${id}/comments`)} post={(body) => papi(`/portal/changes/${id}/comments`, { body: { body } })} />

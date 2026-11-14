@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-between border-b border-line bg-shell px-4 py-2.5 lg:hidden">
         <Logo />
         <button type="button" aria-expanded={menuOpen} aria-controls="primary-nav" onClick={() => setMenuOpen((o) => !o)}
-          className="flex h-10 items-center gap-2 rounded-control border border-line-strong bg-card px-3.5 text-sm font-medium">
+          className="btn-card flex h-10 items-center gap-2 rounded-control px-3.5 text-sm font-medium">
           {menuOpen ? <X {...ICON} size={18} /> : <Menu {...ICON} size={18} />}Menu
         </button>
       </div>
@@ -68,11 +68,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={`${menuOpen ? 'flex' : 'hidden'} shrink-0 flex-col gap-3 border-line bg-shell px-4 pb-4 pt-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[256px] lg:overflow-y-auto lg:border-r lg:pt-5`}>
         <div className="hidden items-center justify-between gap-2 px-2 lg:flex">
           <Logo />
-          <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#d5d9de] text-xs font-semibold">{initials}</span>
+          <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-3 text-xs font-semibold">{initials}</span>
         </div>
         <div className="px-2 text-[13px] text-muted">{me.workspace.name}</div>
 
-        <Link href="/clients?new=1" className="flex h-10 items-center justify-center gap-2 rounded-control bg-accent text-sm font-medium text-white shadow-[0_6px_14px_rgba(4,120,87,0.25)] hover:bg-accent-hover">
+        <Link href="/clients?new=1" className="btn-ink flex h-10 items-center justify-center gap-2 rounded-control text-sm font-medium">
           <Plus {...ICON} size={17} strokeWidth={2.25} />New client
         </Link>
 
@@ -86,13 +86,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 return (
                   <span key={label} aria-disabled="true" className={`${cls} cursor-not-allowed text-muted/75`}>
                     <Icon {...ICON} />{label}
-                    <span className="ml-auto rounded-md bg-[#dedede] px-1.5 text-[11px] font-medium text-ink-2">Soon</span>
+                    <span className="ml-auto rounded-md bg-paper-3 px-1.5 text-[11px] font-medium text-ink-2">Soon</span>
                   </span>
                 );
               }
               return (
                 <Link key={label} href={href} aria-current={active ? 'page' : undefined}
-                  className={`${cls} ${active ? 'border border-line-strong bg-card font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'border border-transparent text-ink-2 hover:bg-black/5'}`}>
+                  className={`${cls} ${active ? 'border border-transparent bg-card font-medium text-ink shadow-[var(--edge-stock)]' : 'border border-transparent text-ink-2 hover:bg-black/5'}`}>
                   <Icon {...ICON} />{label}
                   {href === '/notifications' && (unread.data?.count ?? 0) > 0 && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-white"><span className="sr-only">{unread.data!.count} unread</span><span aria-hidden="true">{unread.data!.count > 99 ? '99+' : unread.data!.count}</span></span>}
                 </Link>

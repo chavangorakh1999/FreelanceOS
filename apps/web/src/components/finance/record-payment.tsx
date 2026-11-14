@@ -91,7 +91,7 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
                   <thead><tr className="text-left text-muted"><th className="pb-2 font-medium">Invoice</th><th className="pb-2 text-right font-medium">Outstanding</th><th className="pb-2 pl-3 font-medium">Cash applied</th><th className="pb-2 pl-3 font-medium">TDS withheld</th></tr></thead>
                   <tbody>{rows.map((r) => { const e = rowError(r); return (
                     <tr key={r.inv.id} className="align-top">
-                      <td className="py-1.5 pr-2"><div className="font-medium">{r.inv.number}</div><div className="text-[13px] text-muted">due {r.inv.dueDate ? fmtDate(r.inv.dueDate) : '—'}</div></td>
+                      <td className="py-1.5 pr-2"><div className="font-medium">{r.inv.number}</div><div className="text-[13px] text-muted">due {r.inv.dueDate ? fmtDate(r.inv.dueDate) : 'None'}</div></td>
                       <td className="py-1.5 text-right">{fmtMoney(r.inv.balance.outstanding)}</td>
                       <td className="py-1.5 pl-3"><Input aria-label={`Cash applied to ${r.inv.number}`} inputMode="decimal" className="h-9 w-32" value={cash[r.inv.id] ?? ''} onChange={(e) => setCash({ ...cash, [r.inv.id]: e.target.value })} placeholder="0.00" /></td>
                       <td className="py-1.5 pl-3"><Input aria-label={`TDS withheld on ${r.inv.number}`} inputMode="decimal" className="h-9 w-28" value={tds[r.inv.id] ?? ''} onChange={(e) => setTds({ ...tds, [r.inv.id]: e.target.value })} placeholder="0.00" />{e && <p role="alert" className="mt-1 max-w-[180px] text-xs text-danger">{e}</p>}</td>
@@ -99,7 +99,7 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
                 </table></div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <Button variant="ghost" className="h-8 px-3 text-[13px]" onClick={autoApply} disabled={!amount || amount.amountMinor <= 0n}>Apply to oldest first</Button>
-                  <div role="status" className="text-sm"><span className="text-muted">Applied </span><span className="font-medium">{formatMoney(applied, { locale: 'en-IN' })}</span><span className="text-muted"> · Unallocated </span><span className={`font-medium ${unallocated && unallocated.amountMinor < 0n ? 'text-danger' : ''}`}>{unallocated ? formatMoney(unallocated, { locale: 'en-IN' }) : '—'}</span></div>
+                  <div role="status" className="text-sm"><span className="text-muted">Applied </span><span className="font-medium">{formatMoney(applied, { locale: 'en-IN' })}</span><span className="text-muted">, Unallocated </span><span className={`font-medium ${unallocated && unallocated.amountMinor < 0n ? 'text-danger' : ''}`}>{unallocated ? formatMoney(unallocated, { locale: 'en-IN' }) : 'None'}</span></div>
                 </div>
                 <p className="mt-2 text-[13px] text-muted">TDS withheld settles part of the invoice but is not cash, so it doesn’t come out of this payment.</p>
               </>

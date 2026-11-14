@@ -24,9 +24,12 @@ const AGREEMENT: Record<string, { label: string; tone: Tone; icon: React.ReactNo
   VOID: { label: 'Void', tone: 'neutral', icon: <Ban {...I} /> },
 };
 
+/** The signature: a settled record (paid, signed, accepted) is pressed into the page in ink, not shown as a badge. */
+const Settled = ({ children }: { children: React.ReactNode }) => <span className="pressed text-base">{children}</span>;
+
 const fallback = { label: '', tone: 'neutral' as Tone, icon: <CircleDashed {...I} /> };
-export const ProposalBadge = ({ status }: { status: string }) => { const s = PROPOSAL[status] ?? { ...fallback, label: status }; return <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>; };
-export const AgreementBadge = ({ status }: { status: string }) => { const s = AGREEMENT[status] ?? { ...fallback, label: status }; return <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>; };
+export const ProposalBadge = ({ status }: { status: string }) => { const s = PROPOSAL[status] ?? { ...fallback, label: status }; if (status === 'ACCEPTED') return <Settled>{s.label}</Settled>; return <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>; };
+export const AgreementBadge = ({ status }: { status: string }) => { const s = AGREEMENT[status] ?? { ...fallback, label: status }; if (status === 'SIGNED') return <Settled>{s.label}</Settled>; return <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>; };
 export const LockedBadge = ({ children = 'Locked' }: { children?: React.ReactNode }) => <Badge icon={<Lock {...I} />}>{children}</Badge>;
 export const PendingBadge = ({ children }: { children: React.ReactNode }) => <Badge tone="warn" icon={<Clock {...I} />}>{children}</Badge>;
 
@@ -41,7 +44,7 @@ const SCOPE: Record<string, { label: string; tone: Tone; icon: React.ReactNode }
   DRAFT: { label: 'Draft', tone: 'neutral', icon: <FileEdit {...I} /> },
   IN_REVIEW: { label: 'In review', tone: 'info', icon: <Eye {...I} /> },
   CHANGES_REQUESTED: { label: 'Changes requested', tone: 'warn', icon: <MessageSquareWarning {...I} /> },
-  APPROVED: { label: 'Approved · frozen', tone: 'success', icon: <Lock {...I} /> },
+  APPROVED: { label: 'Approved, frozen', tone: 'success', icon: <Lock {...I} /> },
   SUPERSEDED: { label: 'Superseded', tone: 'neutral', icon: <History {...I} /> },
 };
 const CHANGE: Record<string, { label: string; tone: Tone; icon: React.ReactNode }> = {
@@ -60,6 +63,7 @@ const MILESTONE: Record<string, { label: string; tone: Tone; icon: React.ReactNo
 };
 const mk = (m: Record<string, { label: string; tone: Tone; icon: React.ReactNode }>) => ({ status }: { status: string }) => {
   const s = m[status] ?? { ...fallback, label: status };
+  if (status === 'PAID' || status === 'ACCEPTED') return <Settled>{s.label}</Settled>;
   return <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>;
 };
 export const ProjectBadge = mk(PROJECT);
