@@ -10,6 +10,6 @@ export default function PortalAppLayout({ children }: { children: React.ReactNod
   const { state } = usePortalAuth();
   const router = useRouter();
   useEffect(() => { if (state.status === 'anon') router.replace('/portal/login'); }, [state.status, router]);
-  if (state.status !== 'authed') return <div className="min-h-screen bg-panel"><Spinner /></div>;
+  if (state.status !== 'authed') return <div className="flex min-h-screen items-center justify-center bg-panel"><Spinner /></div>;
   return <PortalShell>{children}</PortalShell>;
 }

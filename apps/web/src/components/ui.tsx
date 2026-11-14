@@ -110,7 +110,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
 }
 
 export const Spinner = ({ label = 'Loading' }: { label?: string }) => (
-  <div role="status" className="flex items-center gap-2 px-6 py-10 text-muted">
+  <div role="status" className="flex w-full items-center justify-center gap-2.5 px-6 py-16 text-muted">
     <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-accent" />
     {label}…
   </div>

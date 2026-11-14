@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="hidden px-2 pb-1 lg:block"><Logo /></div>
         <div className="px-2 pb-3 text-[13px] text-muted lg:pt-0">{me.workspace.name}</div>
 
-        <Link href="/clients?new=1" className={`${btnPrimary} mb-2 w-full`}><Plus {...ICON} size={16} strokeWidth={2.25} />New client</Link>
+        <Link href="/clients?new=1" className={`${btnPrimary} mb-2 self-start`}><Plus {...ICON} size={16} strokeWidth={2.25} />New client</Link>
 
         {GROUPS.map((g, gi) => (
           <div key={gi} className="flex flex-col gap-0.5">
