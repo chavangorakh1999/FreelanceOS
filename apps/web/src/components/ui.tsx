@@ -54,7 +54,7 @@ export function Field({ label, error, children, hint }: { label: string; error?:
 const control = 'h-10 rounded-control border border-muted/60 bg-card px-3 text-sm text-ink placeholder:text-muted';
 // Controls fill their container unless the caller sets an explicit width (a `w-*` class), which must win.
 const widthOf = (className?: string) => (className && /(^|\s)w-/.test(className) ? '' : 'w-full');
-export const Input = ({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) => <input className={cx(control, widthOf(className), className)} {...p} />;
+export const Input = ({ className, ...p }: React.ComponentProps<'input'>) => <input className={cx(control, widthOf(className), className)} {...p} />;
 export const Select = ({ className, ...p }: React.SelectHTMLAttributes<HTMLSelectElement>) => <select className={cx(control, widthOf(className), className)} {...p} />;
 export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea className={cx(control, widthOf(className), 'h-auto min-h-24 py-2', className)} {...p} />

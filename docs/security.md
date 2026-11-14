@@ -34,6 +34,8 @@ writing). A route added later is covered without anyone remembering to add a tes
 | CSRF | the API reads bearer tokens, not cookies; the only cookies (refresh) are `httpOnly`, `SameSite=Strict` and scoped to `/auth` or `/portal/auth` | `auth.e2e.ts` cookie assertions |
 | SSRF | the server fetches no user-supplied URL; PDF rendering uses our own HTML only | design |
 | IDOR | every lookup includes the workspace (and for the portal, the client and grants) in the `WHERE` clause | `security-audit.e2e.ts` sweep |
+| Client access and sharing | one card decides who sees a project (grants and invitations in one transaction, project visibility follows the grants); share dialogs show who will see an item; tasks assigned to a client are forced visible and a client can complete only their own visible task | `collaboration.e2e.ts` |
+| Signatures | a signer signs only as themselves (owner in app, client in portal); staff cannot record `PORTAL` or `IN_APP` methods; images are checked (PNG/JPEG, size), stored privately with SHA-256 and never given a public URL; append-only signature events | `collaboration.e2e.ts` |
 | Audit trail | append-only `audit_events` (trigger), written in the same transaction as the change; covers auth, portal access, sharing, documents, money | e2e tests per module |
 | Export and retention | owner-only workspace and client exports; erasure of a contact's personal data; scheduled purge of expired sessions and old email bodies | `retention.e2e.ts`, `docs/operations.md` |
 

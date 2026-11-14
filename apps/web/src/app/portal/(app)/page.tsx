@@ -24,7 +24,7 @@ export default function PortalHome() {
   if (q.error || !q.data) return <ErrorNote error={q.error} />;
   const d = q.data;
   const a = d.attention;
-  const total = a.proposals.length + a.agreements.length + a.scopeReviews.length + a.changes.length + a.invoices.length;
+  const total = a.proposals.length + a.agreements.length + a.scopeReviews.length + a.changes.length + a.invoices.length + a.tasks.length;
   const canAct = me.role === 'APPROVER';
 
   return (
@@ -42,6 +42,7 @@ export default function PortalHome() {
           <p className="flex items-center gap-2 px-5 py-6 text-muted"><CheckCircle2 size={18} aria-hidden="true" className="text-accent" />You’re all caught up.</p>
         ) : (
           <ul className="divide-y divide-line">
+            {a.tasks.map((t) => <Row key={t.id} href={`/portal/projects/${t.project.id}`} title={t.title} meta={`${t.project.name}, ${t.key}${t.dueDate ? `, due ${fmtDate(t.dueDate)}` : ''}`} tag={<Badge tone="warn">Waiting on you</Badge>} />)}
             {a.proposals.map((p) => <Row key={p.id} href={`/portal/proposals/${p.id}`} title={p.title} meta={`${p.number}, ${fmtMoney(p.total)}${p.validUntil ? `, valid until ${fmtDate(p.validUntil)}` : ''}`} tag={<Badge tone="info">{canAct ? 'Review & decide' : 'To review'}</Badge>} />)}
             {a.agreements.map((x) => <Row key={x.id} href={`/portal/agreements/${x.id}`} title={x.title} meta={x.number} tag={<Badge tone="warn">Needs your signature</Badge>} />)}
             {a.scopeReviews.map((s) => <Row key={s.projectId} href={`/portal/projects/${s.projectId}`} title={s.projectName} meta={`Scope version ${s.versionNumber}`} tag={<Badge tone="info">Scope to review</Badge>} />)}

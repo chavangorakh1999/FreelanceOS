@@ -5,21 +5,24 @@ import { CheckCircle2, Download, Hourglass } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { SignatureImage } from '@/components/signature-image';
+import { SignaturePad, SignatureValue } from '@/components/signature-pad';
 import { AgreementBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Spinner, Textarea } from '@/components/ui';
 import { fmtDate, fmtDateTime } from '@/lib/format';
-import { papi, PAgreementDetail, portalDownload } from '@/lib/portal-api';
+import { papi, PAgreementDetail, portalBlobUrl, portalDownload } from '@/lib/portal-api';
 
 export default function PortalAgreementPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['portal', 'agreement', id], queryFn: () => papi<PAgreementDetail>(`/portal/agreements/${id}`) });
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState<string | null>(null);
+  const [sig, setSig] = useState<SignatureValue | null>(null);
   const [agree, setAgree] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState('');
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['portal'] }); };
-  const sign = useMutation({ mutationFn: () => papi(`/portal/agreements/${id}/sign`, { body: { typedName: typed, agree } }), onSuccess: refresh });
+  const sign = useMutation({ mutationFn: () => papi(`/portal/agreements/${id}/sign`, { body: { typedName: name, agree, signature: sig } }), onSuccess: refresh });
   const decline = useMutation({ mutationFn: () => papi(`/portal/agreements/${id}/decline`, { body: { reason } }), onSuccess: () => { setDeclining(false); refresh(); } });
 
   // Opening the document is recorded once, quietly, so the sender knows it was seen.
@@ -29,6 +32,7 @@ export default function PortalAgreementPage() {
   if (q.isLoading) return <Spinner />;
   if (q.error || !q.data) return <><PageHeader title="Agreement not found" /><ErrorNote error={q.error} /><Link href="/portal/agreements" className="text-accent hover:underline">Back to agreements</Link></>;
   const a = q.data;
+  const name = typed ?? a.you?.name ?? '';
 
   return (
     <>
@@ -39,12 +43,13 @@ export default function PortalAgreementPage() {
 
       {a.canSign && (
         <Card className="flex flex-col gap-4 border-accent/30 bg-accent-soft/40 p-5 sm:p-6" aria-labelledby="sign-h">
-          <div><h2 id="sign-h" className="text-lg font-semibold">Sign this agreement</h2><p className="text-ink-2">Read the terms below, then type your full name to sign. We record your name, the time and your network address.</p></div>
-          <form className="flex max-w-md flex-col gap-4" onSubmit={(e) => { e.preventDefault(); sign.mutate(); }}>
-            <Field label="Type your full name" hint={`Exactly as written: ${a.you?.name}`}>{(fid, d) => <Input id={fid} aria-describedby={d} autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />}</Field>
+          <div><h2 id="sign-h" className="text-lg font-semibold">Sign this agreement</h2><p className="text-ink-2">Read the terms below, then sign by typing, drawing or uploading your signature. We record your name, the time and your network address.</p></div>
+          <form className="flex max-w-lg flex-col gap-4" onSubmit={(e) => { e.preventDefault(); sign.mutate(); }}>
+            <Field label="Type your full name" hint={`Exactly as written: ${a.you?.name}`}>{(fid, d) => <Input id={fid} aria-describedby={d} autoComplete="off" value={name} onChange={(e) => setTyped(e.target.value)} />}</Field>
+            <div className="flex flex-col gap-1.5"><span className="text-sm font-medium text-ink-2">Your signature</span><SignaturePad name={name} onChange={setSig} /></div>
             <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 size-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} /><span>I have read this agreement and agree to be bound by it.</span></label>
             <ErrorNote error={sign.error} />
-            <div className="flex flex-wrap gap-2"><Button type="submit" variant="primary" disabled={sign.isPending || !agree || typed.trim().length < 2}>Sign agreement</Button><Button onClick={() => setDeclining(true)}>Decline</Button></div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" variant="primary" disabled={sign.isPending || !agree || !sig || name.trim().length < 2}>Sign agreement</Button><Button onClick={() => setDeclining(true)}>Decline</Button></div>
           </form>
         </Card>
       )}
@@ -63,7 +68,8 @@ export default function PortalAgreementPage() {
         <h2 id="sg-h" className="mb-3 text-lg font-semibold">Signatures</h2>
         <ul className="divide-y divide-line">
           {a.signers.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><span>{s.name}{s.isYou && <span className="text-muted"> (you)</span>}<span className="text-[13px] text-muted">, {s.role.toLowerCase()}</span></span>
+            <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><span className="flex flex-col"><span>{s.name}{s.isYou && <span className="text-muted"> (you)</span>}<span className="text-[13px] text-muted">, {s.role.toLowerCase()}</span></span>
+              {s.hasSignatureImage && <SignatureImage path={`/portal/agreements/${id}/signatures/${s.id}/image`} load={portalBlobUrl} name={s.name} />}</span>
               {s.status === 'SIGNED' ? <Badge tone="success">Signed {s.signedAt ? fmtDateTime(s.signedAt) : ''}</Badge> : s.status === 'DECLINED' ? <Badge tone="danger">Declined</Badge> : <Badge tone="warn">Waiting</Badge>}</li>
           ))}
         </ul>

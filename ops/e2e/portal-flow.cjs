@@ -125,7 +125,7 @@ const future = (d = 30) => new Date(Date.now() + d * 86400000).toISOString().sli
   await call('POST', `/projects/${project.id}/scope/versions/1/submit`);
   const ms = await call('POST', `/projects/${project.id}/milestones`, { name: 'Design' });
   await call('POST', `/projects/${project.id}/tasks`, { title: 'Wireframes', milestoneId: ms.id, visibility: 'CLIENT_VISIBLE', internalNotes: 'secret note' });
-  await call('POST', `/projects/${project.id}/tasks`, { title: 'Refactor our CI', milestoneId: ms.id });
+  await call('POST', `/projects/${project.id}/tasks`, { title: 'Refactor our CI', milestoneId: ms.id, visibility: 'INTERNAL' });
   await call('PUT', `/clients/${client.id}/portal/contacts/${client.primaryContact?.id ?? (await call('GET', `/clients/${client.id}`)).contacts[0].id}/access`, { projectIds: [project.id] });
   await portal.goto(`${WEB}/portal/projects/${project.id}`);
   await portal.getByRole('heading', { name: /Scope version 1 is ready/ }).waitFor();

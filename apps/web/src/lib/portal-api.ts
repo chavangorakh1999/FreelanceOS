@@ -41,6 +41,15 @@ export async function papi<T = unknown>(path: string, opts: Options = {}, retrie
   return data as T;
 }
 
+/** A protected image as an object URL, for <img>. The caller revokes it. */
+export async function portalBlobUrl(path: string): Promise<string> {
+  const send = () => fetch(`${API_URL}${path}`, { credentials: 'include', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  let res = await send();
+  if (res.status === 401 && (await refreshPortal())) res = await send();
+  if (!res.ok) throw new ApiError(res.status, 'HTTP_ERROR', 'Could not load the image');
+  return URL.createObjectURL(await res.blob());
+}
+
 export async function portalDownload(path: string, fallbackName: string): Promise<void> {
   const send = () => fetch(`${API_URL}${path}`, { credentials: 'include', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
   let res = await send();
@@ -77,15 +86,19 @@ export interface PAgreementItem { id: string; number: string; title: string; sta
 export interface PAgreementDetail {
   id: string; number: string; title: string; status: string; versionStatus: string; sentAt: string | null; signedAt: string | null; expiresAt: string | null; contentHash: string | null; businessName: string;
   clauses: { id: string; heading: string; body: string }[];
-  signers: { id: string; role: string; name: string; status: string; signedAt: string | null; isYou: boolean }[];
+  signers: { id: string; role: string; name: string; status: string; signedAt: string | null; isYou: boolean; hasSignatureImage: boolean }[];
   you: { signerId: string; name: string; status: string } | null; canSign: boolean; waitingFor: string | null;
 }
 export interface Progress { done: number; total: number; basisPoints: number }
 export interface PProjectItem { id: string; number: string; name: string; status: string; startDate: string | null; targetDate: string | null; progress: Progress; openChanges: number }
+export interface PTask {
+  id: string; key: string; title: string; description: string | null; status: string; dueDate: string | null; milestoneId: string | null; completedAt: string | null;
+  assignee: { name: string; side: 'TEAM' | 'CLIENT' } | null; assignedToYou: boolean; canComplete: boolean;
+}
 export interface PProjectDetail {
   id: string; number: string; name: string; description: string | null; status: string; startDate: string | null; targetDate: string | null; progress: Progress;
   milestones: { id: string; name: string; description: string | null; dueDate: string | null; status: string; progress: Progress; deliverables: { id: string; title: string; done: boolean }[] }[];
-  tasks: { id: string; title: string; description: string | null; status: string; dueDate: string | null; milestoneId: string | null }[];
+  tasks: PTask[];
 }
 export interface PScopeVersion { versionNumber: number; status: string; summary: string | null; submittedAt: string | null; approvedAt: string | null; items: { id: string; kind: string; title: string; description: string }[]; decision: { decision: string; decidedAt: string; note: string | null; byYou: boolean } | null }
 export interface PScope { baseline: PScopeVersion | null; inReview: PScopeVersion | null; history: { versionNumber: number; status: string }[]; canDecide: boolean }
@@ -107,7 +120,7 @@ export interface PInvoiceDetail {
 }
 export interface PDashboard {
   organizationName: string; businessName: string; role: Role; unreadNotifications: number;
-  attention: { proposals: PProposalItem[]; agreements: PAgreementItem[]; scopeReviews: { projectId: string; projectName: string; versionNumber: number }[]; changes: PChange[]; invoices: PInvoiceItem[] };
+  attention: { proposals: PProposalItem[]; agreements: PAgreementItem[]; scopeReviews: { projectId: string; projectName: string; versionNumber: number }[]; changes: PChange[]; invoices: PInvoiceItem[]; tasks: { id: string; key: string; title: string; dueDate: string | null; project: { id: string; name: string } }[] };
   counts: { proposals: number; agreements: number; projects: number; invoices: number };
 }
 export interface NotificationItem { id: string; category: string; title: string; body: string; linkPath: string; readAt: string | null; createdAt: string }

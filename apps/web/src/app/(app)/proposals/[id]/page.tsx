@@ -1,5 +1,6 @@
 'use client';
 
+import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateInvoice, formatMoney, hasPlaceholder, parseMoney, placeholderTitles } from '@freelanceos/shared';
@@ -53,7 +54,7 @@ export default function ProposalPage() {
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
           {version.isLoading || !v ? <Spinner /> : v.status === 'DRAFT'
-            ? <DraftEditor key={v.id} proposalId={id} version={v} onChanged={refresh} />
+            ? <DraftEditor key={v.id} proposalId={id} clientId={p.client.id} version={v} onChanged={refresh} />
             : <VersionView version={v} />}
         </div>
 
@@ -155,7 +156,7 @@ interface Term { label: string; kind: string; percent: string; dueInDays: string
 const pctToBps = (s: string) => Math.min(10000, Math.max(0, Math.round(Number(s || '0') * 100)));
 const bpsToPct = (b: number | null) => (b == null ? '' : String(b / 100));
 
-function DraftEditor({ proposalId, version: v, onChanged }: { proposalId: string; version: ProposalVersion; onChanged: () => void }) {
+function DraftEditor({ proposalId, clientId, version: v, onChanged }: { proposalId: string; clientId: string; version: ProposalVersion; onChanged: () => void }) {
   const qc = useQueryClient();
   const [pricingModel, setPricingModel] = useState(v.pricingModel);
   const [currency, setCurrency] = useState(v.currency);
@@ -292,6 +293,7 @@ function DraftEditor({ proposalId, version: v, onChanged }: { proposalId: string
       <Dialog open={sharing} onClose={() => setSharing(false)} title={`Share version ${v.versionNumber}`}
         footer={<><Button onClick={() => setSharing(false)}>Cancel</Button><Button variant="primary" onClick={() => share.mutate()} disabled={share.isPending}>{share.isPending ? 'Sharing…' : 'Share and lock'}</Button></>}>
         <p className="text-ink-2">Sharing saves this draft and <strong>locks it permanently</strong>. Anything you change afterwards becomes a new version, so the client’s decision always refers to exactly what they saw.</p>
+        <div className="mt-4"><WhoSees clientId={clientId} what="this proposal" /></div>
         {problems(share.error) && <ul role="alert" className="mt-4 list-disc rounded-control bg-danger-soft py-2 pl-8 pr-3 text-sm text-danger">{problems(share.error)!.map((x) => <li key={x}>{x}</li>)}</ul>}
         <div className="mt-3"><ErrorNote error={share.error && !problems(share.error) ? share.error : null} /></div>
       </Dialog>

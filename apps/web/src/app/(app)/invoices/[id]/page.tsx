@@ -1,5 +1,6 @@
 'use client';
 
+import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateInvoice, formatMoney, parseMoney } from '@freelanceos/shared';
@@ -24,7 +25,7 @@ export default function InvoicePage() {
   const router = useRouter();
   const q = useQuery({ queryKey: ['invoice', id], queryFn: () => api<InvoiceDetail>(`/invoices/${id}`) });
   const activity = useQuery({ queryKey: ['invoice', id, 'activity'], queryFn: () => api<{ items: AuditEvent[] }>('/activity', { query: { targetType: 'invoice', targetId: id, limit: 30 } }), enabled: q.data?.stored !== 'DRAFT' });
-  const [dialog, setDialog] = useState<null | 'issue' | 'void' | 'credit' | 'pay'>(null);
+  const [dialog, setDialog] = useState<null | 'issue' | 'void' | 'credit' | 'pay' | 'share'>(null);
   const [pdfError, setPdfError] = useState<unknown>(null);
   const refresh = () => { for (const k of ['invoice', 'invoices', 'payments', 'finance', 'dashboard']) void qc.invalidateQueries({ queryKey: [k] }); setDialog(null); };
   const share = useMutation({ mutationFn: () => api(`/invoices/${id}/share`, { method: 'POST' }), onSuccess: refresh });
@@ -46,7 +47,7 @@ export default function InvoicePage() {
           <InvoiceBadge status={inv.status} />
           {!draft && <Badge icon={<Lock size={14} aria-hidden="true" />}>Issued, locked</Badge>}
           {!draft && <Button onClick={() => { setPdfError(null); downloadFile(`/invoices/${id}/pdf`, `${inv.number}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button>}
-          {inv.stored === 'ISSUED' && inv.visibility === 'INTERNAL' && <Button onClick={() => share.mutate()} disabled={share.isPending}>Share with client</Button>}
+          {inv.stored === 'ISSUED' && inv.visibility === 'INTERNAL' && <Button onClick={() => setDialog('share')}>Share with client</Button>}
           {open && <Button variant="primary" onClick={() => setDialog('pay')}>Record payment</Button>}
           {inv.stored === 'ISSUED' && <Select aria-label="More actions" value="" className="w-40" onChange={(e) => { if (e.target.value) setDialog(e.target.value as 'credit' | 'void'); }}>
             <option value="">More…</option>{open && <option value="credit">Issue credit note</option>}<option value="void">Void invoice</option></Select>}
@@ -138,6 +139,12 @@ export default function InvoicePage() {
 
       <IssueDialog open={dialog === 'issue'} id={id} terms={inv.paymentTermsDays} onClose={() => setDialog(null)} onDone={refresh} />
       <CreditDialog open={dialog === 'credit'} id={id} inv={inv} onClose={() => setDialog(null)} onDone={refresh} />
+      <Dialog open={dialog === 'share'} onClose={() => setDialog(null)} title={`Share ${inv.number} with ${inv.client.name}`}
+        footer={<><Button onClick={() => setDialog(null)}>Cancel</Button><Button variant="primary" onClick={() => share.mutate()} disabled={share.isPending}>{share.isPending ? 'Sharing…' : 'Share'}</Button></>}>
+        <p className="mb-4 text-ink-2">They can view and download the invoice in the portal and are notified by email.</p>
+        <WhoSees clientId={inv.client.id} projectIds={inv.project ? [inv.project.id] : []} what="this invoice" />
+        <div className="mt-3"><ErrorNote error={share.error} /></div>
+      </Dialog>
       <VoidDialog open={dialog === 'void'} id={id} number={inv.number} onClose={() => setDialog(null)} onDone={refresh} />
       <RecordPaymentDialog open={dialog === 'pay'} onClose={() => setDialog(null)} defaultClientId={inv.client.id} onDone={refresh} />
     </>

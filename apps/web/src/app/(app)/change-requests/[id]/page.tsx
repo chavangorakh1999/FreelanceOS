@@ -1,5 +1,6 @@
 'use client';
 
+import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -25,8 +26,8 @@ export default function ChangeRequestPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['change-request', id], queryFn: () => api<ChangeDetail>(`/change-requests/${id}`) });
-  const share = useMutation({ mutationFn: () => api(`/change-requests/${id}/share`, { method: 'POST' }), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['change-request', id] }); } });
-  const [dialog, setDialog] = useState<null | 'assess' | 'decide' | 'withdraw' | 'addendum'>(null);
+  const share = useMutation({ mutationFn: () => api(`/change-requests/${id}/share`, { method: 'POST' }), onSuccess: () => { setDialog(null); void qc.invalidateQueries({ queryKey: ['change-request', id] }); } });
+  const [dialog, setDialog] = useState<null | 'assess' | 'decide' | 'withdraw' | 'addendum' | 'share'>(null);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['change-request', id] }); void qc.invalidateQueries({ queryKey: ['changes'] }); void qc.invalidateQueries({ queryKey: ['scope'] }); void qc.invalidateQueries({ queryKey: ['project'] }); setDialog(null); };
 
   if (q.isLoading) return <Spinner />;
@@ -41,7 +42,7 @@ export default function ChangeRequestPage() {
       <Crumbs items={[{ label: 'Projects', href: '/projects' }, { label: c.project.name, href: `/projects/${c.project.id}?tab=changes` }, { label: c.number }]} />
       <PageHeader title={`${c.number}, ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ? `${c.requesterName} (client)` : 'the client') : 'you'}, based on scope v${c.baseScopeVersion.versionNumber}`}
         actions={<div className="flex flex-wrap items-center gap-2"><ChangeBadge status={c.status} />
-          {c.visibility === 'CLIENT_VISIBLE' ? <Badge tone="info">Visible to client</Badge> : <Button onClick={() => share.mutate()} disabled={share.isPending}>Share with client</Button>}</div>} />
+          {c.visibility === 'CLIENT_VISIBLE' ? <Badge tone="info">Visible to client</Badge> : <Button onClick={() => setDialog('share')}>Share with client</Button>}</div>} />
       <ErrorNote error={share.error} />
 
       <div className="flex flex-wrap items-start gap-6">
@@ -114,6 +115,12 @@ export default function ChangeRequestPage() {
         load={() => api<CommentItem[]>(`/change-requests/${id}/comments`)} post={(body, visibility) => api(`/change-requests/${id}/comments`, { body: { body, visibility } })} />
       <AssessDialog open={dialog === 'assess'} id={id} onClose={() => setDialog(null)} onDone={refresh} />
       <DecideDialog open={dialog === 'decide'} id={id} hasAssessment={!!a} onClose={() => setDialog(null)} onDone={refresh} />
+      <Dialog open={dialog === 'share'} onClose={() => setDialog(null)} title={`Share ${c.number} with the client`}
+        footer={<><Button onClick={() => setDialog(null)}>Cancel</Button><Button variant="primary" onClick={() => share.mutate()} disabled={share.isPending}>{share.isPending ? 'Sharing…' : 'Share'}</Button></>}>
+        <p className="mb-4 text-ink-2">People who can see {c.project.name} will see this change request, its assessment and your decision, and can comment.</p>
+        <WhoSees clientId={c.project.clientId} projectIds={[c.project.id]} what="this change request" />
+        <div className="mt-3"><ErrorNote error={share.error} /></div>
+      </Dialog>
       <WithdrawDialog open={dialog === 'withdraw'} id={id} onClose={() => setDialog(null)} onDone={refresh} />
       <AddendumDialog open={dialog === 'addendum'} id={id} onClose={() => setDialog(null)} onDone={refresh} />
     </>

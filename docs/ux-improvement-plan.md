@@ -78,3 +78,38 @@ Checked by API tests (search scope and isolation, period), and a browser run of 
 
 ## Verification
 Type check, API and web tests, the Hallmark floor (`sloplint --scope app`), and the end-to-end browser run, plus a fresh screenshot pass of every screen.
+
+## Collaboration: client access, Jira-style tasks, signatures
+
+Audit (before): seven separate places decided what a client could see; sharing a project took a visibility switch on the project
+*and* a grant on the client page, and sharing with someone not yet in the portal reached nobody. Tasks needed a dialog per task, a
+separate dependencies dialog, and could not be assigned. Signatures could only be recorded by the owner as evidence.
+
+What changed:
+- **Client access card** on the project overview: one list of the client's people, one button each. Giving access to someone not in the
+  portal sends their invitation in the same step; the project is shared exactly when someone can see it. If tasks were created before
+  sharing, one button shows them all.
+- **"Who will see this"** in every share dialog (proposal, agreement, invoice, change request, document): the people who will see it,
+  and a one-click *Invite* or *Add to project* for anyone who would not. It follows the server's rules in `portal/visibility.ts`.
+- **Tasks like Jira**: keys (`T-12`), a board (To do, In progress, Done) with drag and drop, type-and-Enter quick add in any column,
+  a side drawer that saves as you edit, a responsible person from your team or the client, filters (Mine, Waiting on client,
+  Unassigned, milestone, search), and dependencies picked by key in one step. A list view is kept per browser.
+- **Hand-off to the client**: a task assigned to a client contact is always client-visible; they see *Waiting on you* on their portal
+  home and project, and *Mark done* finishes it (dependencies still apply). The team is notified and the action is audited.
+- **Signatures**: type, draw (mouse, finger or pen) or upload a PNG/JPEG, in the portal and, for the owner, in the app (*Sign now*).
+  Images are private (served only to people who can see the agreement), fingerprinted with SHA-256, and printed on the PDF.
+
+Measured with `ops/e2e/real-user.cjs` (counts every click, field, choice and upload):
+
+| Job | Before | After |
+|---|---|---|
+| Share a project with a client contact who is not in the portal | 4 actions on 2 screens, and you had to know both | 1 click |
+| Five tasks in a milestone, client-visible, one dependency | 29 actions | 10 |
+| Assign a task to the client | not possible | 2 |
+| Owner signs by drawing | not possible (record only) | 4 clicks and a stroke |
+| Client finishes their task | not possible | 2 |
+| Client signs with an uploaded image | not possible (typed only) | 4 (name pre-filled) |
+
+Every screen was captured at 1440 px and 390 px and reviewed. Fixed along the way: the board pushed the phone page sideways, the
+project tabs overflowed on phones, signer buttons wrapped, drawn signatures carried empty margins, and the portal task row was
+cramped on phones.

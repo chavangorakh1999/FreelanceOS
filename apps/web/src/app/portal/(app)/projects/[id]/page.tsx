@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { CheckCircle2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
@@ -9,7 +9,7 @@ import { CommentsPanel } from '@/components/comments';
 import { ChangeBadge, MilestoneBadge, ProjectBadge, ScopeBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, ProgressBar, Spinner, Textarea } from '@/components/ui';
 import { fmtDate } from '@/lib/format';
-import { CommentItem, papi, PChange, PProjectDetail, PScope } from '@/lib/portal-api';
+import { CommentItem, papi, PChange, PProjectDetail, PScope, PTask } from '@/lib/portal-api';
 import { usePortalMe } from '@/lib/portal-auth';
 
 const KIND: Record<string, string> = { REQUIREMENT: 'Requirement', FEATURE: 'Feature', DELIVERABLE: 'Deliverable', ASSUMPTION: 'Assumption', EXCLUSION: 'Not included', ACCEPTANCE_CRITERION: 'Acceptance criterion' };
@@ -32,6 +32,7 @@ export default function PortalProjectPage() {
     mutationFn: (d: 'APPROVED' | 'CHANGES_REQUESTED') => papi(`/portal/projects/${id}/scope/${scope.data!.inReview!.versionNumber}/decision`, { body: { decision: d, ...(note.trim() ? { note: note.trim() } : {}) } }),
     onSuccess: () => { setDecision(null); setNote(''); refresh(); },
   });
+  const complete = useMutation({ mutationFn: (taskId: string) => papi(`/portal/tasks/${taskId}/complete`, { method: 'POST' }), onSuccess: refresh });
   const raise = useMutation({ mutationFn: () => papi(`/portal/projects/${id}/changes`, { body: cr }), onSuccess: () => { setRaising(false); setCr({ title: '', description: '', reason: '' }); refresh(); } });
 
   if (project.isLoading) return <Spinner />;
@@ -39,6 +40,8 @@ export default function PortalProjectPage() {
   const p = project.data;
   const s = scope.data;
   const review = s?.inReview;
+  const mine = p.tasks.filter((t) => t.canComplete);
+  const row = (t: PTask) => <TaskRow key={t.id} t={t} busy={complete.isPending && complete.variables === t.id} onDone={() => complete.mutate(t.id)} />;
 
   return (
     <>
@@ -47,6 +50,14 @@ export default function PortalProjectPage() {
       <PageHeader title={p.name} subtitle={`${p.number}${p.startDate ? `, started ${fmtDate(p.startDate)}` : ''}${p.targetDate ? `, target ${fmtDate(p.targetDate)}` : ''}`} actions={<ProjectBadge status={p.status} />} />
       <Card className="p-5 sm:p-6">{p.description && <p className="mb-4 whitespace-pre-wrap text-ink-2">{p.description}</p>}<ProgressBar basisPoints={p.progress.basisPoints} done={p.progress.done} total={p.progress.total} label="Overall progress" /></Card>
 
+      {mine.length > 0 && (
+        <Card className="border-accent/30 bg-accent-soft/40 p-5 sm:p-6" aria-labelledby="wy-h">
+          <h2 id="wy-h" className="mb-1 flex items-center gap-2 text-lg font-semibold">Waiting on you <Badge tone="warn">{mine.length}</Badge></h2>
+          <p className="mb-2 text-ink-2">{p.name} needs these from you. Mark each one done when it is ready.</p>
+          <ul className="flex flex-col divide-y divide-line">{mine.map(row)}</ul>
+          <ErrorNote error={complete.error} />
+        </Card>
+      )}
       {review && (
         <Card className="border-accent/30 bg-accent-soft/40 p-5 sm:p-6" aria-labelledby="rv-h">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -75,7 +86,7 @@ export default function PortalProjectPage() {
                 <ProgressBar basisPoints={m.progress.basisPoints} done={m.progress.done} total={m.progress.total} label={`${m.name} progress`} />
                 {m.deliverables.length > 0 && <ul className="ml-1 flex flex-col gap-1 text-sm">{m.deliverables.map((d) => <li key={d.id} className="flex items-center gap-2"><input type="checkbox" disabled readOnly checked={d.done} aria-label={d.done ? 'Done' : 'Not done'} className="size-4 accent-accent" /><span className={d.done ? 'text-muted line-through' : ''}>{d.title}</span></li>)}</ul>}
                 <ul className="flex flex-col divide-y divide-line">
-                  {p.tasks.filter((t) => t.milestoneId === m.id).map((t) => <li key={t.id} className="flex justify-between gap-3 py-2 text-sm"><span>{t.title}</span><span className="shrink-0 text-muted">{TASK[t.status]}{t.dueDate ? `, ${fmtDate(t.dueDate)}` : ''}</span></li>)}
+                  {p.tasks.filter((t) => t.milestoneId === m.id).map(row)}
                 </ul>
               </li>
             ))}
@@ -83,7 +94,7 @@ export default function PortalProjectPage() {
         )}
         {p.tasks.some((t) => !t.milestoneId) && (
           <><h3 className="mb-1 mt-6 text-sm font-medium text-muted">Other work</h3>
-            <ul className="flex flex-col divide-y divide-line">{p.tasks.filter((t) => !t.milestoneId).map((t) => <li key={t.id} className="flex justify-between gap-3 py-2 text-sm"><span>{t.title}</span><span className="shrink-0 text-muted">{TASK[t.status]}</span></li>)}</ul></>
+            <ul className="flex flex-col divide-y divide-line">{p.tasks.filter((t) => !t.milestoneId).map(row)}</ul></>
         )}
       </Card>
 
@@ -125,5 +136,20 @@ function ScopeList({ version }: { version: { items: { id: string; kind: string; 
       {version.summary && <p className="mb-3 text-ink-2">{version.summary}</p>}
       <ul className="flex flex-col divide-y divide-line">{version.items.map((i) => <li key={i.id} className="py-3"><div className="flex flex-wrap items-center gap-2"><Badge tone={i.kind === 'EXCLUSION' ? 'neutral' : 'info'}>{KIND[i.kind] ?? i.kind}</Badge><span className="font-medium">{i.title}</span></div>{i.description && <p className="mt-1 text-ink-2">{i.description}</p>}</li>)}</ul>
     </div>
+  );
+}
+
+/** One task as the client sees it: who is responsible, its state, and a Mark done button when it is theirs. */
+function TaskRow({ t, busy, onDone }: { t: PTask; busy: boolean; onDone: () => void }) {
+  const done = t.status === 'DONE';
+  return (
+    <li className="flex flex-col gap-1.5 py-2.5 text-sm sm:flex-row sm:items-center sm:gap-3">
+      <span className="flex min-w-0 flex-1 items-baseline gap-2"><span className="w-8 shrink-0 font-mono text-xs text-muted">{t.key}</span><span className={done ? 'text-muted line-through' : ''}>{t.title}</span></span>
+      <span className="flex items-center gap-3 pl-10 sm:pl-0">
+        {t.assignee && <span className={`text-[13px] ${t.assignedToYou ? 'font-medium text-accent' : 'text-muted'}`}>{t.assignedToYou ? 'You' : t.assignee.name}</span>}
+        <span className="text-[13px] text-muted">{TASK[t.status]}{t.dueDate && !done ? `, due ${fmtDate(t.dueDate)}` : ''}</span>
+        {t.canComplete && <Button className="ml-auto h-8 px-3 text-[13px] sm:ml-0" disabled={busy} onClick={onDone}><CheckCircle2 size={14} aria-hidden="true" />{busy ? 'Saving' : 'Mark done'}</Button>}
+      </span>
+    </li>
   );
 }

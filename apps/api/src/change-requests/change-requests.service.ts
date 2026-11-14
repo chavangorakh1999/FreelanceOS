@@ -46,7 +46,7 @@ export class ChangeRequestsService {
     const r = await this.prisma.changeRequest.findFirst({
       where: { id, workspaceId: a.workspaceId },
       include: {
-        project: { select: { id: true, name: true, number: true, status: true } },
+        project: { select: { id: true, name: true, number: true, status: true, clientId: true } },
         assessments: { orderBy: { createdAt: 'desc' } },
         decisions: { orderBy: { createdAt: 'asc' } },
         baseScopeVersion: { select: { id: true, versionNumber: true, status: true } },

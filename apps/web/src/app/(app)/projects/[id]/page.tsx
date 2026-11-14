@@ -10,6 +10,7 @@ import { DocumentsPanel } from '@/components/documents/panel';
 import { ChangesTab } from '@/components/project/changes-tab';
 import { ScopeTab } from '@/components/project/scope-tab';
 import { WorkTab } from '@/components/project/work-tab';
+import { ClientAccessCard } from '@/components/project/client-access';
 import { ProjectBadge, ScopeBadge } from '@/components/status';
 import { Button, Card, Dialog, ErrorNote, PageHeader, Select, Spinner, Stat, btnSecondary } from '@/components/ui';
 import { api, ProjectDetail, ProjectStatus } from '@/lib/api';
@@ -33,7 +34,6 @@ function ProjectView() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['project', id], queryFn: () => api<ProjectDetail>(`/projects/${id}`) });
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['project', id] }); void qc.invalidateQueries({ queryKey: ['projects'] }); void qc.invalidateQueries({ queryKey: ['dashboard'] }); };
-  const setVisibility = useMutation({ mutationFn: (visibility: string) => api(`/projects/${id}`, { method: 'PATCH', body: { visibility } }), onSuccess: refresh });
   const [moving, setMoving] = useState<ProjectStatus | null>(null);
   const move = useMutation({ mutationFn: (status: ProjectStatus) => api(`/projects/${id}`, { method: 'PATCH', body: { status } }), onSuccess: () => { setMoving(null); refresh(); } });
 
@@ -54,7 +54,7 @@ function ProjectView() {
             <option value="">Change status…</option>{NEXT[p.status].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select>}</div>} />
       {closed && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">This project is {p.status.toLowerCase()}. Everything is preserved and read-only.</p>}
 
-      <div role="tablist" aria-label="Project sections" className="-mt-2 flex gap-1 border-b border-line">
+      <div role="tablist" aria-label="Project sections" className="-mt-2 flex gap-1 overflow-x-auto border-b border-line no-scrollbar">
         {TABS.map(([k, name]) => (
           <button key={k} role="tab" type="button" aria-selected={tab === k} onClick={() => go(k)}
             className={`-mb-px h-11 border-b-2 px-4 text-sm font-medium ${tab === k ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
@@ -83,13 +83,7 @@ function ProjectView() {
                 <dt className="text-muted">Scope</dt><dd>{p.latestScopeVersion ? <span className="inline-flex items-center gap-2">v{p.latestScopeVersion.versionNumber} <ScopeBadge status={p.latestScopeVersion.status} /></span> : 'None'}</dd>
               </dl>
             </Card>
-            <Card className="min-w-0 flex-[1_1_320px] p-6" aria-labelledby="vis-h">
-              <h2 id="vis-h" className="mb-1 text-lg font-semibold">Client portal</h2>
-              <p className="mb-3 text-[13px] text-muted">Clients only see this project if it is visible <em>and</em> you have granted them access from the client page. Task visibility is set per task.</p>
-              <Select aria-label="Project visibility" value={p.visibility === 'CLIENT_VISIBLE' ? 'CLIENT_VISIBLE' : 'INTERNAL'} disabled={setVisibility.isPending} onChange={(e) => setVisibility.mutate(e.target.value)}>
-                <option value="INTERNAL">Internal, hidden from clients</option><option value="CLIENT_VISIBLE">Visible to client</option></Select>
-              <div className="mt-3"><ErrorNote error={setVisibility.error} /></div>
-            </Card>
+            <ClientAccessCard projectId={id} clientId={p.client.id} onChanged={refresh} />
             {p.description && <Card className="min-w-0 flex-[1_1_320px] p-6"><h2 className="mb-2 text-lg font-semibold">Description</h2><p className="whitespace-pre-wrap text-ink-2">{p.description}</p></Card>}
           </div>
           <CommentsPanel staff shared={p.visibility === 'CLIENT_VISIBLE'} queryKey={['staff-comments', 'project', id]}

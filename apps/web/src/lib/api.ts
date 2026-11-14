@@ -97,6 +97,15 @@ export interface Dashboard {
 }
 export interface SessionInfo { id: string; userAgent: string | null; ipAddress: string | null; createdAt: string; lastUsedAt: string; current: boolean }
 
+/** A protected image as an object URL, for <img>. The caller revokes it. */
+export async function fetchBlobUrl(path: string): Promise<string> {
+  const send = () => fetch(`${API_URL}${path}`, { credentials: 'include', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  let res = await send();
+  if (res.status === 401 && (await refreshSession())) res = await send();
+  if (!res.ok) throw new ApiError(res.status, 'HTTP_ERROR', 'Could not load the image');
+  return URL.createObjectURL(await res.blob());
+}
+
 /** Download a protected file. The access token lives in memory, so a plain <a href> cannot carry it. */
 export async function downloadFile(path: string, fallbackName: string): Promise<void> {
   const send = () => fetch(`${API_URL}${path}`, { credentials: 'include', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
@@ -150,7 +159,7 @@ export interface Signer { id: string; role: 'FREELANCER' | 'CLIENT' | 'WITNESS';
 export interface AgreementVersion {
   id: string; versionNumber: number; status: 'DRAFT' | 'SENT' | 'SIGNED' | 'DECLINED' | 'VOID'; contentHash: string | null; sentAt: string | null; signedAt: string | null;
   clauses: { heading: string; body: string }[]; signers: Signer[];
-  events: { id: string; type: string; method: string; occurredAt: string; evidence: string | null; signerId: string | null }[];
+  events: { id: string; type: string; method: string; occurredAt: string; evidence: string | null; signerId: string | null; signatureKind: 'TYPED' | 'DRAWN' | 'UPLOADED' | null }[];
 }
 export interface TemplateInfo { id: string; kind: 'PROPOSAL' | 'AGREEMENT'; name: string; description: string | null }
 
@@ -192,7 +201,10 @@ export interface Milestone {
   deliverables: { id: string; title: string; done: boolean }[];
 }
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+export interface Assignee { kind: 'TEAM' | 'CLIENT'; id: string; name: string }
+export interface ProjectPeople { team: { id: string; name: string; isYou: boolean }[]; client: { id: string; name: string; email: string | null; portalAccess: boolean; canSeeProject: boolean }[] }
 export interface Task {
+  number: number; key: string; assignee: Assignee | null; createdAt: string; completedAt: string | null;
   id: string; title: string; description: string | null; internalNotes: string | null; priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   status: TaskStatus; dueDate: string | null; milestoneId: string | null; dependsOn: string[]; blockedBy: string[]; visibility: 'INTERNAL' | 'CLIENT_VISIBLE' | 'SHARED_WITH_SELECTED_CONTACTS';
 }
@@ -207,7 +219,7 @@ export interface ChangeSummary {
 }
 export interface ChangeDetail extends Omit<ChangeSummary, 'project'> {
   description: string; reason: string; requesterName: string | null; addendumStatus: 'NOT_REQUIRED' | 'REQUIRED' | 'COMPLETED'; addendumNote: string | null; withdrawnReason: string | null;
-  project: { id: string; name: string; number: string; status: ProjectStatus };
+  project: { id: string; name: string; number: string; status: ProjectStatus; clientId: string };
   baseScopeVersion: { versionNumber: number; status: ScopeStatus }; resultingVersion: { versionNumber: number; status: ScopeStatus } | null;
   assessments: Assessment[];
   decisions: { id: string; party: 'FREELANCER' | 'CLIENT'; decision: 'APPROVED' | 'REJECTED' | 'CLARIFICATION_REQUESTED'; channel: string; decidedAt: string; note: string | null }[];

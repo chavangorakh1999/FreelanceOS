@@ -1,5 +1,6 @@
 'use client';
 
+import { WhoSees } from '@/components/who-sees';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Eye, Link2, Upload as UploadIcon, X } from 'lucide-react';
 import Link from 'next/link';
@@ -113,6 +114,7 @@ export default function DocumentPage() {
       <Dialog open={dialog === 'share'} onClose={() => setDialog(null)} title={`Share with ${d.client?.name ?? 'the client'}?`}
         footer={<><Button onClick={() => setDialog(null)}>Cancel</Button><Button variant="primary" onClick={() => share.mutate(true)} disabled={share.isPending}>Share</Button></>}>
         <p className="text-ink-2">People at {d.client?.name} with portal access will be able to download the current version and any later version. They are notified. You can stop sharing at any time.</p>
+        {d.client && <div className="mt-4"><WhoSees clientId={d.client.id} projectIds={d.links.filter((l) => l.type === 'project').map((l) => l.targetId)} what="this file" /></div>}
       </Dialog>
     </>
   );

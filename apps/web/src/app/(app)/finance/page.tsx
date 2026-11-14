@@ -34,7 +34,7 @@ function FinanceView() {
       <title>Finance, FreelanceOS</title>
       <PageHeader title="Finance" subtitle="Invoices, payments and what you are owed. Every figure is derived from the records behind it."
         actions={<><Button onClick={() => setRecording(true)}>Record payment</Button><Button variant="primary" onClick={() => router.replace(`/finance?tab=invoices&new=1`)}>New invoice</Button></>} />
-      <div role="tablist" aria-label="Finance sections" className="-mt-2 flex gap-1 border-b border-line">
+      <div role="tablist" aria-label="Finance sections" className="-mt-2 flex gap-1 overflow-x-auto border-b border-line no-scrollbar">
         {TABS.map(([k, name]) => (
           <button key={k} role="tab" type="button" aria-selected={tab === k} onClick={() => go(k)}
             className={`-mb-px h-11 border-b-2 px-4 text-sm font-medium ${tab === k ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'}`}>{name}</button>))}

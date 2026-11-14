@@ -1,15 +1,19 @@
 'use client';
 
+import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Hash, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { SignatureImage } from '@/components/signature-image';
+import { SignaturePad, SignatureValue } from '@/components/signature-pad';
 import { AgreementBadge, LockedBadge } from '@/components/status';
+import { useMe } from '@/lib/auth';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui';
 import { hasPlaceholder } from '@freelanceos/shared';
-import { AgreementDetail, AgreementVersion, api, ApiError, downloadFile, Signer } from '@/lib/api';
+import { AgreementDetail, AgreementVersion, api, ApiError, downloadFile, fetchBlobUrl, Signer } from '@/lib/api';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -24,8 +28,9 @@ export default function AgreementPage() {
   const [voiding, setVoiding] = useState(false);
   const [recording, setRecording] = useState<{ signer: Signer; type: 'SIGNED' | 'DECLINED' } | null>(null);
   const [pdfError, setPdfError] = useState<unknown>(null);
+  const [signing, setSigning] = useState<Signer | null>(null);
+  const me = useMe();
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['agreement', id] }); void qc.invalidateQueries({ queryKey: ['agreements'] }); };
-  const viewed = useMutation({ mutationFn: () => api(`/agreements/${id}/versions/${n}/events`, { body: { type: 'VIEWED' } }), onSuccess: refresh });
 
   if (detail.isLoading) return <Spinner />;
   if (detail.error || !detail.data) return <><PageHeader title="Agreement not found" /><ErrorNote error={detail.error} /><Link href="/agreements" className="text-accent hover:underline">Back to agreements</Link></>;
@@ -43,11 +48,11 @@ export default function AgreementPage() {
         actions={<div className="flex flex-wrap items-center gap-2"><AgreementBadge status={ag.status} />
           <Button onClick={() => { setPdfError(null); downloadFile(`/agreements/${id}/versions/${n}/pdf`, `${ag.number}-v${n}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button>
           {canVoid && <Button variant="danger" onClick={() => setVoiding(true)}>Void</Button>}</div>} />
-      <ErrorNote error={pdfError ?? viewed.error} />
+      <ErrorNote error={pdfError} />
       {ag.status === 'VOIDED' && ag.voidReason && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">Voided: {ag.voidReason}</p>}
       {ag.status === 'EXPIRED' && <p className="rounded-control bg-warn-soft px-4 py-3 text-warn-ink">The signing deadline ({ag.expiresAt && fmtDate(ag.expiresAt)}) has passed. No more signatures can be recorded on this agreement.</p>}
 
-      {!v ? <Spinner /> : v.status === 'DRAFT' ? <DraftEditor key={v.id} agreementId={id} version={v} onChanged={refresh} /> : (
+      {!v ? <Spinner /> : v.status === 'DRAFT' ? <DraftEditor key={v.id} agreementId={id} clientId={ag.client.id} version={v} onChanged={refresh} /> : (
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
             <div className="flex flex-wrap items-center gap-2"><LockedBadge>Locked since {v.sentAt ? fmtDate(v.sentAt) : 'sending'}</LockedBadge>
@@ -62,18 +67,19 @@ export default function AgreementPage() {
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
             <Card className="p-6" aria-labelledby="sig-h">
               <h2 id="sig-h" className="mb-1 text-lg font-semibold">Signatures</h2>
-              <p className="mb-4 text-[13px] text-muted">Signers sign in order. A signature recorded here is evidence of what you were told, not a legal opinion.</p>
+              <p className="mb-4 text-[13px] text-muted">Signers sign in order. Clients sign in their portal and you sign here. For a signature collected another way, record it with its proof.</p>
               <ul className="flex flex-col divide-y divide-line">{v.signers.map((s) => (
                 <li key={s.id} className="py-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0"><div className="font-medium">{s.signingOrder}. {s.name}</div><div className="truncate text-[13px] text-muted">{label(s.role)}, {s.email}</div>{s.signedAt && <div className="text-[13px] text-muted">Signed {fmtDate(s.signedAt)}</div>}</div>
+                    <div className="min-w-0"><div className="font-medium">{s.signingOrder}. {s.name}</div><div className="truncate text-[13px] text-muted">{label(s.role)}, {s.email}</div>{s.signedAt && <div className="text-[13px] text-muted">Signed {fmtDate(s.signedAt)}</div>}
+                      {(() => { const e = v.events.find((x) => x.type === 'SIGNED' && x.signerId === s.id && (x.signatureKind === 'DRAWN' || x.signatureKind === 'UPLOADED')); return e ? <SignatureImage path={`/agreements/${id}/signatures/${e.id}/image`} load={fetchBlobUrl} name={s.name} /> : null; })()}</div>
                     {s.status === 'SIGNED' ? <Badge tone="success">Signed</Badge> : s.status === 'DECLINED' ? <Badge tone="danger">Declined</Badge> : <Badge tone="warn">Pending</Badge>}
                   </div>
                   {s.declineReason && <p className="mt-1 text-[13px] text-ink-2">{s.declineReason}</p>}
-                  {open && s.status === 'PENDING' && <div className="mt-2 flex gap-2"><Button className="h-8 px-3 text-[13px]" onClick={() => setRecording({ signer: s, type: 'SIGNED' })}>Record signature</Button><Button variant="ghost" className="h-8 px-3 text-[13px]" onClick={() => setRecording({ signer: s, type: 'DECLINED' })}>Record decline</Button></div>}
+                  {open && s.status === 'PENDING' && s.role === 'FREELANCER' && s.email.toLowerCase() === me.user.email.toLowerCase() ? <div className="mt-2"><Button variant="primary" className="h-9 px-4" onClick={() => setSigning(s)}>Sign now</Button></div>
+                    : open && s.status === 'PENDING' && <div className="mt-2 flex flex-wrap gap-1"><Button className="h-8 whitespace-nowrap px-3 text-[13px]" onClick={() => setRecording({ signer: s, type: 'SIGNED' })}>Signed elsewhere</Button><Button variant="ghost" className="h-8 whitespace-nowrap px-3 text-[13px]" onClick={() => setRecording({ signer: s, type: 'DECLINED' })}>Declined</Button></div>}
                 </li>))}
               </ul>
-              {open && ag.status === 'SENT' && <div className="mt-3"><Button variant="ghost" className="h-8 px-3 text-[13px]" onClick={() => viewed.mutate()}>Mark as viewed by client</Button></div>}
             </Card>
             <Card className="p-6" aria-labelledby="trail-h">
               <h2 id="trail-h" className="mb-4 text-lg font-semibold">Signature trail</h2>
@@ -87,6 +93,7 @@ export default function AgreementPage() {
       )}
 
       <VoidDialog open={voiding} agreementId={id} onClose={() => setVoiding(false)} onDone={() => { setVoiding(false); refresh(); }} />
+      {signing && <SignDialog agreementId={id} n={n} signer={signing} onClose={() => setSigning(null)} onDone={() => { setSigning(null); refresh(); }} />}
       {recording && <RecordDialog agreementId={id} n={n} signer={recording.signer} type={recording.type} onClose={() => setRecording(null)} onDone={() => { setRecording(null); refresh(); }} />}
     </>
   );
@@ -95,7 +102,7 @@ export default function AgreementPage() {
 interface Clause { heading: string; body: string }
 interface SignerRow { role: Signer['role']; name: string; email: string; signingOrder: number }
 
-function DraftEditor({ agreementId, version: v, onChanged }: { agreementId: string; version: AgreementVersion; onChanged: () => void }) {
+function DraftEditor({ agreementId, clientId, version: v, onChanged }: { agreementId: string; clientId: string; version: AgreementVersion; onChanged: () => void }) {
   const [clauses, setClauses] = useState<Clause[]>(v.clauses.map((c) => ({ heading: c.heading, body: c.body })));
   const [signers, setSigners] = useState<SignerRow[]>(v.signers.map((s) => ({ role: s.role, name: s.name, email: s.email, signingOrder: s.signingOrder })));
   const [confirm, setConfirm] = useState(false);
@@ -146,11 +153,30 @@ function DraftEditor({ agreementId, version: v, onChanged }: { agreementId: stri
       </div>
       <Dialog open={confirm} onClose={() => setConfirm(false)} title="Send for signature"
         footer={<><Button onClick={() => setConfirm(false)}>Cancel</Button><Button variant="primary" onClick={() => send.mutate()} disabled={send.isPending}>{send.isPending ? 'Sending…' : 'Lock and send'}</Button></>}>
-        <p className="text-ink-2">This saves the draft and <strong>locks the clauses and signer list</strong>, recording a fingerprint of exactly what was sent. Later changes need an amendment. Emailing the document to signers arrives with the client portal; for now you share the PDF and record each signature here.</p>
+        <p className="text-ink-2">This saves the draft and <strong>locks the clauses and signer list</strong>, recording a fingerprint of exactly what was sent. Later changes need an amendment. Client signers sign in the portal; you sign here.</p>
+        <div className="mt-4"><WhoSees clientId={clientId} what="this agreement" /></div>
         {problems(send.error) && <ul role="alert" className="mt-4 list-disc rounded-control bg-danger-soft py-2 pl-8 pr-3 text-sm text-danger">{problems(send.error)!.map((x) => <li key={x}>{x}</li>)}</ul>}
         <div className="mt-3"><ErrorNote error={send.error && !problems(send.error) ? send.error : null} /></div>
       </Dialog>
     </div>
+  );
+}
+
+function SignDialog({ agreementId, n, signer, onClose, onDone }: { agreementId: string; n: number; signer: Signer; onClose: () => void; onDone: () => void }) {
+  const [name, setName] = useState(signer.name);
+  const [agree, setAgree] = useState(false);
+  const [sig, setSig] = useState<SignatureValue | null>(null);
+  const m = useMutation({ mutationFn: () => api(`/agreements/${agreementId}/versions/${n}/sign`, { body: { signerId: signer.id, typedName: name, agree, signature: sig } }), onSuccess: onDone });
+  return (
+    <Dialog open onClose={onClose} title="Sign this agreement"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="sign" disabled={m.isPending || !agree || !sig || name.trim().length < 2}>{m.isPending ? 'Signing…' : 'Sign'}</Button></>}>
+      <form id="sign" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+        <Field label="Your full name" hint={`Exactly as on the agreement: ${signer.name}`}>{(id, d) => <Input id={id} aria-describedby={d} autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+        <div className="flex flex-col gap-1.5"><span className="text-sm font-medium text-ink-2">Your signature</span><SignaturePad name={name} onChange={setSig} /></div>
+        <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 size-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} /><span>I agree to be bound by this agreement.</span></label>
+        <ErrorNote error={m.error} />
+      </form>
+    </Dialog>
   );
 }
 
