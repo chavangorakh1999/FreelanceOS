@@ -70,7 +70,9 @@ export class PortalAdminService {
         body: `${ws.name} has invited you to a secure portal where you can review proposals and agreements, follow project progress and see invoices.\nThis invitation expires in ${INVITATION_TTL_DAYS} days.`,
       });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'portal.invited', targetType: 'client_contact', targetId: contact.id, ip: a.ip, metadata: { clientId, role: dto.role, projectCount: dto.projectIds?.length ?? 0 } });
-      return { id: inv.id, expiresAt };
+      // Development only: with the log email provider nothing is actually sent, so hand the link back to the person testing.
+      const devLink = this.env.emailProvider === 'log' && this.env.nodeEnv !== 'production' ? `${this.env.webOrigin.replace(/\/$/, '')}/portal/accept/${token}` : undefined;
+      return { id: inv.id, expiresAt, devLink };
     }
   }
 
@@ -104,6 +106,7 @@ export class PortalAdminService {
       const p = await tx.project.findFirst({ where: { id: projectId, workspaceId: a.workspaceId } });
       if (!p) throw notFound('Project');
       const invited: string[] = [];
+      let devLink: string | undefined;
       for (const x of people) {
         const c = await tx.clientContact.findFirst({ where: { id: x.contactId, clientId: p.clientId, workspaceId: a.workspaceId, archivedAt: null }, include: { portalMembership: true, portalInvitations: { where: { usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }, take: 1 } } });
         if (!c) throw notFound('Contact');
@@ -113,7 +116,7 @@ export class PortalAdminService {
           if (active && x.role && x.role !== c.portalMembership!.role) await tx.portalMembership.update({ where: { id: c.portalMembership!.id }, data: { role: x.role } });
           if (!active && !c.portalInvitations[0]) {
             const grants = await tx.portalProjectGrant.findMany({ where: { contactId: c.id, revokedAt: null }, select: { projectId: true } });
-            await this.inviteTx(tx, a, p.clientId, { contactId: c.id, role: x.role ?? 'APPROVER', projectIds: grants.map((g) => g.projectId) });
+            devLink = (await this.inviteTx(tx, a, p.clientId, { contactId: c.id, role: x.role ?? 'APPROVER', projectIds: grants.map((g) => g.projectId) })).devLink ?? devLink;
             invited.push(c.id);
           }
         } else {
@@ -123,7 +126,7 @@ export class PortalAdminService {
       const anyone = await tx.portalProjectGrant.count({ where: { projectId, revokedAt: null } });
       await tx.project.update({ where: { id: projectId }, data: { visibility: anyone > 0 ? 'CLIENT_VISIBLE' : 'INTERNAL' } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'project.client_access_updated', targetType: 'project', targetId: projectId, ip: a.ip, metadata: { canSee: people.filter((x) => x.canSee).map((x) => x.contactId), invited } });
-      return { invited: invited.length, shared: anyone > 0 };
+      return { invited: invited.length, shared: anyone > 0, ...(devLink ? { devLink } : {}) };
     });
   }
 

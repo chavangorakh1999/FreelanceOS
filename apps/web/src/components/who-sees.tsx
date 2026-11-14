@@ -5,6 +5,8 @@ import { Check, Eye, EyeOff, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { Button, ErrorNote, Spinner } from '@/components/ui';
 import { api } from '@/lib/api';
+import { DevInviteLink } from '@/components/portal-access';
+import { useState } from 'react';
 
 type Contact = {
   contactId: string; name: string; email: string | null; isPrimary: boolean;
@@ -20,10 +22,11 @@ type Overview = { client: { id: string; name: string }; contacts: Contact[] };
  */
 export function WhoSees({ clientId, projectIds = [], what = 'it' }: { clientId: string; projectIds?: string[]; what?: string }) {
   const qc = useQueryClient();
+  const [devLink, setDevLink] = useState<string | null>(null);
   const key = ['client-portal', clientId];
   const q = useQuery({ queryKey: key, queryFn: () => api<Overview>(`/clients/${clientId}/portal`) });
   const done = () => { void qc.invalidateQueries({ queryKey: key }); for (const p of projectIds) void qc.invalidateQueries({ queryKey: ['client-access', p] }); };
-  const invite = useMutation({ mutationFn: (c: Contact) => api(`/clients/${clientId}/portal/invitations`, { body: { contactId: c.contactId, role: 'APPROVER', projectIds } }), onSuccess: done });
+  const invite = useMutation({ mutationFn: (c: Contact) => api<{ devLink?: string }>(`/clients/${clientId}/portal/invitations`, { body: { contactId: c.contactId, role: 'APPROVER', projectIds } }), onSuccess: (r) => { setDevLink(r?.devLink ?? null); done(); } });
   const grant = useMutation({ mutationFn: (c: Contact) => api(`/projects/${projectIds[0]}/client-access`, { method: 'PUT', body: { people: [{ contactId: c.contactId, canSee: true }] } }), onSuccess: done });
 
   if (q.isLoading) return <Spinner />;
@@ -62,6 +65,7 @@ export function WhoSees({ clientId, projectIds = [], what = 'it' }: { clientId: 
           </li>
         ))}
       </ul>
+      {devLink && <DevInviteLink link={devLink} />}
       <ErrorNote error={invite.error ?? grant.error} />
     </div>
   );

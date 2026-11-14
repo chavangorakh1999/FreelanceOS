@@ -48,6 +48,9 @@ const future = (d = 30) => new Date(Date.now() + d * 86400000).toISOString().sli
   await owner.locator('dialog[open]').getByText(project.name).waitFor();
   await owner.locator('dialog[open]').getByLabel('Billing portal rebuild').check();
   await owner.locator('dialog[open]').getByRole('button', { name: 'Send invitation' }).click();
+  // Outside production with the log email provider, the dialog then shows the invitation link; close it.
+  const done = owner.locator('dialog[open]').getByRole('button', { name: 'Done' });
+  if (await done.waitFor({ timeout: 5000 }).then(() => true, () => false)) await done.click();
   await owner.getByText(/Invited, expires/).waitFor();
   await owner.screenshot({ path: `${shots}/01-owner-invite.png` });
   step('owner invited Priya from the client page');

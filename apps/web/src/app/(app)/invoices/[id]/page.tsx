@@ -146,7 +146,7 @@ export default function InvoicePage() {
         <div className="mt-3"><ErrorNote error={share.error} /></div>
       </Dialog>
       <VoidDialog open={dialog === 'void'} id={id} number={inv.number} onClose={() => setDialog(null)} onDone={refresh} />
-      <RecordPaymentDialog open={dialog === 'pay'} onClose={() => setDialog(null)} defaultClientId={inv.client.id} onDone={refresh} />
+      <RecordPaymentDialog open={dialog === 'pay'} onClose={() => setDialog(null)} defaultClientId={inv.client.id} defaultInvoiceId={inv.id} onDone={refresh} />
     </>
   );
 }

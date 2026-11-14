@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Badge, Button, Card, ErrorNote, Spinner } from '@/components/ui';
 import { api, Task } from '@/lib/api';
+import { DevInviteLink } from '@/components/portal-access';
 
 type Person = { contactId: string; name: string; email: string | null; isPrimary: boolean; status: 'ACTIVE' | 'INVITED' | 'NONE' | 'NO_EMAIL'; role: string | null; canSee: boolean };
 type Access = { clientName: string; shared: boolean; people: Person[] };
@@ -21,6 +22,7 @@ export function ClientAccessCard({ projectId, clientId, onChanged }: { projectId
   const key = ['client-access', projectId];
   const q = useQuery({ queryKey: key, queryFn: () => api<Access>(`/projects/${projectId}/client-access`) });
   const [note, setNote] = useState<string | null>(null);
+  const [devLink, setDevLink] = useState<string | null>(null);
   const tasks = useQuery({ queryKey: ['tasks', projectId], queryFn: () => api<Task[]>(`/projects/${projectId}/tasks`) });
   const hidden = (tasks.data ?? []).filter((t) => t.visibility === 'INTERNAL' && t.status !== 'CANCELLED');
   const showAll = useMutation({
@@ -28,8 +30,9 @@ export function ClientAccessCard({ projectId, clientId, onChanged }: { projectId
     onSettled: () => { void qc.invalidateQueries({ queryKey: ['tasks', projectId] }); onChanged(); },
   });
   const save = useMutation({
-    mutationFn: (p: Person) => api<{ invited: number; shared: boolean }>(`/projects/${projectId}/client-access`, { method: 'PUT', body: { people: [{ contactId: p.contactId, canSee: !p.canSee }] } }),
+    mutationFn: (p: Person) => api<{ invited: number; shared: boolean; devLink?: string }>(`/projects/${projectId}/client-access`, { method: 'PUT', body: { people: [{ contactId: p.contactId, canSee: !p.canSee }] } }),
     onSuccess: (r, p) => {
+      setDevLink(r.devLink ?? null);
       setNote(r.invited > 0 ? `Invitation sent to ${p.email}. They will see this project once they accept.` : p.canSee ? `${p.name} can no longer see this project.` : `${p.name} can now see this project.`);
       void qc.invalidateQueries({ queryKey: key });
       void qc.invalidateQueries({ queryKey: ['people', projectId] });
@@ -78,6 +81,7 @@ export function ClientAccessCard({ projectId, clientId, onChanged }: { projectId
         </div>
       )}
       {note && <p role="status" className="mt-3 rounded-control bg-ok-soft px-3 py-2 text-[13px] text-ok-ink">{note}</p>}
+      {devLink && <div className="mt-3"><DevInviteLink link={devLink} /></div>}
       <div className="mt-3"><ErrorNote error={save.error ?? showAll.error} /></div>
     </Card>
   );

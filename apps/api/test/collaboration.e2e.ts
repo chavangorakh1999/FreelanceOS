@@ -87,7 +87,7 @@ describe('tasks like an issue tracker: keys, assignees, client hand-offs', () =>
     expect(before.people.map((x: { name: string; status: string }) => [x.name, x.status])).toEqual([['Priya Menon', 'NONE'], ['Nomail', 'NO_EMAIL'], ['Vikram', 'NONE']]);
 
     const r = (await h.http().put(`/projects/${p.id}/client-access`).set(T()).send({ people: [{ contactId: c.contactId, canSee: true, role: 'APPROVER' }, { contactId: second.id, canSee: true, role: 'VIEWER' }] }).expect(200)).body;
-    expect(r).toEqual({ invited: 2, shared: true });
+    expect(r).toMatchObject({ invited: 2, shared: true });
     expect(await h.prisma.project.findUniqueOrThrow({ where: { id: p.id } })).toMatchObject({ visibility: 'CLIENT_VISIBLE' });
     expect(await h.prisma.notificationDelivery.count({ where: { category: 'INVITATION' } })).toBe(2);
     const after = (await h.http().get(`/projects/${p.id}/client-access`).set(T())).body.people;

@@ -7,6 +7,20 @@ import { Badge, Button, Card, Dialog, ErrorNote, Field, Select, Spinner } from '
 import { api, PortalContactRow, PortalOverview } from '@/lib/api';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 
+/** Development only: the API returns the invitation link when email is logged instead of sent. */
+export function DevInviteLink({ link }: { link: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="grid gap-2 rounded-stat bg-stat p-3">
+      <p className="text-[13px] text-muted">Development: email isn’t sent, so open or copy the invitation link yourself (use a private window, since you’re signed in here).</p>
+      <div className="flex items-center gap-2">
+        <a href={link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-[13px] text-accent hover:underline">{link}</a>
+        <Button className="h-8 px-3 text-[13px]" onClick={() => void navigator.clipboard.writeText(link).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy'}</Button>
+      </div>
+    </div>
+  );
+}
+
 /** Who at the client can sign in to the portal, with which role, and which projects they can see. */
 export function PortalAccessCard({ clientId, archived }: { clientId: string; archived: boolean }) {
   const qc = useQueryClient();
@@ -56,12 +70,18 @@ function AccessDialog({ clientId, contact, projects, onClose, onDone }: { client
   const active = contact.membership?.status === 'ACTIVE';
   const [role, setRole] = useState<'VIEWER' | 'APPROVER'>(contact.membership?.role ?? contact.invitation?.role ?? 'APPROVER');
   const [granted, setGranted] = useState<string[]>(contact.projectIds);
+  const [devLink, setDevLink] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: () => active
-      ? api(`/clients/${clientId}/portal/contacts/${contact.contactId}/access`, { method: 'PUT', body: { role, projectIds: granted } })
-      : api(`/clients/${clientId}/portal/invitations`, { body: { contactId: contact.contactId, role, projectIds: granted } }),
-    onSuccess: onDone,
+      ? api<unknown>(`/clients/${clientId}/portal/contacts/${contact.contactId}/access`, { method: 'PUT', body: { role, projectIds: granted } })
+      : api<{ devLink?: string }>(`/clients/${clientId}/portal/invitations`, { body: { contactId: contact.contactId, role, projectIds: granted } }),
+    onSuccess: (r) => { const link = (r as { devLink?: string } | undefined)?.devLink; if (link) setDevLink(link); else onDone(); },
   });
+  if (devLink) return (
+    <Dialog open onClose={onDone} title={`Invitation sent to ${contact.name}`} footer={<Button variant="primary" onClick={onDone}>Done</Button>}>
+      <DevInviteLink link={devLink} />
+    </Dialog>
+  );
   const toggle = (id: string) => setGranted((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]));
 
   return (

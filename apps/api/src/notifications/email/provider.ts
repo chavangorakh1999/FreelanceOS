@@ -25,7 +25,8 @@ export class LogEmailProvider implements EmailProvider {
   async send(m: EmailMessage) {
     this.sent.push(m);
     if (this.sent.length > 200) this.sent.shift();
-    this.log.log(`[not sent — log provider] to=${m.to} subject="${m.subject}"`);
+    const link = /https?:\/\/\S+/.exec(m.text)?.[0];
+    this.log.log(`[not sent — log provider] to=${m.to} subject="${m.subject}"${link ? ` link=${link}` : ''}`);
     return { providerMessageId: `log-${m.messageId}` };
   }
 }

@@ -31,6 +31,7 @@ describe('portal identity and access', () => {
     expect(mail.to).toBe(c.email);
     expect(mail.subject).toContain('Gorakh Studio');
     expect(mail.text).toContain(`https://app.example.test/portal/accept/${t}`);
+    expect(res.body.devLink).toBe(`https://app.example.test/portal/accept/${t}`); // log provider outside production: link handed back for testing
 
     const ov = (await h.http().get(`/clients/${c.clientId}/portal`).set(k.O()).expect(200)).body;
     expect(ov.contacts[0]).toMatchObject({ name: 'Priya Menon', email: c.email, membership: null, invitation: { status: 'PENDING', role: 'APPROVER' } });
