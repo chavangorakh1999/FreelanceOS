@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ))}
 
         {/* The person and the way out live together at the foot, where every product puts them. */}
-        <div className="mt-auto flex items-center gap-3 border-t border-line px-2 pb-1 pt-3">
+        <div className="sticky bottom-0 -mx-3 -mb-3 mt-auto flex items-center gap-3 border-t border-line bg-shell px-5 pb-3 pt-3">
           <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-3 text-xs font-semibold">{initials}</span>
           <div className="min-w-0 flex-1 leading-tight"><div className="truncate text-sm font-medium">{me.user.name}</div><div className="truncate text-[12px] text-muted">{me.user.email}</div></div>
           <button type="button" onClick={() => void logout()} aria-label="Sign out" title="Sign out" className="flex size-9 shrink-0 items-center justify-center rounded-control text-ink-2 hover:bg-paper-3 hover:text-ink"><LogOut {...ICON} /></button>
