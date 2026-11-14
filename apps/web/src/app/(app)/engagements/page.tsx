@@ -25,14 +25,14 @@ function EngagementsView() {
 
   const tab = (v: 'board' | 'list', label: string) => (
     <button type="button" onClick={() => setView(v)} aria-pressed={view === v}
-      className={`h-10 rounded-control px-4 text-sm font-medium ${view === v ? 'border border-line-strong bg-card text-ink' : 'text-ink-2 hover:bg-black/5'}`}>{label}</button>
+      className={`h-8 rounded-lg px-3 text-sm font-medium ${view === v ? 'groove-on' : 'text-ink-2 hover:text-ink'}`}>{label}</button>
   );
 
   return (
     <>
       <title>Engagements, FreelanceOS</title>
       <PageHeader title="Engagements" subtitle="Every opportunity from first conversation to won or lost."
-        actions={<><div className="flex gap-1 rounded-control bg-shell p-1">{tab('board', 'Board')}{tab('list', 'List')}</div><Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New engagement</Button></>} />
+        actions={<><div className="groove flex gap-1 rounded-control p-1">{tab('board', 'Board')}{tab('list', 'List')}</div><Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New engagement</Button></>} />
       <ErrorNote error={list.error ?? stages.error} />
       {list.isLoading || stages.isLoading ? <Spinner /> : items.length === 0 ? (
         <Card><EmptyState title="No engagements yet" body="Create an engagement for a client to start tracking it through your pipeline." action={<Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New engagement</Button>} /></Card>

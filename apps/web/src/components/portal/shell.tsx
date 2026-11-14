@@ -41,8 +41,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             <button type="button" onClick={() => void logout()} aria-label="Sign out" className="flex size-10 items-center justify-center rounded-control hover:bg-black/5"><LogOut {...ICON} /></button>
           </div>
         </div>
-        <nav aria-label="Portal" className="mx-auto w-full max-w-[1040px] overflow-x-auto px-2 sm:px-4">
-          <ul className="flex min-w-max gap-1">
+        {/* From sm up the sections sit under the header as tabs; on a phone they move to a bar at the thumb. */}
+        <nav aria-label="Portal" className="mx-auto hidden w-full max-w-[1040px] px-2 sm:block sm:px-4">
+          <ul className="flex gap-1">
             {NAV.map(({ label, href, icon: Icon, exact }) => (
               <li key={href}><Link href={href} aria-current={isActive(href, exact) ? 'page' : undefined}
                 className={`-mb-px flex h-11 items-center gap-2 border-b-2 px-3.5 text-sm font-medium ${isActive(href, exact) ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'}`}><Icon {...ICON} size={16} />{label}</Link></li>
@@ -50,11 +51,21 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
       </header>
-      <main className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-6 px-4 py-6 pb-28 sm:px-6 sm:py-8 sm:pb-8">
         {me.role === 'VIEWER' && <p className="rounded-control bg-stat px-4 py-2.5 text-[13px] text-ink-2">You have read-only access. To accept, sign or approve, ask {me.businessName} to give you approval rights.</p>}
         {children}
       </main>
-      <footer className="mx-auto w-full max-w-[1040px] px-4 pb-8 text-[13px] text-muted sm:px-6">Shared securely by {me.businessName}.</footer>
+      <nav aria-label="Portal sections" className="fixed inset-x-0 bottom-0 z-[300] border-t border-line bg-shell pb-[env(safe-area-inset-bottom)] sm:hidden">
+        <ul className="grid grid-cols-5">
+          {NAV.map(({ label, href, icon: Icon, exact }) => (
+            <li key={href}><Link href={href} aria-current={isActive(href, exact) ? 'page' : undefined}
+              className={`relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${isActive(href, exact) ? 'text-ink' : 'text-muted'}`}>
+              {isActive(href, exact) && <span aria-hidden="true" className="absolute inset-x-4 top-0 h-[3px] rounded-b-sm bg-accent" />}
+              <Icon {...ICON} size={20} />{label}</Link></li>
+          ))}
+        </ul>
+      </nav>
+      <footer className="mx-auto hidden w-full max-w-[1040px] px-4 pb-8 text-[13px] text-muted sm:block sm:px-6">Shared securely by {me.businessName}.</footer>
     </div>
   );
 }

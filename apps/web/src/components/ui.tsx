@@ -5,9 +5,14 @@ import { useEffect, useId, useRef } from 'react';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
+/** One recipe for every button-shaped thing, including links: 40px tall, 8px radius, 16px side padding. */
+export const btnBase = 'inline-flex h-10 items-center justify-center gap-2 rounded-control px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50';
+export const btnPrimary = `btn-ink ${btnBase}`;
+export const btnSecondary = `btn-card ${btnBase}`;
+
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger' };
 export function Button({ variant = 'secondary', className, ...p }: BtnProps) {
-  const base = 'inline-flex h-10 items-center justify-center gap-2 rounded-control px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50';
+  const base = btnBase;
   const v = {
     primary: 'btn-ink',
     secondary: 'btn-card',

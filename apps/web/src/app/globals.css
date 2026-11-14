@@ -48,3 +48,15 @@ body { font-size: var(--text-sm); line-height: 1.5; background: var(--color-pane
 
 dialog::backdrop { background: oklch(var(--deep) / 0.45); }
 dialog { background: var(--color-cotton); color: var(--color-print); }
+
+/* No default scrollbars: scroll areas get a thin quiet track, and strips that scroll sideways hide it entirely. */
+* { scrollbar-width: thin; scrollbar-color: var(--color-rule-2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-rule-2); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Segmented choice: a groove pressed into the stock with a card riding in it. */
+.groove { background: var(--color-paper-2); box-shadow: var(--press-groove); }
+.groove-on { background: var(--color-cotton); color: var(--color-print); box-shadow: var(--edge-stock); }

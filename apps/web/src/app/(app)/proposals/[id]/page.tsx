@@ -8,7 +8,7 @@ import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { CommentsPanel } from '@/components/comments';
 import { LockedBadge, ProposalBadge } from '@/components/status';
-import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th } from '@/components/ui';
+import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary } from '@/components/ui';
 import { api, ApiError, downloadFile, ProposalDetail, ProposalVersion } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
@@ -60,8 +60,8 @@ export default function ProposalPage() {
             <h2 id="act-h" className="mb-3 text-lg font-semibold">Next steps</h2>
             <div className="flex flex-col gap-2">
               {isLive && <Button variant="primary" onClick={() => setDeciding(true)}>Record client decision</Button>}
-              {p.status === 'ACCEPTED' && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className="inline-flex h-10 items-center justify-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">Start project</Link>}
-              {p.status === 'ACCEPTED' && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-board px-4 text-sm font-medium text-board-type hover:bg-ink-2"><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
+              {p.status === 'ACCEPTED' && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className={btnSecondary}>Start project</Link>}
+              {p.status === 'ACCEPTED' && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className={btnPrimary}><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
               {latest.status === 'DRAFT' && <p className="text-[13px] text-muted">Finish the draft, then share it from the bar at the bottom of the page.</p>}
               {p.status !== 'ACCEPTED' && latest.status !== 'DRAFT' && <Button onClick={() => newVersion.mutate()} disabled={newVersion.isPending}>Start new version</Button>}
               <Button variant="ghost" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>{p.status === 'ACCEPTED' ? 'Duplicate as replacement' : 'Duplicate proposal'}</Button>

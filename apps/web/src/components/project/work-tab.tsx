@@ -69,7 +69,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
           <h2 id="tk-h" className="text-lg font-semibold">Tasks</h2>
           <div className="flex flex-wrap items-center gap-2">
             <Select aria-label="Filter by milestone" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-48"><option value="">All milestones</option><option value="none">No milestone</option>{ms.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select>
-            <div className="flex gap-1 rounded-control bg-shell p-1">{(['list', 'board'] as const).map((v) => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`h-8 rounded-lg px-3 text-sm font-medium ${view === v ? 'border border-line-strong bg-card' : 'text-ink-2 hover:bg-black/5'}`}>{v === 'list' ? 'List' : 'Board'}</button>)}</div>
+            <div className="groove flex gap-1 rounded-control p-1">{(['list', 'board'] as const).map((v) => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`h-8 rounded-lg px-3 text-sm font-medium ${view === v ? 'groove-on' : 'text-ink-2 hover:text-ink'}`}>{v === 'list' ? 'List' : 'Board'}</button>)}</div>
             {!closed && <Button variant="primary" onClick={() => setAddingTask(true)}><Plus size={16} aria-hidden="true" />Add task</Button>}
           </div>
         </div>
