@@ -1,0 +1,396 @@
+// FreelanceOS — Phase 0/1 schema: tenancy, identity, CRM, pipeline, audit, config.
+// Rules from the PRD that shape this file:
+//  - every business row carries workspaceId (future multi-tenant SaaS)
+//  - money = BigInt minor units + currency code, never floats
+//  - archive, never cascade-delete, historical records
+//  - audit events are append-only (enforced by a DB trigger in the first migration)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Identity & access ─────────────────────────
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  PROJECT_MANAGER
+  FINANCE_MANAGER
+  COLLABORATOR
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique // stored lower-cased by the application
+  passwordHash String
+  name         String
+  disabledAt   DateTime? @db.Timestamptz
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  memberships WorkspaceMembership[]
+  sessions    UserSession[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String
+  legalName       String?
+  email           String?
+  phone           String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  region          String?
+  postalCode      String?
+  country         String?  @db.Char(2) // ISO 3166-1 alpha-2
+  taxIdentifier   String?  // e.g. GSTIN; not assumed to be Indian
+  defaultCurrency String   @default("INR") @db.Char(3)
+  timezone        String   @default("Asia/Kolkata")
+  locale          String   @default("en-IN")
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  memberships    WorkspaceMembership[]
+  settings       WorkspaceSettings?
+  clients        Client[]
+  pipelineStages PipelineStage[]
+  engagements    Engagement[]
+  auditEvents    AuditEvent[]
+  numberSequences NumberSequence[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMembership {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_memberships")
+}
+
+model UserSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique // sha-256 of the opaque refresh token
+  userAgent        String?
+  ipAddress        String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  lastUsedAt       DateTime  @default(now()) @db.Timestamptz
+  expiresAt        DateTime  @db.Timestamptz
+  revokedAt        DateTime? @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, revokedAt])
+  @@map("user_sessions")
+}
+
+// ───────────────────────── Configuration ─────────────────────────
+
+enum NumberingScope {
+  WORKSPACE      // one continuous sequence
+  FINANCIAL_YEAR // resets every April (Indian FY)
+}
+
+model WorkspaceSettings {
+  workspaceId        String         @id @db.Uuid
+  invoicePrefix      String         @default("INV")
+  invoiceNumbering   NumberingScope @default(FINANCIAL_YEAR)
+  invoicePadding     Int            @default(4)
+  defaultPaymentTermsDays Int       @default(30)
+  defaultTaxBps      Int            @default(1800)
+  updatedAt          DateTime       @updatedAt @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@map("workspace_settings")
+}
+
+/// Gap-free, concurrency-safe counters. Incremented with a single
+/// INSERT … ON CONFLICT DO UPDATE … RETURNING statement (see NumberSequenceService).
+model NumberSequence {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  key         String // e.g. "INVOICE", "PROPOSAL"
+  scope       String @default("") // e.g. "26-27" for a financial-year scope
+  lastValue   Int    @default(0)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, key, scope])
+  @@map("number_sequences")
+}
+
+model Currency {
+  code     String @id @db.Char(3)
+  name     String
+  exponent Int    // minor-unit digits: INR 2, JPY 0, KWD 3
+
+  @@map("currencies")
+}
+
+/// Historical rates are append-only; a transaction stores the rate used at the time.
+model ExchangeRate {
+  id            String   @id @default(uuid()) @db.Uuid
+  baseCurrency  String   @db.Char(3)
+  quoteCurrency String   @db.Char(3)
+  rate          Decimal  @db.Decimal(20, 10)
+  asOf          DateTime @db.Date
+  source        String
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  @@unique([baseCurrency, quoteCurrency, asOf, source])
+  @@map("exchange_rates")
+}
+
+// ───────────────────────── CRM ─────────────────────────
+
+enum ClientType {
+  COMPANY
+  INDIVIDUAL
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model Client {
+  id          String       @id @default(uuid()) @db.Uuid
+  workspaceId String       @db.Uuid
+  type        ClientType
+  name        String
+  status      ClientStatus @default(ACTIVE)
+  email       String?
+  phone       String?
+  website     String?
+  taxIdentifier String?
+  notes       String?
+  tags        String[]     @default([])
+  archivedAt  DateTime?    @db.Timestamptz
+  createdAt   DateTime     @default(now()) @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @db.Timestamptz
+
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  contacts     ClientContact[]
+  addresses    ClientAddress[]
+  interactions ClientInteraction[]
+  engagements  Engagement[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, name])
+  @@map("clients")
+}
+
+model ClientContact {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  clientId    String    @db.Uuid
+  firstName   String
+  lastName    String?
+  email       String?
+  phone       String?
+  jobTitle    String?
+  isPrimary   Boolean   @default(false) // at most one per client: partial unique index in migration
+  notes       String?
+  archivedAt  DateTime? @db.Timestamptz
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, clientId])
+  @@index([workspaceId, email])
+  @@map("client_contacts")
+}
+
+enum AddressKind {
+  BILLING
+  SERVICE
+}
+
+model ClientAddress {
+  id          String      @id @default(uuid()) @db.Uuid
+  workspaceId String      @db.Uuid
+  clientId    String      @db.Uuid
+  kind        AddressKind
+  line1       String
+  line2       String?
+  city        String?
+  region      String?
+  postalCode  String?
+  country     String      @db.Char(2)
+  isDefault   Boolean     @default(false)
+  createdAt   DateTime    @default(now()) @db.Timestamptz
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, clientId])
+  @@map("client_addresses")
+}
+
+enum InteractionType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+}
+
+model ClientInteraction {
+  id          String          @id @default(uuid()) @db.Uuid
+  workspaceId String          @db.Uuid
+  clientId    String          @db.Uuid
+  type        InteractionType
+  summary     String
+  occurredAt  DateTime        @db.Timestamptz
+  authorId    String          @db.Uuid
+  createdAt   DateTime        @default(now()) @db.Timestamptz
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, clientId, occurredAt])
+  @@map("client_interactions")
+}
+
+// ───────────────────────── Engagements & pipeline ─────────────────────────
+
+enum StageKind {
+  OPEN
+  WON
+  LOST
+  ON_HOLD
+}
+
+/// Configurable per workspace (PRD §7.4, P1 configurable stages — seeded on setup).
+model PipelineStage {
+  id             String    @id @default(uuid()) @db.Uuid
+  workspaceId    String    @db.Uuid
+  name           String
+  kind           StageKind @default(OPEN)
+  position       Int
+  probabilityBps Int       @default(0) // forecast weight, 10000 = 100%
+  archivedAt     DateTime? @db.Timestamptz
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  engagements Engagement[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, position])
+  @@map("pipeline_stages")
+}
+
+model Engagement {
+  id                 String    @id @default(uuid()) @db.Uuid
+  workspaceId        String    @db.Uuid
+  clientId           String    @db.Uuid
+  stageId            String    @db.Uuid
+  ownerId            String    @db.Uuid
+  title              String
+  description        String?
+  serviceCategory    String?
+  source             String?
+  estimatedValueMinor BigInt   @default(0)
+  currency           String    @db.Char(3)
+  expectedStartDate  DateTime? @db.Date
+  expectedCloseDate  DateTime? @db.Date
+  lostReason         String?
+  followUpAt         DateTime? @db.Date
+  archivedAt         DateTime? @db.Timestamptz
+  createdAt          DateTime  @default(now()) @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @db.Timestamptz
+
+  workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  client       Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  stage        PipelineStage            @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  requirements EngagementRequirement[]
+  stageHistory EngagementStageHistory[]
+
+  @@index([workspaceId, stageId])
+  @@index([workspaceId, clientId])
+  @@map("engagements")
+}
+
+enum RequirementKind {
+  REQUIREMENT
+  DISCOVERY_NOTE
+}
+
+model EngagementRequirement {
+  id           String          @id @default(uuid()) @db.Uuid
+  workspaceId  String          @db.Uuid
+  engagementId String          @db.Uuid
+  kind         RequirementKind @default(REQUIREMENT)
+  title        String
+  detail       String?
+  position     Int             @default(0)
+  createdAt    DateTime        @default(now()) @db.Timestamptz
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, engagementId])
+  @@map("engagement_requirements")
+}
+
+model EngagementStageHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  workspaceId  String   @db.Uuid
+  engagementId String   @db.Uuid
+  fromStageId  String?  @db.Uuid
+  toStageId    String   @db.Uuid
+  actorId      String   @db.Uuid
+  reason       String?
+  createdAt    DateTime @default(now()) @db.Timestamptz
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, engagementId, createdAt])
+  @@map("engagement_stage_history")
+}
+
+// ───────────────────────── Audit ─────────────────────────
+
+enum AuditActorType {
+  USER
+  CLIENT_CONTACT
+  SYSTEM
+}
+
+/// Append-only. UPDATE and DELETE are rejected by a trigger (see migration).
+/// Targets are (type, id) pairs because an audit trail legitimately spans every
+/// record type; it is never used for authorization or joins on critical paths.
+model AuditEvent {
+  id            String         @id @default(uuid()) @db.Uuid
+  workspaceId   String         @db.Uuid
+  actorType     AuditActorType @default(USER)
+  actorId       String?        @db.Uuid
+  action        String         // e.g. "client.created", "engagement.stage_changed"
+  targetType    String
+  targetId      String         @db.Uuid
+  objectVersion Int?
+  metadata      Json?
+  ipAddress     String?
+  createdAt     DateTime       @default(now()) @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([workspaceId, targetType, targetId])
+  @@map("audit_events")
+}
