@@ -14,6 +14,9 @@ export interface AuthContext {
   role: WorkspaceRole;
   sessionId: string;
   ip?: string;
+  /** Set only when a client acts through the portal. Services then record the decision against this person, never a staff user. */
+  portalUserId?: string;
+  userAgent?: string;
 }
 
 export interface AccessTokenPayload {
@@ -53,7 +56,7 @@ export class AuthGuard implements CanActivate {
 
     let payload: AccessTokenPayload;
     try {
-      payload = await this.jwt.verifyAsync<AccessTokenPayload>(header.slice(7), { secret: this.env.jwtAccessSecret });
+      payload = await this.jwt.verifyAsync<AccessTokenPayload>(header.slice(7), { secret: this.env.jwtAccessSecret, audience: 'staff' });
     } catch {
       throw unauthenticated();
     }

@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import { AuthContext } from '../common/auth';
 import { DomainError, notFound } from '../common/errors';
+import { NotificationsService } from '../notifications/notifications.service';
 import { loadProject } from '../projects/access';
 import { PrismaService } from '../prisma/prisma.service';
 import { DiffQuery, SaveScopeDto, ScopeDecisionDto } from './scope.dto';
@@ -27,7 +28,7 @@ export async function copyScopeVersion(tx: Tx, a: AuthContext, scopeDocumentId: 
 
 @Injectable()
 export class ScopeService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly notify: NotificationsService) {}
 
   async overview(a: AuthContext, projectId: string) {
     const doc = await this.document(this.prisma, a, projectId);
@@ -79,6 +80,13 @@ export class ScopeService {
 
       await tx.scopeVersion.update({ where: { id: v.id }, data: { status: 'IN_REVIEW', submittedAt: new Date() } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'scope.submitted', targetType: 'project', targetId: projectId, objectVersion: n, ip: a.ip });
+      const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { clientId: true, name: true, number: true, visibility: true } });
+      if (project.visibility !== 'INTERNAL') {
+        await this.notify.emit(tx, {
+          workspaceId: a.workspaceId, category: 'SCOPE_REVIEW', title: 'Project scope is ready for your review', body: `${project.name} (${project.number}), version ${n}`,
+          linkPath: `/portal/projects/${projectId}`, dedupeKey: `scope-review:${v.id}`, to: await this.notify.clientPeople(tx, a.workspaceId, project.clientId, { projectId, approversOnly: true }),
+        });
+      }
       return this.load(tx, doc.id, n);
     });
   }
@@ -106,12 +114,19 @@ export class ScopeService {
       });
       if (claimed.count !== 1) throw new DomainError('VERSION_NOT_IN_REVIEW', 'This version was decided a moment ago', 409);
       const approval = await tx.scopeApproval.create({
-        data: { workspaceId: a.workspaceId, versionId: v.id, decision: dto.decision, channel: dto.channel, approverName: dto.approverName, decidedAt, recordedById: a.userId, note: dto.note },
+        data: { workspaceId: a.workspaceId, versionId: v.id, decision: dto.decision, channel: dto.channel, approverName: dto.approverName, decidedAt, recordedById: a.portalUserId ? null : a.userId, decidedByPortalUserId: a.portalUserId ?? null, note: dto.note },
       });
       await this.audit.record(tx, {
-        workspaceId: a.workspaceId, actorId: a.userId, action: dto.decision === 'APPROVED' ? 'scope.approved' : 'scope.changes_requested', targetType: 'project', targetId: projectId, objectVersion: n, ip: a.ip,
+        workspaceId: a.workspaceId, actorId: a.userId, actorType: a.portalUserId ? 'CLIENT_CONTACT' : 'USER', action: dto.decision === 'APPROVED' ? 'scope.approved' : 'scope.changes_requested', targetType: 'project', targetId: projectId, objectVersion: n, ip: a.ip,
         metadata: { channel: dto.channel, approver: dto.approverName ?? null, approvalId: approval.id },
       });
+      if (a.portalUserId) {
+        const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { name: true, number: true } });
+        await this.notify.emit(tx, {
+          workspaceId: a.workspaceId, category: 'SCOPE_DECIDED', title: `${dto.approverName ?? 'The client'} ${dto.decision === 'APPROVED' ? 'approved' : 'asked for changes to'} the scope of ${project.number}`, body: project.name,
+          linkPath: `/projects/${projectId}`, dedupeKey: `scope-decided:${approval.id}`, to: await this.notify.staff(tx, a.workspaceId),
+        });
+      }
       return approval;
     });
   }

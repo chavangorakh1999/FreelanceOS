@@ -192,7 +192,7 @@ export class AuthService {
 
   private async signAccess(sid: string, sub: string, wid: string, role: WorkspaceRole, refreshToken: string, refreshExpiresAt: Date): Promise<IssuedSession> {
     const payload: AccessTokenPayload = { sub, wid, role, sid };
-    const accessToken = await this.jwt.signAsync(payload, { secret: this.env.jwtAccessSecret, expiresIn: this.env.accessTtlSeconds });
+    const accessToken = await this.jwt.signAsync(payload, { secret: this.env.jwtAccessSecret, expiresIn: this.env.accessTtlSeconds, audience: 'staff' });
     return { accessToken, expiresInSeconds: this.env.accessTtlSeconds, refreshToken, refreshExpiresAt };
   }
 }

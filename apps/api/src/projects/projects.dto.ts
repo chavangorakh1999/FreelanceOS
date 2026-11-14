@@ -64,6 +64,7 @@ export class CreateTaskDto {
   @IsOptional() @IsEnum(TaskPriority) priority?: TaskPriority;
   @IsOptional() @Type(() => Date) @IsDate() dueDate?: Date;
   @IsOptional() @IsUUID() milestoneId?: string;
+  @IsOptional() @IsEnum(Visibility) visibility?: Visibility;
 }
 
 export class UpdateTaskDto {
@@ -75,6 +76,7 @@ export class UpdateTaskDto {
   @IsOptional() @Type(() => Date) @IsDate() dueDate?: Date;
   /** Pass null to detach from its milestone. */
   @IsOptional() @IsUUID() milestoneId?: string | null;
+  @IsOptional() @IsEnum(Visibility) visibility?: Visibility;
 }
 
 export class ListTasksQuery {

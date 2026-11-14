@@ -14,6 +14,8 @@ export default defineConfig({
       JWT_ACCESS_SECRET: 'test-secret-test-secret-test-secret-123456',
       NODE_ENV: 'test',
       THROTTLE_DISABLED: 'true',
+      EMAIL_WORKER: 'off', // tests drive the outbox directly
+      WEB_ORIGIN: 'https://app.example.test',
       // Use a preinstalled Chromium when present (CI installs one with `playwright-core install`).
       ...(existsSync('/opt/pw-browsers/chromium') ? { CHROMIUM_PATH: '/opt/pw-browsers/chromium' } : {}),
     },

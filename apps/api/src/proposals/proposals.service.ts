@@ -8,6 +8,7 @@ import { moneyToJson } from '../common/money-dto';
 import { skipTake } from '../common/pagination';
 import { renderProposalHtml } from '../documents/html';
 import { PdfService } from '../documents/pdf.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
@@ -59,6 +60,7 @@ export class ProposalsService {
     private readonly seq: NumberSequenceService,
     private readonly templates: TemplatesService,
     private readonly pdf: PdfService,
+    private readonly notify: NotificationsService,
   ) {}
 
   // ───────── reads ─────────
@@ -195,6 +197,11 @@ export class ProposalsService {
       await tx.proposalVersion.update({ where: { id: v.id }, data: { status: 'SHARED', sharedAt: new Date(), sharedById: a.userId } });
       await tx.proposal.update({ where: { id }, data: { status: 'SHARED' } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'proposal.shared', targetType: 'proposal', targetId: id, objectVersion: n, ip: a.ip, metadata: { total: v.totalMinor.toString(), currency: v.currency } });
+      const prop = await tx.proposal.findUniqueOrThrow({ where: { id }, select: { clientId: true, title: true, number: true } });
+      await this.notify.emit(tx, {
+        workspaceId: a.workspaceId, category: 'PROPOSAL_SHARED', title: 'A proposal is ready for your review', body: `${prop.title} (${prop.number})`,
+        linkPath: `/portal/proposals/${id}`, dedupeKey: `proposal-shared:${v.id}`, to: await this.notify.clientPeople(tx, a.workspaceId, prop.clientId),
+      });
       return presentVersion(await this.loadVersion(tx, a, id, n));
     });
   }
@@ -249,13 +256,18 @@ export class ProposalsService {
       const claimed = await tx.proposalVersion.updateMany({ where: { id: v.id, status: 'SHARED' }, data: { status: dto.decision } });
       if (claimed.count !== 1) throw new DomainError('VERSION_NOT_ACTIVE', 'This version was decided by someone else a moment ago', 409);
       const decision = await tx.proposalDecision.create({
-        data: { workspaceId: a.workspaceId, proposalId: id, versionId: v.id, decision: dto.decision, channel: dto.channel, decidedAt, recordedById: a.userId, note: dto.note },
+        data: { workspaceId: a.workspaceId, proposalId: id, versionId: v.id, decision: dto.decision, channel: dto.channel, decidedAt, recordedById: a.portalUserId ? null : a.userId, decidedByPortalUserId: a.portalUserId ?? null, note: dto.note },
       });
       await tx.proposal.update({ where: { id }, data: { status: dto.decision, ...(dto.decision === 'ACCEPTED' ? { acceptedVersionId: v.id } : {}) } });
       await this.audit.record(tx, {
-        workspaceId: a.workspaceId, actorId: a.userId, action: `proposal.${dto.decision.toLowerCase()}`, targetType: 'proposal', targetId: id, objectVersion: n, ip: a.ip,
+        workspaceId: a.workspaceId, actorId: a.userId, actorType: a.portalUserId ? 'CLIENT_CONTACT' : 'USER', action: `proposal.${dto.decision.toLowerCase()}`, targetType: 'proposal', targetId: id, objectVersion: n, ip: a.ip,
         metadata: { channel: dto.channel, total: v.totalMinor.toString(), currency: v.currency, decisionId: decision.id },
       });
+      if (a.portalUserId) {
+        const prop = await tx.proposal.findUniqueOrThrow({ where: { id }, select: { title: true, number: true, client: { select: { name: true } } } });
+        const verb = dto.decision === 'ACCEPTED' ? 'accepted' : dto.decision === 'CHANGES_REQUESTED' ? 'asked for changes to' : 'declined';
+        await this.notify.emit(tx, { workspaceId: a.workspaceId, category: 'PROPOSAL_DECIDED', title: `${prop.client.name} ${verb} ${prop.number}`, body: prop.title, linkPath: `/proposals/${id}`, dedupeKey: `proposal-decided:${decision.id}`, to: await this.notify.staff(tx, a.workspaceId) });
+      }
       return decision;
     });
   }

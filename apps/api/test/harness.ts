@@ -4,10 +4,14 @@ import * as bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.factory';
+import { LogEmailProvider } from '../src/notifications/email/provider';
+import { EMAIL_PROVIDER } from '../src/notifications/email/provider';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 export interface Harness {
   app: INestApplication;
+  /** The development email provider: records every message "sent" so tests can inspect it. */
+  email: LogEmailProvider;
   prisma: PrismaService;
   http: () => ReturnType<typeof request>;
   reset: () => Promise<void>;
@@ -31,7 +35,8 @@ export async function createHarness(): Promise<Harness> {
       prisma.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`),
     ]);
   };
-  return { app, prisma, http: () => request(app.getHttpServer()), reset, close: () => app.close() };
+  const email = app.get<LogEmailProvider>(EMAIL_PROVIDER);
+  return { app, email, prisma, http: () => request(app.getHttpServer()), reset, close: () => app.close() };
 }
 
 export const OWNER = { name: 'Gorakh C', email: 'owner@example.com', password: 'correct horse battery', workspaceName: 'Gorakh Studio' };

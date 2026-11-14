@@ -8,6 +8,7 @@ import { DomainError, notFound } from '../common/errors';
 import { skipTake } from '../common/pagination';
 import { renderAgreementHtml } from '../documents/html';
 import { PdfService } from '../documents/pdf.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
@@ -40,6 +41,7 @@ export class AgreementsService {
     private readonly seq: NumberSequenceService,
     private readonly templates: TemplatesService,
     private readonly pdf: PdfService,
+    private readonly notify: NotificationsService,
   ) {}
 
   // ───────── reads ─────────
@@ -168,6 +170,10 @@ export class AgreementsService {
       await tx.agreement.update({ where: { id }, data: { status: 'SENT' } });
       await tx.signatureEvent.create({ data: { workspaceId: a.workspaceId, versionId: v.id, type: 'SENT', method: 'MANUAL_RECORDED', occurredAt: new Date(), recordedById: a.userId, evidence: 'Marked as sent by the owner' } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'agreement.sent', targetType: 'agreement', targetId: id, objectVersion: n, ip: a.ip, metadata: { contentHash: hash } });
+      await this.notify.emit(tx, {
+        workspaceId: a.workspaceId, category: 'AGREEMENT_SENT', title: 'An agreement is ready to sign', body: `${ag.title} (${ag.number})`,
+        linkPath: `/portal/agreements/${id}`, dedupeKey: `agreement-sent:${v.id}`, to: await this.notify.clientPeople(tx, a.workspaceId, ag.clientId, { approversOnly: true }),
+      });
       return this.loadVersion(tx, a, id, n);
     });
   }
@@ -192,7 +198,11 @@ export class AgreementsService {
       const occurredAt = dto.occurredAt ?? new Date();
       if (occurredAt.getTime() > Date.now() + 60_000) throw new DomainError('INVALID_DATE', 'An event cannot be dated in the future', 422);
       const method = dto.method ?? 'MANUAL_RECORDED';
-      const base = { workspaceId: a.workspaceId, versionId: v.id, occurredAt, method, recordedById: a.userId, idempotencyKey: idempotencyKey ?? null };
+      const base = {
+        workspaceId: a.workspaceId, versionId: v.id, occurredAt, method, recordedById: a.portalUserId ? null : a.userId, idempotencyKey: idempotencyKey ?? null,
+        portalUserId: a.portalUserId ?? null, ipAddress: a.portalUserId ? a.ip ?? null : null, userAgent: a.portalUserId ? a.userAgent ?? null : null,
+      };
+      const actor = { actorId: a.userId, actorType: a.portalUserId ? ('CLIENT_CONTACT' as const) : ('USER' as const) };
 
       if (dto.type === 'VIEWED') {
         await tx.signatureEvent.create({ data: { ...base, type: 'VIEWED', signerId: dto.signerId, evidence: dto.evidence } });
@@ -218,13 +228,19 @@ export class AgreementsService {
           } else {
             await tx.agreement.update({ where: { id }, data: { status: 'PARTIALLY_SIGNED' } });
           }
-          await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: allSigned ? 'agreement.signed' : 'agreement.signer_signed', targetType: 'agreement', targetId: id, objectVersion: n, ip: a.ip, metadata: { signer: signer.email, method, contentHash: v.contentHash } });
+          await this.audit.record(tx, { workspaceId: a.workspaceId, ...actor, action: allSigned ? 'agreement.signed' : 'agreement.signer_signed', targetType: 'agreement', targetId: id, objectVersion: n, ip: a.ip, metadata: { signer: signer.email, method, contentHash: v.contentHash } });
+          if (a.portalUserId) {
+            await this.notify.emit(tx, { workspaceId: a.workspaceId, category: 'AGREEMENT_SIGNED', title: `${signer.name} signed ${ag.number}`, body: ag.title, linkPath: `/agreements/${id}`, dedupeKey: `agreement-signed:${signer.id}`, to: await this.notify.staff(tx, a.workspaceId) });
+          }
         } else {
           await tx.agreementSigner.update({ where: { id: signer.id }, data: { status: 'DECLINED', declinedAt: occurredAt, declineReason: dto.evidence } });
           await tx.signatureEvent.create({ data: { ...base, type: 'DECLINED', signerId: signer.id, evidence: dto.evidence } });
           await tx.agreementVersion.update({ where: { id: v.id }, data: { status: 'DECLINED' } });
           await tx.agreement.update({ where: { id }, data: { status: 'DECLINED' } });
-          await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'agreement.declined', targetType: 'agreement', targetId: id, objectVersion: n, ip: a.ip, metadata: { signer: signer.email } });
+          await this.audit.record(tx, { workspaceId: a.workspaceId, ...actor, action: 'agreement.declined', targetType: 'agreement', targetId: id, objectVersion: n, ip: a.ip, metadata: { signer: signer.email } });
+          if (a.portalUserId) {
+            await this.notify.emit(tx, { workspaceId: a.workspaceId, category: 'AGREEMENT_SIGNED', title: `${signer.name} declined ${ag.number}`, body: ag.title, linkPath: `/agreements/${id}`, dedupeKey: `agreement-declined:${signer.id}`, to: await this.notify.staff(tx, a.workspaceId) });
+          }
         }
       }
       return { replayed: false, version: await this.loadVersion(tx, a, id, n) };

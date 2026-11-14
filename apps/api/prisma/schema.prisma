@@ -33,8 +33,11 @@ model User {
   createdAt    DateTime  @default(now()) @db.Timestamptz
   updatedAt    DateTime  @updatedAt @db.Timestamptz
 
-  memberships WorkspaceMembership[]
-  sessions    UserSession[]
+  memberships             WorkspaceMembership[]
+  sessions                UserSession[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  comments                Comment[]
 
   @@map("users")
 }
@@ -194,16 +197,18 @@ model Client {
   createdAt     DateTime     @default(now()) @db.Timestamptz
   updatedAt     DateTime     @updatedAt @db.Timestamptz
 
-  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
-  contacts     ClientContact[]
-  addresses    ClientAddress[]
-  interactions ClientInteraction[]
-  engagements  Engagement[]
-  proposals    Proposal[]
-  agreements   Agreement[]
-  projects     Project[]
-  invoices     Invoice[]
-  payments     Payment[]
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  contacts          ClientContact[]
+  addresses         ClientAddress[]
+  interactions      ClientInteraction[]
+  engagements       Engagement[]
+  proposals         Proposal[]
+  agreements        Agreement[]
+  projects          Project[]
+  invoices          Invoice[]
+  payments          Payment[]
+  portalMemberships PortalMembership[]
+  portalInvitations PortalInvitation[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, name])
@@ -225,7 +230,10 @@ model ClientContact {
   createdAt   DateTime  @default(now()) @db.Timestamptz
   updatedAt   DateTime  @updatedAt @db.Timestamptz
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  portalMembership    PortalMembership?
+  portalInvitations   PortalInvitation[]
+  portalProjectGrants PortalProjectGrant[]
 
   @@index([workspaceId, clientId])
   @@index([workspaceId, email])
@@ -515,6 +523,7 @@ model Proposal {
   decisions       ProposalDecision[]
   agreements      Agreement[]
   projects        Project[]
+  comments        Comment[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId])
@@ -610,19 +619,22 @@ model ProposalPaymentTerm {
 /// Until the client portal exists (Phase 5) the owner records decisions received by email/meeting,
 /// with channel + note as evidence; `recordedById` always names who entered it.
 model ProposalDecision {
-  id           String          @id @default(uuid()) @db.Uuid
-  workspaceId  String          @db.Uuid
-  proposalId   String          @db.Uuid
-  versionId    String          @unique @db.Uuid
-  decision     DecisionKind
-  channel      DecisionChannel @default(OTHER)
-  decidedAt    DateTime        @db.Timestamptz
-  recordedById String          @db.Uuid
-  note         String?
-  createdAt    DateTime        @default(now()) @db.Timestamptz
+  id                    String          @id @default(uuid()) @db.Uuid
+  workspaceId           String          @db.Uuid
+  proposalId            String          @db.Uuid
+  versionId             String          @unique @db.Uuid
+  decision              DecisionKind
+  channel               DecisionChannel @default(OTHER)
+  decidedAt             DateTime        @db.Timestamptz
+  recordedById          String?         @db.Uuid
+  note                  String?
+  /// Set instead of recordedById when the client decided for themselves in the portal.
+  decidedByPortalUserId String?         @db.Uuid
+  createdAt             DateTime        @default(now()) @db.Timestamptz
 
-  proposal Proposal        @relation(fields: [proposalId], references: [id], onDelete: Restrict)
-  version  ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  proposal            Proposal        @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  version             ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  decidedByPortalUser PortalUser?     @relation("ProposalDecisionPortal", fields: [decidedByPortalUserId], references: [id], onDelete: Restrict)
 
   @@index([workspaceId, proposalId])
   @@map("proposal_decisions")
@@ -672,6 +684,8 @@ enum SignatureEventType {
 enum SignatureMethod {
   MANUAL_RECORDED
   PROVIDER
+  /// Signed by the client themselves in the portal (typed name + time + IP). Not an e-signature provider.
+  PORTAL
 }
 
 model Agreement {
@@ -776,10 +790,14 @@ model SignatureEvent {
   evidence       String?
   /// Makes retries and provider webhook redeliveries safe (PRD §7.6, App. B #18).
   idempotencyKey String?
+  portalUserId   String?            @db.Uuid
+  ipAddress      String?
+  userAgent      String?
   createdAt      DateTime           @default(now()) @db.Timestamptz
 
-  version AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
-  signer  AgreementSigner? @relation(fields: [signerId], references: [id], onDelete: Restrict)
+  version    AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  signer     AgreementSigner? @relation(fields: [signerId], references: [id], onDelete: Restrict)
+  portalUser PortalUser?      @relation("SignaturePortal", fields: [portalUserId], references: [id], onDelete: Restrict)
 
   @@unique([versionId, idempotencyKey])
   @@index([workspaceId, versionId, occurredAt])
@@ -823,16 +841,18 @@ model Project {
   createdAt    DateTime      @default(now()) @db.Timestamptz
   updatedAt    DateTime      @updatedAt @db.Timestamptz
 
-  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
-  client         Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  engagement     Engagement?     @relation(fields: [engagementId], references: [id], onDelete: Restrict)
-  proposal       Proposal?       @relation(fields: [proposalId], references: [id], onDelete: Restrict)
-  agreement      Agreement?      @relation(fields: [agreementId], references: [id], onDelete: Restrict)
-  scope          ScopeDocument?
-  milestones     Milestone[]
-  tasks          Task[]
-  changeRequests ChangeRequest[]
-  invoices       Invoice[]
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  engagement          Engagement?          @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+  proposal            Proposal?            @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  agreement           Agreement?           @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  scope               ScopeDocument?
+  milestones          Milestone[]
+  tasks               Task[]
+  changeRequests      ChangeRequest[]
+  invoices            Invoice[]
+  portalProjectGrants PortalProjectGrant[]
+  comments            Comment[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId])
@@ -918,18 +938,21 @@ enum ScopeDecision {
 /// References the exact version approved, and never changes (trigger-enforced). Distinct from proposal acceptance
 /// and agreement signature (PRD §2 #7).
 model ScopeApproval {
-  id           String          @id @default(uuid()) @db.Uuid
-  workspaceId  String          @db.Uuid
-  versionId    String          @unique @db.Uuid
-  decision     ScopeDecision
-  channel      DecisionChannel @default(OTHER)
-  approverName String?
-  decidedAt    DateTime        @db.Timestamptz
-  recordedById String          @db.Uuid
-  note         String?
-  createdAt    DateTime        @default(now()) @db.Timestamptz
+  id                    String          @id @default(uuid()) @db.Uuid
+  workspaceId           String          @db.Uuid
+  versionId             String          @unique @db.Uuid
+  decision              ScopeDecision
+  channel               DecisionChannel @default(OTHER)
+  approverName          String?
+  decidedAt             DateTime        @db.Timestamptz
+  recordedById          String?         @db.Uuid
+  note                  String?
+  /// Set instead of recordedById when the client decided for themselves in the portal.
+  decidedByPortalUserId String?         @db.Uuid
+  createdAt             DateTime        @default(now()) @db.Timestamptz
 
-  version ScopeVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  version             ScopeVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  decidedByPortalUser PortalUser?  @relation("ScopeApprovalPortal", fields: [decidedByPortalUserId], references: [id], onDelete: Restrict)
 
   @@map("scope_approvals")
 }
@@ -1096,6 +1119,8 @@ model ChangeRequest {
   addendumAgreementId     String?             @db.Uuid
   addendumCompletedAt     DateTime?           @db.Timestamptz
   withdrawnReason         String?
+  visibility              Visibility          @default(INTERNAL)
+  sharedAt                DateTime?           @db.Timestamptz
   createdById             String              @db.Uuid
   createdAt               DateTime            @default(now()) @db.Timestamptz
   updatedAt               DateTime            @updatedAt @db.Timestamptz
@@ -1106,6 +1131,7 @@ model ChangeRequest {
   assessments      ChangeRequestAssessment[]
   decisions        ChangeRequestDecision[]
   invoices         Invoice[]
+  comments         Comment[]
 
   @@unique([projectId, number])
   @@index([workspaceId, projectId, status])
@@ -1137,18 +1163,21 @@ model ChangeRequestAssessment {
 
 /// Append-only record of each party's decision.
 model ChangeRequestDecision {
-  id              String             @id @default(uuid()) @db.Uuid
-  workspaceId     String             @db.Uuid
-  changeRequestId String             @db.Uuid
-  party           ChangeParty
-  decision        ChangeDecisionKind
-  channel         DecisionChannel    @default(OTHER)
-  decidedAt       DateTime           @db.Timestamptz
-  recordedById    String             @db.Uuid
-  note            String?
-  createdAt       DateTime           @default(now()) @db.Timestamptz
+  id                    String             @id @default(uuid()) @db.Uuid
+  workspaceId           String             @db.Uuid
+  changeRequestId       String             @db.Uuid
+  party                 ChangeParty
+  decision              ChangeDecisionKind
+  channel               DecisionChannel    @default(OTHER)
+  decidedAt             DateTime           @db.Timestamptz
+  recordedById          String?            @db.Uuid
+  note                  String?
+  /// Set instead of recordedById when the client decided for themselves in the portal.
+  decidedByPortalUserId String?            @db.Uuid
+  createdAt             DateTime           @default(now()) @db.Timestamptz
 
-  changeRequest ChangeRequest @relation(fields: [changeRequestId], references: [id], onDelete: Restrict)
+  changeRequest       ChangeRequest @relation(fields: [changeRequestId], references: [id], onDelete: Restrict)
+  decidedByPortalUser PortalUser?   @relation("ChangeDecisionPortal", fields: [decidedByPortalUserId], references: [id], onDelete: Restrict)
 
   @@index([changeRequestId, createdAt])
   @@map("change_request_decisions")
@@ -1313,4 +1342,246 @@ model CreditNote {
   @@unique([workspaceId, number])
   @@index([invoiceId])
   @@map("credit_notes")
+}
+
+// ───────────────────────── Phase 5: client portal & communications ─────────────────────────
+//
+// Portal identities are a SEPARATE system from staff users: their own table, sessions, token secret and audience.
+// A client contact reaches only records that were deliberately shared with their organisation (PRD §4.2, §7.12).
+
+enum PortalRole {
+  /// Can read what is shared with them.
+  VIEWER
+  /// Can also decide: accept proposals, sign, approve scope, decide on changes.
+  APPROVER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum NotificationCategory {
+  INVITATION
+  PROPOSAL_SHARED
+  PROPOSAL_DECIDED
+  AGREEMENT_SENT
+  AGREEMENT_SIGNED
+  SCOPE_REVIEW
+  SCOPE_DECIDED
+  CHANGE_UPDATE
+  INVOICE_SHARED
+  INVOICE_REMINDER
+  COMMENT
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+/// A person who signs in to the portal. May belong to several client organisations through memberships.
+model PortalUser {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique // lower-cased by the application
+  name         String
+  passwordHash String
+  disabledAt   DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  memberships       PortalMembership[]
+  sessions          PortalSession[]
+  notifications     Notification[]
+  preferences       NotificationPreference[]
+  comments          Comment[]
+  proposalDecisions ProposalDecision[]       @relation("ProposalDecisionPortal")
+  scopeApprovals    ScopeApproval[]          @relation("ScopeApprovalPortal")
+  changeDecisions   ChangeRequestDecision[]  @relation("ChangeDecisionPortal")
+  signatureEvents   SignatureEvent[]         @relation("SignaturePortal")
+
+  @@map("portal_users")
+}
+
+/// Ties a portal user to one client contact (and therefore one client organisation). Revoking it ends their access
+/// without deleting any history.
+model PortalMembership {
+  id           String           @id @default(uuid()) @db.Uuid
+  workspaceId  String           @db.Uuid
+  portalUserId String           @db.Uuid
+  clientId     String           @db.Uuid
+  contactId    String           @unique @db.Uuid
+  role         PortalRole       @default(VIEWER)
+  status       MembershipStatus @default(ACTIVE)
+  revokedAt    DateTime?        @db.Timestamptz
+  revokedById  String?          @db.Uuid
+  createdAt    DateTime         @default(now()) @db.Timestamptz
+
+  portalUser PortalUser      @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+  client     Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  contact    ClientContact   @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  sessions   PortalSession[]
+
+  @@index([workspaceId, clientId])
+  @@index([portalUserId])
+  @@map("portal_memberships")
+}
+
+model PortalInvitation {
+  id          String     @id @default(uuid()) @db.Uuid
+  workspaceId String     @db.Uuid
+  clientId    String     @db.Uuid
+  contactId   String     @db.Uuid
+  email       String
+  /// SHA-256 of the one-time token; the token itself is never stored.
+  tokenHash   String     @unique
+  role        PortalRole @default(VIEWER)
+  expiresAt   DateTime   @db.Timestamptz
+  usedAt      DateTime?  @db.Timestamptz
+  revokedAt   DateTime?  @db.Timestamptz
+  invitedById String     @db.Uuid
+  createdAt   DateTime   @default(now()) @db.Timestamptz
+
+  client  Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  contact ClientContact @relation(fields: [contactId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, contactId])
+  @@map("portal_invitations")
+}
+
+/// Which projects a contact may see (PRD §9.1 client_project_access). Revoked rows are kept as history.
+model PortalProjectGrant {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  contactId   String    @db.Uuid
+  projectId   String    @db.Uuid
+  grantedById String    @db.Uuid
+  revokedAt   DateTime? @db.Timestamptz
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+
+  contact ClientContact @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+
+  @@unique([contactId, projectId])
+  @@index([projectId])
+  @@map("portal_project_grants")
+}
+
+model PortalSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  portalUserId     String    @db.Uuid
+  membershipId     String    @db.Uuid
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ipAddress        String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  lastUsedAt       DateTime  @default(now()) @db.Timestamptz
+  expiresAt        DateTime  @db.Timestamptz
+  revokedAt        DateTime? @db.Timestamptz
+
+  portalUser PortalUser       @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+  membership PortalMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([portalUserId, revokedAt])
+  @@map("portal_sessions")
+}
+
+/// In-app notification for exactly one recipient (a staff user or a portal user).
+model Notification {
+  id           String               @id @default(uuid()) @db.Uuid
+  workspaceId  String               @db.Uuid
+  userId       String?              @db.Uuid
+  portalUserId String?              @db.Uuid
+  category     NotificationCategory
+  title        String
+  body         String
+  /// Path inside the web app or portal. No sensitive detail is put in the email — it points here, behind sign-in.
+  linkPath     String
+  /// Makes emitting the same event twice a no-op (PRD §7.13: notification processing is idempotent).
+  dedupeKey    String?              @unique
+  readAt       DateTime?            @db.Timestamptz
+  createdAt    DateTime             @default(now()) @db.Timestamptz
+
+  user       User?                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  portalUser PortalUser?            @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt, createdAt])
+  @@index([portalUserId, readAt, createdAt])
+  @@map("notifications")
+}
+
+/// Outbox for email. Written in the same transaction as the event; sent asynchronously with bounded retries (PRD §10.3).
+model NotificationDelivery {
+  id                String               @id @default(uuid()) @db.Uuid
+  workspaceId       String               @db.Uuid
+  /// Null for emails with no in-app counterpart, e.g. an invitation to someone who has no account yet.
+  notificationId    String?              @db.Uuid
+  category          NotificationCategory
+  subject           String
+  bodyText          String
+  linkPath          String
+  /// Makes queuing the same email twice a no-op.
+  dedupeKey         String?              @unique
+  toEmail           String
+  status            DeliveryStatus       @default(PENDING)
+  attempts          Int                  @default(0)
+  nextAttemptAt     DateTime             @default(now()) @db.Timestamptz
+  lastError         String?
+  providerMessageId String?
+  sentAt            DateTime?            @db.Timestamptz
+  createdAt         DateTime             @default(now()) @db.Timestamptz
+  updatedAt         DateTime             @updatedAt @db.Timestamptz
+
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: Restrict)
+
+  @@index([status, nextAttemptAt])
+  @@index([workspaceId, status])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  id           String               @id @default(uuid()) @db.Uuid
+  workspaceId  String               @db.Uuid
+  userId       String?              @db.Uuid
+  portalUserId String?              @db.Uuid
+  category     NotificationCategory
+  emailEnabled Boolean              @default(true)
+
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  portalUser PortalUser? @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, category])
+  @@unique([portalUserId, category])
+  @@map("notification_preferences")
+}
+
+/// Explicit foreign keys per supported record (no polymorphic entity_type/entity_id), so authorisation and
+/// referential integrity hold (PRD §7.13, §9.14). Exactly one target and exactly one author — enforced in the database.
+model Comment {
+  id                 String     @id @default(uuid()) @db.Uuid
+  workspaceId        String     @db.Uuid
+  proposalId         String?    @db.Uuid
+  projectId          String?    @db.Uuid
+  changeRequestId    String?    @db.Uuid
+  visibility         Visibility @default(INTERNAL)
+  body               String
+  authorUserId       String?    @db.Uuid
+  authorPortalUserId String?    @db.Uuid
+  /// Name at the time of writing, so history reads correctly if the person is later renamed or removed.
+  authorName         String
+  createdAt          DateTime   @default(now()) @db.Timestamptz
+
+  proposal      Proposal?      @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  project       Project?       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  changeRequest ChangeRequest? @relation(fields: [changeRequestId], references: [id], onDelete: Restrict)
+  authorUser    User?          @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  authorPortal  PortalUser?    @relation(fields: [authorPortalUserId], references: [id], onDelete: Restrict)
+
+  @@index([proposalId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([changeRequestId, createdAt])
+  @@map("comments")
 }

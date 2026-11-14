@@ -18,6 +18,7 @@ export class ChangeRequestsController {
   @Get('change-requests/:id') get(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.svc.get(a, id); }
   @Post('change-requests/:id/assessment') assess(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: AssessmentDto) { return this.svc.assess(a, id, dto); }
   @Post('change-requests/:id/decisions') decide(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: ChangeDecisionDto) { return this.svc.decide(a, id, dto); }
+  @HttpCode(204) @Post('change-requests/:id/share') share(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.svc.share(a, id); }
   @HttpCode(204) @Post('change-requests/:id/withdraw') withdraw(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: WithdrawDto) { return this.svc.withdraw(a, id, dto); }
   @HttpCode(204) @Post('change-requests/:id/addendum') addendum(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: AddendumDto) { return this.svc.completeAddendum(a, id, dto); }
 }

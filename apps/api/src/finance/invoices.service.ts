@@ -10,6 +10,7 @@ import { skipTake } from '../common/pagination';
 import { renderInvoiceHtml } from '../documents/html';
 import { PdfService } from '../documents/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { outstandingMinor, presentBalance, settlementOf, settlements } from './balances';
 import { CreateInvoiceDto, CreditNoteDto, IssueInvoiceDto, ListInvoicesQuery, SaveInvoiceDto, VoidInvoiceDto } from './invoices.dto';
@@ -26,7 +27,7 @@ const lineJson = (l: { id: string; position: number; description: string; quanti
 export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService, private readonly audit: AuditService,
-    private readonly seq: NumberSequenceService, private readonly pdf: PdfService,
+    private readonly seq: NumberSequenceService, private readonly pdf: PdfService, private readonly notify: NotificationsService,
   ) {}
 
   private async today(db: Db, workspaceId: string) {
@@ -233,6 +234,10 @@ export class InvoicesService {
       if (inv.status !== 'ISSUED') throw new DomainError('NOT_ISSUED', 'Only an issued invoice can be shared with the client', 409);
       await tx.invoice.update({ where: { id }, data: { visibility: 'CLIENT_VISIBLE', sharedAt: new Date() } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'invoice.shared', targetType: 'invoice', targetId: id, ip: a.ip, metadata: { number: inv.number } });
+      await this.notify.emit(tx, {
+        workspaceId: a.workspaceId, category: 'INVOICE_SHARED', title: `Invoice ${inv.number} is available`, body: 'Open it in your portal to review and download.',
+        linkPath: `/portal/invoices/${id}`, dedupeKey: `invoice-shared:${id}`, to: await this.notify.clientPeople(tx, a.workspaceId, inv.clientId, inv.projectId ? { projectId: inv.projectId } : {}),
+      });
     });
   }
 
