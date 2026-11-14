@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
 import { api, ApiError, Client, Paged } from '@/lib/api';
 
 export default function ClientsPage() {
@@ -67,7 +67,7 @@ function ClientsView() {
             <thead><tr><Th>Client</Th><Th>Primary contact</Th><Th>Status</Th><Th right>Engagements</Th></tr></thead>
             <tbody>
               {list.data?.items.map((c) => (
-                <tr key={c.id}>
+                <RowLink key={c.id} href={`/clients/${c.id}`}>
                   <Td>
                     <Link href={`/clients/${c.id}`} className="font-medium text-ink hover:text-accent hover:underline">{c.name}</Link>
                     <div className="text-[13px] text-muted">{c.type === 'COMPANY' ? 'Company' : 'Individual'}{c.tags.length > 0 && `, ${c.tags.join(', ')}`}</div>
@@ -75,7 +75,7 @@ function ClientsView() {
                   <Td>{c.primaryContact ? <><div>{[c.primaryContact.firstName, c.primaryContact.lastName].filter(Boolean).join(' ')}</div><div className="text-[13px] text-muted">{c.primaryContact.email ?? 'None'}</div></> : <span className="text-muted">None</span>}</Td>
                   <Td><Badge tone={c.status === 'ACTIVE' ? 'success' : 'neutral'}>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</Badge></Td>
                   <Td right>{c.engagementCount}</Td>
-                </tr>
+                </RowLink>
               ))}
             </tbody>
           </Table>

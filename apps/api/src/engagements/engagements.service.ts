@@ -48,11 +48,13 @@ export class EngagementsService {
         stage: true,
         requirements: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
         stageHistory: { orderBy: { createdAt: 'desc' } },
+        proposals: { where: { archivedAt: null }, orderBy: { createdAt: 'desc' }, select: { id: true, number: true, title: true, status: true } },
+        projects: { where: { archivedAt: null }, orderBy: { createdAt: 'desc' }, select: { id: true, number: true, name: true, status: true } },
       },
     });
     if (!e) throw notFound('Engagement');
-    const { client, stage, requirements, stageHistory, ...rest } = e;
-    return { ...present(rest as Engagement), client, stage, requirements, stageHistory };
+    const { client, stage, requirements, stageHistory, proposals, projects, ...rest } = e;
+    return { ...present(rest as Engagement), client, stage, requirements, stageHistory, proposals, projects };
   }
 
   create(a: AuthContext, dto: CreateEngagementDto) {

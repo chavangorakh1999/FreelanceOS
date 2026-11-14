@@ -97,6 +97,9 @@ export class ProposalsService {
         engagement: { select: { id: true, title: true } },
         versions: { orderBy: { versionNumber: 'desc' } },
         decisions: { orderBy: { createdAt: 'desc' } },
+        // What this proposal led to, so the next step is offered only when it has not been taken (PRD §8.1).
+        agreements: { where: { archivedAt: null }, orderBy: { createdAt: 'desc' }, select: { id: true, number: true, title: true, status: true } },
+        projects: { where: { archivedAt: null }, orderBy: { createdAt: 'desc' }, select: { id: true, number: true, name: true, status: true } },
       },
     });
     if (!p) throw notFound('Proposal');

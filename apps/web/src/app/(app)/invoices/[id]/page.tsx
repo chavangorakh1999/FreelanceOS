@@ -1,5 +1,6 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateInvoice, formatMoney, parseMoney } from '@freelanceos/shared';
 import { Download, Eye, Lock, Plus, Trash2 } from 'lucide-react';
@@ -38,7 +39,7 @@ export default function InvoicePage() {
   return (
     <>
       <title>{`${inv.number ?? 'Draft invoice'}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/finance" className="hover:underline">Finance</Link> / <Link href="/finance?tab=invoices" className="hover:underline">Invoices</Link></nav>
+      <Crumbs items={[{ label: 'Finance', href: '/finance' }, { label: 'Invoices', href: '/finance?tab=invoices' }, { label: inv.number ?? 'Draft invoice' }]} />
       <PageHeader title={inv.number ?? 'Draft invoice'}
         subtitle={<>{inv.client.name}{inv.project && <>, <Link href={`/projects/${inv.project.id}`} className="hover:underline">{inv.project.name}</Link></>}{inv.milestone && <>, {inv.milestone.name}</>}{inv.changeRequest && <>, <Link href={`/change-requests/${inv.changeRequest.id}`} className="hover:underline">{inv.changeRequest.number}</Link></>}</>}
         actions={<div className="flex flex-wrap items-center gap-2">
@@ -204,7 +205,7 @@ function DraftEditor({ invoice: inv, onSaved, onIssue, onDeleted }: { invoice: I
       <ErrorNote error={save.error ?? del.error} />
       <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
         <Button variant="ghost" className="mr-auto" onClick={() => setDeleting(true)}>Delete draft</Button>
-        {save.isSuccess && !dirty && <span role="status" className="text-sm text-accent-ink">Draft saved</span>}
+        {save.isSuccess && !dirty && <span role="status" className="text-sm text-ok-ink">Draft saved</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="primary" onClick={() => (dirty ? save.mutate(undefined, { onSuccess: onIssue }) : onIssue())} disabled={save.isPending}>Issue invoice…</Button>
       </div>

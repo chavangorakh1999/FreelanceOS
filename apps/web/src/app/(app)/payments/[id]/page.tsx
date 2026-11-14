@@ -1,10 +1,11 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Stat, Table, Td, Textarea, Th } from '@/components/ui';
+import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Stat, Table, Td, Textarea, Th, RowLink } from '@/components/ui';
 import { api, InvoiceSummary, Paged, PaymentDetail } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 
@@ -25,7 +26,7 @@ export default function PaymentPage() {
   return (
     <>
       <title>{`Payment, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/finance" className="hover:underline">Finance</Link> / <Link href="/finance?tab=payments" className="hover:underline">Payments</Link></nav>
+      <Crumbs items={[{ label: 'Finance', href: '/finance' }, { label: 'Payments', href: '/finance?tab=payments' }, { label: `Payment ${fmtDate(p.receivedAt)}` }]} />
       <PageHeader title={`Payment of ${fmtMoney(p.amount)}`} subtitle={<>{p.client.name}, received {fmtDate(p.receivedAt)}, {label(p.method)}{p.reference ? `, ${p.reference}` : ''}</>}
         actions={<div className="flex items-center gap-2">{p.reversed ? <Badge>Reversed</Badge> : <Button variant="danger" onClick={() => setReversing(true)}>Reverse payment</Button>}</div>} />
       {p.reversed && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">Reversed {p.reversedAt && fmtDateTime(p.reversedAt)}: {p.reversalReason}. The record is kept; its allocations no longer count toward any invoice.</p>}
@@ -39,7 +40,7 @@ export default function PaymentPage() {
         <h2 id="al-h" className="px-6 pb-4 text-lg font-semibold">Applied to</h2>
         {p.allocations.length === 0 ? <p className="px-6 text-muted">Not applied to any invoice yet.</p> : (
           <Table minWidth={560}><thead><tr><Th>Invoice</Th><Th>When</Th><Th right>Cash</Th><Th right>TDS withheld</Th></tr></thead>
-            <tbody>{p.allocations.map((a) => <tr key={a.id}><Td><Link href={`/invoices/${a.invoice.id}`} className="font-medium hover:text-accent hover:underline">{a.invoice.number}</Link></Td><Td>{fmtDateTime(a.createdAt)}</Td><Td right className={p.reversed ? 'text-muted line-through' : 'font-medium'}>{fmtMoney(a.cash)}</Td><Td right>{a.withholding.amountMinor === '0' ? 'None' : fmtMoney(a.withholding)}</Td></tr>)}</tbody></Table>)}
+            <tbody>{p.allocations.map((a) => <RowLink key={a.id} href={`/invoices/${a.invoice.id}`}><Td><Link href={`/invoices/${a.invoice.id}`} className="font-medium hover:text-accent hover:underline">{a.invoice.number}</Link></Td><Td>{fmtDateTime(a.createdAt)}</Td><Td right className={p.reversed ? 'text-muted line-through' : 'font-medium'}>{fmtMoney(a.cash)}</Td><Td right>{a.withholding.amountMinor === '0' ? 'None' : fmtMoney(a.withholding)}</Td></RowLink>)}</tbody></Table>)}
       </Card>
       {!p.reversed && left && <ApplyMore payment={p} onDone={refresh} />}
       {p.note && <Card className="p-6"><h2 className="mb-2 text-lg font-semibold">Note</h2><p className="whitespace-pre-wrap text-ink-2">{p.note}</p></Card>}

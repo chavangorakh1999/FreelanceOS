@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { ProposalBadge } from '@/components/status';
-import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th } from '@/components/ui';
+import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
 import { api, ApiError, Client, Engagement, Paged, ProposalSummary, TemplateInfo } from '@/lib/api';
 import { fmtDate, fmtMoney } from '@/lib/format';
 
@@ -45,13 +45,13 @@ function ProposalsView() {
           <Table minWidth={760}>
             <thead><tr><Th>Proposal</Th><Th>Client</Th><Th>Status</Th><Th>Valid until</Th><Th right>Total (latest version)</Th></tr></thead>
             <tbody>{list.data?.items.map((p) => (
-              <tr key={p.id}>
+              <RowLink key={p.id} href={`/proposals/${p.id}`}>
                 <Td><Link href={`/proposals/${p.id}`} className="font-medium hover:text-accent hover:underline">{p.title}</Link><div className="text-[13px] text-muted">{p.number}, v{p.latestVersion.versionNumber}</div></Td>
                 <Td><Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></Td>
                 <Td><ProposalBadge status={p.status} /></Td>
                 <Td>{p.latestVersion.validUntil ? fmtDate(p.latestVersion.validUntil) : <span className="text-muted">Not set</span>}</Td>
                 <Td right className="font-medium">{fmtMoney(p.latestVersion.total)}</Td>
-              </tr>))}
+              </RowLink>))}
             </tbody>
           </Table>
         )}

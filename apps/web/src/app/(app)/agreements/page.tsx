@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { AgreementBadge } from '@/components/status';
-import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th } from '@/components/ui';
+import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
 import { AgreementSummary, api, ApiError, Client, Paged, ProposalSummary, TemplateInfo } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 
@@ -38,13 +38,13 @@ function AgreementsView() {
           <Table minWidth={720}>
             <thead><tr><Th>Agreement</Th><Th>Client</Th><Th>Based on</Th><Th>Status</Th><Th>Expires</Th></tr></thead>
             <tbody>{list.data?.items.map((a) => (
-              <tr key={a.id}>
+              <RowLink key={a.id} href={`/agreements/${a.id}`}>
                 <Td><Link href={`/agreements/${a.id}`} className="font-medium hover:text-accent hover:underline">{a.title}</Link><div className="text-[13px] text-muted">{a.number}</div></Td>
                 <Td><Link href={`/clients/${a.client.id}`} className="hover:underline">{a.client.name}</Link></Td>
                 <Td>{a.proposal ? <Link href={`/proposals/${a.proposal.id}`} className="hover:underline">{a.proposal.number}</Link> : <span className="text-muted">None</span>}</Td>
                 <Td><AgreementBadge status={a.status} /></Td>
                 <Td>{a.expiresAt ? fmtDate(a.expiresAt) : <span className="text-muted">None</span>}</Td>
-              </tr>))}
+              </RowLink>))}
             </tbody>
           </Table>
         )}

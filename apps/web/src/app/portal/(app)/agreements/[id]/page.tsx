@@ -49,7 +49,7 @@ export default function PortalAgreementPage() {
         </Card>
       )}
       {!a.canSign && a.waitingFor && a.you?.status === 'PENDING' && <p className="flex items-center gap-2 rounded-control bg-stat px-4 py-3 text-ink-2"><Hourglass size={16} aria-hidden="true" />Waiting for {a.waitingFor} to sign first. You’ll get an email when it’s your turn.</p>}
-      {a.you?.status === 'SIGNED' && <p className="flex items-center gap-2 rounded-control bg-accent-soft px-4 py-3 text-accent-ink"><CheckCircle2 size={16} aria-hidden="true" />You signed this agreement.</p>}
+      {a.you?.status === 'SIGNED' && <p className="flex items-center gap-2 rounded-control bg-ok-soft px-4 py-3 text-ok-ink"><CheckCircle2 size={16} aria-hidden="true" />You signed this agreement.</p>}
 
       <Card className="p-5 sm:p-6" aria-labelledby="terms-h">
         <h2 id="terms-h" className="mb-4 text-lg font-semibold">Terms</h2>

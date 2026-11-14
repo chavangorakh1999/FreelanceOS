@@ -1,5 +1,6 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -37,7 +38,7 @@ export default function ChangeRequestPage() {
   return (
     <>
       <title>{`${c.number}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/changes" className="hover:underline">Scope &amp; Changes</Link> / <Link href={`/projects/${c.project.id}?tab=changes`} className="hover:underline">{c.project.name}</Link></nav>
+      <Crumbs items={[{ label: 'Projects', href: '/projects' }, { label: c.project.name, href: `/projects/${c.project.id}?tab=changes` }, { label: c.number }]} />
       <PageHeader title={`${c.number}, ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ? `${c.requesterName} (client)` : 'the client') : 'you'}, based on scope v${c.baseScopeVersion.versionNumber}`}
         actions={<div className="flex flex-wrap items-center gap-2"><ChangeBadge status={c.status} />
           {c.visibility === 'CLIENT_VISIBLE' ? <Badge tone="info">Visible to client</Badge> : <Button onClick={() => share.mutate()} disabled={share.isPending}>Share with client</Button>}</div>} />
@@ -82,7 +83,7 @@ export default function ChangeRequestPage() {
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
           <Card className="p-6" aria-labelledby="ready-h">
             <h2 id="ready-h" className="mb-3 flex items-center gap-2 text-lg font-semibold">{c.readiness.readyToStart ? <CheckCircle2 size={18} className="text-accent" aria-hidden="true" /> : <ShieldAlert size={18} className="text-warn-ink" aria-hidden="true" />}Can the changed work begin?</h2>
-            {c.readiness.readyToStart ? <p className="text-accent-ink">Yes. Everything required is complete.</p> : (
+            {c.readiness.readyToStart ? <p className="text-ok-ink">Yes. Everything required is complete.</p> : (
               <><p className="mb-2 text-ink-2">Not yet:</p><ul className="list-disc pl-5 text-ink-2">{c.readiness.blockers.map((b) => <li key={b}>{b}</li>)}</ul></>)}
             {c.status === 'APPROVED' && c.addendumStatus === 'REQUIRED' && <div className="mt-3"><Button onClick={() => setDialog('addendum')}>Record addendum completed</Button></div>}
             {c.addendumStatus === 'COMPLETED' && <p className="mt-3 text-[13px] text-muted">Addendum recorded: {c.addendumNote}</p>}

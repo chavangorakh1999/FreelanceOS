@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { MoveStageDialog, NewEngagementDialog, useStages } from '@/components/engagement-dialogs';
-import { Badge, Button, Card, EmptyState, ErrorNote, PageHeader, Select, Spinner, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
 import { api, Engagement, Paged } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
 
@@ -45,11 +45,12 @@ function EngagementsView() {
                 <section key={s.id} aria-label={`${s.name}, ${col.length} engagements`} className="flex w-[280px] shrink-0 flex-col gap-3 rounded-stat bg-stat p-3">
                   <h2 className="flex items-center justify-between px-1 text-sm font-semibold">{s.name}<span className="font-normal text-muted">{col.length}</span></h2>
                   {col.map((e) => (
-                    <article key={e.id} className="flex flex-col gap-2 rounded-xl border border-line bg-card p-3.5">
-                      <Link href={`/engagements/${e.id}`} className="font-medium hover:text-accent hover:underline">{e.title}</Link>
+                    <article key={e.id} className="relative flex flex-col gap-2 rounded-xl border border-line bg-card p-3.5 transition-shadow duration-100 hover:shadow-[var(--cast-stock-lift)]">
+                      {/* The whole card opens the engagement; the stage control sits above the link layer. */}
+                      <Link href={`/engagements/${e.id}`} className="font-medium after:absolute after:inset-0 after:rounded-xl hover:underline">{e.title}</Link>
                       <div className="text-[13px] text-muted">{e.client.name}</div>
                       <div className="font-medium">{fmtMoney(e.estimatedValue)}</div>
-                      <Select aria-label={`Move ${e.title} to another stage`} value={e.stage.id} className="h-9 text-[13px]"
+                      <Select aria-label={`Move ${e.title} to another stage`} value={e.stage.id} className="relative z-10 h-9 text-[13px]"
                         onChange={(ev) => ev.target.value !== e.stage.id && setMoving({ e, stageId: ev.target.value })}>
                         {stages.data?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                       </Select>
@@ -66,12 +67,12 @@ function EngagementsView() {
           <Table minWidth={720}>
             <thead><tr><Th>Engagement</Th><Th>Client</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
             <tbody>{items.map((e) => (
-              <tr key={e.id}>
+              <RowLink key={e.id} href={`/engagements/${e.id}`}>
                 <Td><Link href={`/engagements/${e.id}`} className="font-medium hover:text-accent hover:underline">{e.title}</Link></Td>
                 <Td><Link href={`/clients/${e.client.id}`} className="hover:underline">{e.client.name}</Link></Td>
                 <Td><Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'neutral'}>{e.stage.name}</Badge></Td>
                 <Td right>{fmtMoney(e.estimatedValue)}</Td>
-              </tr>))}</tbody>
+              </RowLink>))}</tbody>
           </Table>
         </Card>
       )}

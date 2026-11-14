@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { ProjectBadge } from '@/components/status';
-import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, ProgressBar, Select, Spinner, Table, Td, Th } from '@/components/ui';
+import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, ProgressBar, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
 import { api, ApiError, Client, Engagement, Paged, ProjectSummary, ProposalSummary } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 
@@ -38,13 +38,13 @@ function ProjectsView() {
           <Table minWidth={760}>
             <thead><tr><Th>Project</Th><Th>Client</Th><Th>Status</Th><Th>Target</Th><Th>Progress</Th></tr></thead>
             <tbody>{list.data?.items.map((p) => (
-              <tr key={p.id}>
+              <RowLink key={p.id} href={`/projects/${p.id}`}>
                 <Td><Link href={`/projects/${p.id}`} className="font-medium hover:text-accent hover:underline">{p.name}</Link><div className="text-[13px] text-muted">{p.number}</div></Td>
                 <Td><Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></Td>
                 <Td><ProjectBadge status={p.status} /></Td>
                 <Td>{p.targetDate ? fmtDate(p.targetDate) : <span className="text-muted">None</span>}</Td>
                 <Td className="min-w-[200px]"><ProgressBar basisPoints={p.progress.basisPoints} done={p.progress.done} total={p.progress.total} label={`${p.name} progress`} /></Td>
-              </tr>))}
+              </RowLink>))}
             </tbody>
           </Table>
         )}

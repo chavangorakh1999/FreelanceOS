@@ -1,5 +1,6 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateInvoice, formatMoney, hasPlaceholder, parseMoney, placeholderTitles } from '@freelanceos/shared';
 import { ChevronDown, ChevronUp, Download, FilePlus2, Plus, Trash2 } from 'lucide-react';
@@ -7,7 +8,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { CommentsPanel } from '@/components/comments';
-import { LockedBadge, ProposalBadge } from '@/components/status';
+import { LinkedRecords } from '@/components/linked-records';
+import { AgreementBadge, LockedBadge, ProjectBadge, ProposalBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary } from '@/components/ui';
 import { api, ApiError, downloadFile, ProposalDetail, ProposalVersion } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
@@ -42,9 +44,9 @@ export default function ProposalPage() {
   return (
     <>
       <title>{`${p.title}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/proposals" className="hover:underline">Proposals</Link></nav>
+      <Crumbs items={[{ label: 'Proposals', href: '/proposals' }, { label: p.number }]} />
       <PageHeader title={p.title} subtitle={`${p.number}, ${p.client.name}${p.engagement ? `, ${p.engagement.title}` : ''}`}
-        actions={<div className="flex flex-wrap items-center gap-2"><ProposalBadge status={p.status} />
+        actions={<div className="flex flex-wrap items-center gap-2">{v?.status === 'DRAFT' && <ProposalBadge status={p.status} />}
           <Button onClick={() => { setPdfError(null); downloadFile(`/proposals/${id}/versions/${n}/pdf`, `${p.number}-v${n}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button></div>} />
       <ErrorNote error={pdfError ?? newVersion.error ?? duplicate.error} />
 
@@ -60,12 +62,18 @@ export default function ProposalPage() {
             <h2 id="act-h" className="mb-3 text-lg font-semibold">Next steps</h2>
             <div className="flex flex-col gap-2">
               {isLive && <Button variant="primary" onClick={() => setDeciding(true)}>Record client decision</Button>}
-              {p.status === 'ACCEPTED' && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className={btnSecondary}>Start project</Link>}
-              {p.status === 'ACCEPTED' && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className={btnPrimary}><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
+              {/* The next lifecycle step is the primary action, and a step already taken links to its record instead (PRD §8.1). */}
+              {p.status === 'ACCEPTED' && p.agreements.length === 0 && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className={btnPrimary}><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
+              {p.status === 'ACCEPTED' && p.projects.length === 0 && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className={p.agreements.length > 0 ? btnPrimary : btnSecondary}>Start project</Link>}
               {latest.status === 'DRAFT' && <p className="text-[13px] text-muted">Finish the draft, then share it from the bar at the bottom of the page.</p>}
               {p.status !== 'ACCEPTED' && latest.status !== 'DRAFT' && <Button onClick={() => newVersion.mutate()} disabled={newVersion.isPending}>Start new version</Button>}
               <Button variant="ghost" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>{p.status === 'ACCEPTED' ? 'Duplicate as replacement' : 'Duplicate proposal'}</Button>
             </div>
+            <LinkedRecords rows={[
+              ...(p.engagement ? [{ kind: 'Engagement', label: p.engagement.title, href: `/engagements/${p.engagement.id}` }] : []),
+              ...p.agreements.map((a) => ({ kind: 'Agreement', label: a.number, href: `/agreements/${a.id}`, status: <AgreementBadge status={a.status} /> })),
+              ...p.projects.map((x) => ({ kind: 'Project', label: x.name, href: `/projects/${x.id}`, status: <ProjectBadge status={x.status} /> })),
+            ]} />
             {p.status === 'ACCEPTED' && <p className="mt-3 text-[13px] text-muted">An accepted proposal is final. To change terms, duplicate it as a replacement or handle the change through a change request.</p>}
           </Card>
 
@@ -270,13 +278,13 @@ function DraftEditor({ proposalId, version: v, onChanged }: { proposalId: string
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button onClick={() => setTerms((a) => [...a, { label: '', kind: 'MILESTONE', percent: '', dueInDays: '' }])}><Plus size={16} aria-hidden="true" />Add term</Button>
-          {pctSum != null && <span className={pctSum === 10000 ? 'text-accent-ink' : 'text-warn-ink'} role="status">{pctSum === 10000 ? 'Percentages total 100%' : `Percentages total ${pctSum / 100}%, they must add up to 100% to share`}</span>}
+          {pctSum != null && <span className={pctSum === 10000 ? 'text-ok-ink' : 'text-warn-ink'} role="status">{pctSum === 10000 ? 'Percentages total 100%' : `Percentages total ${pctSum / 100}%, they must add up to 100% to share`}</span>}
         </div>
       </Card>
 
       <ErrorNote error={save.error && !problems(save.error) ? save.error : null} />
       <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
-        {save.isSuccess && !dirty && <span role="status" className="mr-auto text-sm text-accent-ink">Draft saved</span>}
+        {save.isSuccess && !dirty && <span role="status" className="mr-auto text-sm text-ok-ink">Draft saved</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="primary" onClick={() => { share.reset(); setSharing(true); }}>Share with client…</Button>
       </div>

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';
 import { ChangeBadge } from '@/components/status';
-import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, Select, Spinner, Table, Td, Textarea, Th } from '@/components/ui';
+import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, Select, Spinner, Table, Td, Textarea, Th, RowLink } from '@/components/ui';
 import { api, ApiError, ChangeSummary } from '@/lib/api';
 import { fmtDate, fmtMoney } from '@/lib/format';
 
@@ -22,13 +22,13 @@ export function ChangesTab({ projectId, closed, hasBaseline, onChanged }: { proj
         <Card className="py-6"><Table minWidth={720}>
           <thead><tr><Th>Request</Th><Th>Status</Th><Th>From</Th><Th right>Cost</Th><Th right>Time</Th></tr></thead>
           <tbody>{list.data?.map((c) => (
-            <tr key={c.id}>
+            <RowLink key={c.id} href={`/change-requests/${c.id}`}>
               <Td><Link href={`/change-requests/${c.id}`} className="font-medium hover:text-accent hover:underline">{c.number}, {c.title}</Link><div className="text-[13px] text-muted">Raised {fmtDate(c.requestedAt)}</div></Td>
               <Td><ChangeBadge status={c.status} /></Td>
               <Td>{c.requestedBy === 'CLIENT' ? 'Client' : 'You'}</Td>
               <Td right>{c.latestAssessment ? `${BigInt(c.latestAssessment.costDelta.amountMinor) > 0n ? '+' : ''}${fmtMoney(c.latestAssessment.costDelta)}` : <span className="text-muted">Not assessed</span>}</Td>
               <Td right>{c.latestAssessment ? `${c.latestAssessment.timelineDeltaDays > 0 ? '+' : ''}${c.latestAssessment.timelineDeltaDays} d` : 'None'}</Td>
-            </tr>))}
+            </RowLink>))}
           </tbody></Table></Card>
       )}
       <RaiseDialog open={raising} projectId={projectId} onClose={() => setRaising(false)} onDone={() => { setRaising(false); void qc.invalidateQueries({ queryKey: ['changes', projectId] }); onChanged(); }} />

@@ -7,7 +7,7 @@ import { Suspense, useState } from 'react';
 import { NewInvoiceDialog } from '@/components/finance/new-invoice';
 import { RecordPaymentDialog } from '@/components/finance/record-payment';
 import { InvoiceBadge } from '@/components/status';
-import { Badge, Button, Card, EmptyState, ErrorNote, Field, PageHeader, Select, Spinner, Stat, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, PageHeader, Select, Spinner, Stat, Table, Td, Th, RowLink } from '@/components/ui';
 import { api, FinanceOverview, InvoiceSummary, Paged, PaymentSummary } from '@/lib/api';
 import { fmtDate, fmtMoney } from '@/lib/format';
 
@@ -97,14 +97,14 @@ function Invoices() {
         <Table minWidth={800}>
           <thead><tr><Th>Invoice</Th><Th>Client</Th><Th>Status</Th><Th>Due</Th><Th right>Total</Th><Th right>Outstanding</Th></tr></thead>
           <tbody>{list.data?.items.map((i) => (
-            <tr key={i.id}>
+            <RowLink key={i.id} href={`/invoices/${i.id}`}>
               <Td><Link href={`/invoices/${i.id}`} className="font-medium hover:text-accent hover:underline">{i.number ?? 'Draft'}</Link><div className="text-[13px] text-muted">{i.issueDate ? `Issued ${fmtDate(i.issueDate)}` : 'Not issued'}</div></Td>
               <Td><Link href={`/clients/${i.client.id}`} className="hover:underline">{i.client.name}</Link></Td>
               <Td><InvoiceBadge status={i.status} /></Td>
               <Td>{i.dueDate ? fmtDate(i.dueDate) : <span className="text-muted">None</span>}</Td>
               <Td right>{fmtMoney(i.total)}</Td>
               <Td right className="font-medium">{i.stored === 'ISSUED' ? fmtMoney(i.balance.outstanding) : <span className="font-normal text-muted">None</span>}</Td>
-            </tr>))}
+            </RowLink>))}
           </tbody>
         </Table>)}
       {list.data && list.data.total > list.data.pageSize && (
@@ -125,14 +125,14 @@ function Payments({ onRecord }: { onRecord: () => void }) {
         <Table minWidth={820}>
           <thead><tr><Th>Received</Th><Th>Client</Th><Th>Method</Th><Th right>Amount</Th><Th right>Applied</Th><Th right>Unallocated</Th></tr></thead>
           <tbody>{list.data?.items.map((p) => (
-            <tr key={p.id}>
+            <RowLink key={p.id} href={`/payments/${p.id}`}>
               <Td><Link href={`/payments/${p.id}`} className="font-medium hover:text-accent hover:underline">{fmtDate(p.receivedAt)}</Link>{p.reference && <div className="text-[13px] text-muted">{p.reference}</div>}{p.reversed && <Badge tone="neutral">Reversed</Badge>}</Td>
               <Td><Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></Td>
               <Td>{label(p.method)}</Td>
               <Td right className={p.reversed ? 'text-muted line-through' : 'font-medium'}>{fmtMoney(p.amount)}</Td>
               <Td right>{fmtMoney(p.allocated)}{p.withheld.amountMinor !== '0' && <div className="text-[13px] text-muted">+ {fmtMoney(p.withheld)} TDS</div>}</Td>
               <Td right className={p.unallocated.amountMinor !== '0' ? 'font-medium text-info-ink' : 'text-muted'}>{fmtMoney(p.unallocated)}</Td>
-            </tr>))}
+            </RowLink>))}
           </tbody>
         </Table>)}
     </Card>

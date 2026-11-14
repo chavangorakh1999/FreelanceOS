@@ -1,5 +1,6 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Hash, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -36,7 +37,7 @@ export default function AgreementPage() {
   return (
     <>
       <title>{`${ag.title}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/agreements" className="hover:underline">Agreements</Link></nav>
+      <Crumbs items={[{ label: 'Agreements', href: '/agreements' }, { label: ag.number }]} />
       <PageHeader title={ag.title}
         subtitle={<>{ag.number}, <Link href={`/clients/${ag.client.id}`} className="hover:underline">{ag.client.name}</Link>{ag.proposal && <>, from <Link href={`/proposals/${ag.proposal.id}`} className="hover:underline">{ag.proposal.number}</Link></>}</>}
         actions={<div className="flex flex-wrap items-center gap-2"><AgreementBadge status={ag.status} />
@@ -51,7 +52,12 @@ export default function AgreementPage() {
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
             <div className="flex flex-wrap items-center gap-2"><LockedBadge>Locked since {v.sentAt ? fmtDate(v.sentAt) : 'sending'}</LockedBadge>
               {v.contentHash && <span className="inline-flex items-center gap-1.5 text-[13px] text-muted" title="SHA-256 of the clauses and signers at the moment this was sent"><Hash size={14} aria-hidden="true" />Fingerprint <code className="rounded bg-stat px-1.5 py-0.5">{v.contentHash.slice(0, 16)}…</code></span>}</div>
-            {v.clauses.map((c, i) => (<Card key={i} className="p-6"><h2 className="mb-2 text-lg font-semibold">{i + 1}. {c.heading}</h2><p className="whitespace-pre-wrap text-ink-2">{c.body}</p></Card>))}
+            {/* A contract reads as one document: one sheet, numbered clauses ruled apart. */}
+            <Card className="px-6 py-2 sm:px-8" aria-label="Agreement text">
+              <ol>{v.clauses.map((c, i) => (
+                <li key={i} className="border-b border-line py-5 last:border-b-0"><h2 className="mb-1.5 text-base font-semibold">{i + 1}. {c.heading}</h2><p className="whitespace-pre-wrap text-ink-2">{c.body}</p></li>
+              ))}</ol>
+            </Card>
           </div>
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
             <Card className="p-6" aria-labelledby="sig-h">

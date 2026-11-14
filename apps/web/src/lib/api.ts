@@ -66,10 +66,20 @@ export interface Engagement {
   client: { id: string; name: string }; stage: { id: string; name: string; kind: Stage['kind'] };
   requirements?: { id: string; kind: string; title: string; detail: string | null }[];
   stageHistory?: { id: string; fromStageId: string | null; toStageId: string; reason: string | null; createdAt: string }[];
+  proposals?: { id: string; number: string; title: string; status: ProposalStatus }[];
+  projects?: { id: string; number: string; name: string; status: ProjectStatus }[];
 }
 export interface Paged<T> { items: T[]; page: number; pageSize: number; total: number }
 export interface AuditEvent { id: string; action: string; targetType: string; targetId: string; metadata: Record<string, unknown> | null; createdAt: string }
+export interface AttentionInvoice { id: string; number: string | null; client: string; dueDate: string | null; outstanding: MoneyJson }
 export interface Dashboard {
+  attention: {
+    overdueInvoices: AttentionInvoice[];
+    proposalsAwaitingClient: { id: string; number: string; title: string; client: string }[];
+    changesToAssess: { id: string; number: string; title: string; project: string }[];
+    scopeInReview: { projectId: string; project: string; versionNumber: number }[];
+  };
+  upcoming: { milestones: { id: string; name: string; dueDate: string; project: { id: string; name: string } }[]; invoicesDue: AttentionInvoice[] };
   activeClients: number; activeProjects: number; openEngagements: number; recentActivity: AuditEvent[]; finance: FinanceOverview;
   pipeline: { stageId: string; name: string; kind: Stage['kind']; count: number; valueByCurrency: { currency: string; amountMinor: string }[] }[];
 }
@@ -104,6 +114,8 @@ export interface ProposalDetail {
   client: { id: string; name: string }; engagement: { id: string; title: string } | null;
   versions: { id: string; versionNumber: number; status: VersionStatus; sharedAt: string | null; validUntil: string | null; totals: { total: MoneyJson } }[];
   decisions: { id: string; versionId: string; decision: 'ACCEPTED' | 'REJECTED' | 'CHANGES_REQUESTED'; channel: string; decidedAt: string; note: string | null }[];
+  agreements: { id: string; number: string; title: string; status: AgreementStatus }[];
+  projects: { id: string; number: string; name: string; status: ProjectStatus }[];
 }
 export interface ProposalVersion {
   id: string; versionNumber: number; status: VersionStatus; currency: string; pricingModel: string; validUntil: string | null; summary: string | null;

@@ -2,13 +2,15 @@
 
 import {
   Activity, BadgeCheck, Bell, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
-  Plus, Receipt, Settings, Users, X, type LucideIcon,
+  Receipt, Settings, Users, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { btnPrimary, btnSecondary } from '@/components/ui';
+import { CreateMenu } from '@/components/create-menu';
+import { CrumbsProvider, CrumbTrail } from '@/components/crumbs';
+import { btnSecondary } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useAuth, useMe } from '@/lib/auth';
 
@@ -54,6 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => setMenuOpen(false), [path]);
   const unread = useQuery({ queryKey: ['notifications-unread'], queryFn: () => api<{ count: number }>('/notifications/unread-count'), refetchInterval: 60_000 });
   const count = unread.data?.count ?? 0;
+  const section = GROUPS.flatMap((g) => g.items).find((i) => i.href && (path === i.href || path.startsWith(i.href + '/')))?.label;
   const initials = me.user.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
   return (
@@ -70,8 +73,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={`${menuOpen ? 'flex' : 'hidden'} no-scrollbar shrink-0 flex-col gap-1 border-line bg-shell px-3 pb-3 pt-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[248px] lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:pt-4`}>
         <div className="hidden px-2 pb-1 lg:block"><Logo /></div>
         <div className="px-2 pb-3 text-[13px] text-muted lg:pt-0">{me.workspace.name}</div>
-
-        <Link href="/clients?new=1" className={`${btnPrimary} mb-2 self-start`}><Plus {...ICON} size={16} strokeWidth={2.25} />New client</Link>
 
         {GROUPS.map((g, gi) => (
           <div key={gi} className="flex flex-col gap-0.5">
@@ -106,7 +107,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-7 px-5 py-8 sm:px-8 lg:px-10">{children}</main>
+      <CrumbsProvider>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* PRD §11.2: a compact top header with where you are and the global actions. */}
+          <header className="sticky top-0 z-[200] border-b border-line bg-panel/90 backdrop-blur-sm">
+            <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
+              <CrumbTrail fallback={section ? [{ label: section }] : []} />
+              <CreateMenu />
+            </div>
+          </header>
+          <main className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-7 px-5 py-7 sm:px-8 lg:px-10">{children}</main>
+        </div>
+      </CrumbsProvider>
     </div>
   );
 }

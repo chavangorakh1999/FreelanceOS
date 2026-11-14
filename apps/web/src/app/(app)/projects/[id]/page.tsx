@@ -1,5 +1,6 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -9,7 +10,7 @@ import { ChangesTab } from '@/components/project/changes-tab';
 import { ScopeTab } from '@/components/project/scope-tab';
 import { WorkTab } from '@/components/project/work-tab';
 import { ProjectBadge, ScopeBadge } from '@/components/status';
-import { Button, Card, Dialog, ErrorNote, PageHeader, ProgressBar, Select, Spinner, Stat, btnSecondary } from '@/components/ui';
+import { Button, Card, Dialog, ErrorNote, PageHeader, Select, Spinner, Stat, btnSecondary } from '@/components/ui';
 import { api, ProjectDetail, ProjectStatus } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
@@ -44,7 +45,7 @@ function ProjectView() {
   return (
     <>
       <title>{`${p.name}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/projects" className="hover:underline">Projects</Link></nav>
+      <Crumbs items={[{ label: 'Projects', href: '/projects' }, { label: p.name }]} />
       <PageHeader title={p.name} subtitle={<>{p.number}, <Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></>}
         actions={<div className="flex flex-wrap items-center gap-2"><ProjectBadge status={p.status} />
           <Link href={`/finance?tab=invoices&new=1&clientId=${p.client.id}&projectId=${p.id}`} className={btnSecondary}>Create invoice</Link>
@@ -63,13 +64,11 @@ function ProjectView() {
       {tab === 'overview' && (
         <div className="flex flex-col gap-6">
           <section aria-label="Summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
-            <Stat label="Progress" value={p.progress.total === 0 ? 'None' : `${Math.round(p.progress.basisPoints / 100)}%`} note={p.progress.total === 0 ? 'No tasks yet' : `${p.progress.done} of ${p.progress.total} tasks`} />
+            <Stat label="Progress" value={p.progress.total === 0 ? 'None' : `${Math.round(p.progress.basisPoints / 100)}%`} note={p.progress.total === 0 ? 'No tasks yet' : `${p.progress.done} of ${p.progress.total} tasks, cancelled not counted`} />
             <Stat label="Approved scope" value={p.baseline ? `v${p.baseline.versionNumber}` : 'None'} note={p.baseline ? 'Frozen baseline' : 'Needs approval to start'} tone={p.baseline ? 'good' : 'warn'} />
             <Stat label="Milestones" value={p.milestoneCount} />
             <Stat label="Open change requests" value={p.openChangeRequests} tone={p.openChangeRequests > 0 ? 'warn' : undefined} />
           </section>
-          <Card className="p-6"><ProgressBar basisPoints={p.progress.basisPoints} done={p.progress.done} total={p.progress.total} label="Project progress" />
-            <p className="mt-2 text-[13px] text-muted">Progress is completed tasks ÷ all non-cancelled tasks. Milestones are checkpoints and are not added in, so work is never counted twice.</p></Card>
           <div className="flex flex-wrap items-start gap-6">
             <Card className="min-w-0 flex-[1_1_320px] p-6" aria-labelledby="det-h">
               <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>

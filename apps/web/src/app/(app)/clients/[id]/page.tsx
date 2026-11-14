@@ -1,18 +1,30 @@
 'use client';
 
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useState } from 'react';
-import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary } from '@/components/ui';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { ClientDeals, ClientMoney, ClientProjects } from '@/components/client-records';
+import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary, RowLink } from '@/components/ui';
 import { PortalAccessCard } from '@/components/portal-access';
 import { api, Client, Engagement, Paged } from '@/lib/api';
 import { fmtDateTime, fmtMoney } from '@/lib/format';
 
 interface Interaction { id: string; type: string; summary: string; occurredAt: string }
 
+const TABS = [['overview', 'Overview'], ['deals', 'Proposals & agreements'], ['projects', 'Projects'], ['money', 'Invoices & payments']] as const;
+type Tab = (typeof TABS)[number][0];
+
 export default function ClientDetailPage() {
+  return <Suspense fallback={<Spinner />}><ClientDetail /></Suspense>;
+}
+
+function ClientDetail() {
   const { id } = useParams<{ id: string }>();
+  const params = useSearchParams();
+  const router = useRouter();
+  const tab = (TABS.find(([k]) => k === params.get('tab'))?.[0] ?? 'overview') as Tab;
   const qc = useQueryClient();
   const client = useQuery({ queryKey: ['client', id], queryFn: () => api<Client>(`/clients/${id}`) });
   const engagements = useQuery({ queryKey: ['engagements', { clientId: id }], queryFn: () => api<Paged<Engagement>>('/engagements', { query: { clientId: id } }) });
@@ -34,7 +46,7 @@ export default function ClientDetailPage() {
   return (
     <>
       <title>{`${c.name}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/clients" className="hover:underline">Clients</Link></nav>
+      <Crumbs items={[{ label: 'Clients', href: '/clients' }, { label: c.name }]} />
       <PageHeader title={c.name}
         subtitle={[c.type === 'COMPANY' ? 'Company' : 'Individual', c.email, c.phone].filter(Boolean).join(', ')}
         actions={archived
@@ -43,67 +55,78 @@ export default function ClientDetailPage() {
       {archived && <Badge tone="warn">Archived, restore to edit or create engagements. History is preserved.</Badge>}
       <ErrorNote error={archive.error ?? primary.error ?? archiveContact.error} />
 
-      <div className="flex flex-wrap items-start gap-6">
-        <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
-          <Card className="py-6" aria-labelledby="eng-h">
-            <h2 id="eng-h" className="px-6 pb-4 text-lg font-semibold">Engagements</h2>
-            {engagements.isLoading ? <Spinner /> : engagements.data?.items.length === 0 ? <EmptyState title="No engagements yet" body="Create an engagement to track this opportunity through your pipeline." /> : (
-              <Table minWidth={520}>
-                <thead><tr><Th>Title</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
-                <tbody>{engagements.data?.items.map((e) => (
-                  <tr key={e.id}><Td><Link href={`/engagements/${e.id}`} className="font-medium hover:text-accent hover:underline">{e.title}</Link></Td><Td><Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'neutral'}>{e.stage.name}</Badge></Td><Td right>{fmtMoney(e.estimatedValue)}</Td></tr>
-                ))}</tbody>
-              </Table>
-            )}
-          </Card>
-
-          <Card className="p-6" aria-labelledby="log-h">
-            <h2 id="log-h" className="mb-4 text-lg font-semibold">Interactions</h2>
-            <LogInteraction clientId={id} disabled={archived} onDone={() => void qc.invalidateQueries({ queryKey: ['interactions', id] })} />
-            <ul className="mt-5 flex flex-col gap-4">
-              {interactions.data?.map((i) => (
-                <li key={i.id} className="flex gap-3"><span aria-hidden="true" className="mt-1 h-5 w-[3px] shrink-0 rounded-sm bg-line-strong" />
-                  <div><div><Badge>{i.type.charAt(0) + i.type.slice(1).toLowerCase()}</Badge> <span className="ml-1">{i.summary}</span></div><div className="mt-1 text-[13px] text-muted">{fmtDateTime(i.occurredAt)}</div></div></li>
-              ))}
-              {interactions.data?.length === 0 && <li className="text-muted">No interactions logged.</li>}
-            </ul>
-          </Card>
-        </div>
-
-        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
-          <Card className="p-6" aria-labelledby="con-h">
-            <div className="mb-4 flex items-center justify-between"><h2 id="con-h" className="text-lg font-semibold">Contacts</h2>
-              {!archived && <Button onClick={() => setContactOpen(true)}>Add contact</Button>}</div>
-            {c.contacts?.length === 0 ? <p className="text-muted">No contacts yet.</p> : (
-              <ul className="flex flex-col divide-y divide-line">
-                {c.contacts?.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
-                    <div className="min-w-0">
-                      <div className="font-medium">{[p.firstName, p.lastName].filter(Boolean).join(' ')} {p.isPrimary && <Badge tone="success">Primary</Badge>}</div>
-                      <div className="truncate text-[13px] text-muted">{[p.jobTitle, p.email, p.phone].filter(Boolean).join(', ') || 'None'}</div>
-                    </div>
-                    {!archived && <div className="flex gap-1">
-                      {!p.isPrimary && <Button variant="ghost" className="h-8 px-2 text-[13px]" onClick={() => primary.mutate(p.id)}>Make primary</Button>}
-                      <Button variant="ghost" className="h-8 px-2 text-[13px]" onClick={() => archiveContact.mutate(p.id)}>Archive</Button>
-                    </div>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-          <PortalAccessCard clientId={id} archived={archived} />
-          <Card className="p-6" aria-labelledby="det-h">
-            <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
-            <dl className="grid grid-cols-[100px_minmax(0,1fr)] gap-y-3">
-              <dt className="text-muted">Status</dt><dd>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</dd>
-              <dt className="text-muted">Website</dt><dd className="truncate">{c.website ?? 'None'}</dd>
-              <dt className="text-muted">Tax ID</dt><dd>{c.taxIdentifier ?? 'None'}</dd>
-              <dt className="text-muted">Tags</dt><dd>{c.tags.length ? c.tags.join(', ') : 'None'}</dd>
-              <dt className="text-muted">Added</dt><dd>{fmtDateTime(c.createdAt)}</dd>
-            </dl>
-          </Card>
-        </div>
+      <div role="tablist" aria-label="Client sections" className="-mt-2 flex gap-1 overflow-x-auto border-b border-line no-scrollbar">
+        {TABS.map(([k, name]) => (
+          <button key={k} role="tab" type="button" aria-selected={tab === k} onClick={() => router.replace(`/clients/${id}${k === 'overview' ? '' : `?tab=${k}`}`)}
+            className={`-mb-px h-11 shrink-0 border-b-2 px-4 text-sm font-medium ${tab === k ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'}`}>{name}</button>
+        ))}
       </div>
+      {tab === 'deals' && <ClientDeals clientId={id} archived={archived} />}
+      {tab === 'projects' && <ClientProjects clientId={id} archived={archived} />}
+      {tab === 'money' && <ClientMoney clientId={id} archived={archived} />}
+      {tab === 'overview' && (
+        <div className="flex flex-wrap items-start gap-6">
+          <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
+            <Card className="py-6" aria-labelledby="eng-h">
+              <h2 id="eng-h" className="px-6 pb-4 text-lg font-semibold">Engagements</h2>
+              {engagements.isLoading ? <Spinner /> : engagements.data?.items.length === 0 ? <EmptyState title="No engagements yet" body="Create an engagement to track this opportunity through your pipeline." /> : (
+                <Table minWidth={520}>
+                  <thead><tr><Th>Title</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
+                  <tbody>{engagements.data?.items.map((e) => (
+                    <RowLink key={e.id} href={`/engagements/${e.id}`}><Td><Link href={`/engagements/${e.id}`} className="font-medium hover:text-accent hover:underline">{e.title}</Link></Td><Td><Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'neutral'}>{e.stage.name}</Badge></Td><Td right>{fmtMoney(e.estimatedValue)}</Td></RowLink>
+                  ))}</tbody>
+                </Table>
+              )}
+            </Card>
+
+            <Card className="p-6" aria-labelledby="log-h">
+              <h2 id="log-h" className="mb-4 text-lg font-semibold">Interactions</h2>
+              <LogInteraction clientId={id} disabled={archived} onDone={() => void qc.invalidateQueries({ queryKey: ['interactions', id] })} />
+              <ul className="mt-5 flex flex-col gap-4">
+                {interactions.data?.map((i) => (
+                  <li key={i.id} className="flex gap-3"><span aria-hidden="true" className="mt-1 h-5 w-[3px] shrink-0 rounded-sm bg-line-strong" />
+                    <div><div><Badge>{i.type.charAt(0) + i.type.slice(1).toLowerCase()}</Badge> <span className="ml-1">{i.summary}</span></div><div className="mt-1 text-[13px] text-muted">{fmtDateTime(i.occurredAt)}</div></div></li>
+                ))}
+                {interactions.data?.length === 0 && <li className="text-muted">No interactions logged.</li>}
+              </ul>
+            </Card>
+          </div>
+
+          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
+            <Card className="p-6" aria-labelledby="con-h">
+              <div className="mb-4 flex items-center justify-between"><h2 id="con-h" className="text-lg font-semibold">Contacts</h2>
+                {!archived && <Button onClick={() => setContactOpen(true)}>Add contact</Button>}</div>
+              {c.contacts?.length === 0 ? <p className="text-muted">No contacts yet.</p> : (
+                <ul className="flex flex-col divide-y divide-line">
+                  {c.contacts?.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
+                      <div className="min-w-0">
+                        <div className="font-medium">{[p.firstName, p.lastName].filter(Boolean).join(' ')} {p.isPrimary && <Badge tone="success">Primary</Badge>}</div>
+                        <div className="truncate text-[13px] text-muted">{[p.jobTitle, p.email, p.phone].filter(Boolean).join(', ') || 'None'}</div>
+                      </div>
+                      {!archived && <div className="flex gap-1">
+                        {!p.isPrimary && <Button variant="ghost" className="h-8 px-2 text-[13px]" onClick={() => primary.mutate(p.id)}>Make primary</Button>}
+                        <Button variant="ghost" className="h-8 px-2 text-[13px]" onClick={() => archiveContact.mutate(p.id)}>Archive</Button>
+                      </div>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+            <PortalAccessCard clientId={id} archived={archived} />
+            <Card className="p-6" aria-labelledby="det-h">
+              <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
+              <dl className="grid grid-cols-[100px_minmax(0,1fr)] gap-y-3">
+                <dt className="text-muted">Status</dt><dd>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</dd>
+                <dt className="text-muted">Website</dt><dd className="truncate">{c.website ?? 'None'}</dd>
+                <dt className="text-muted">Tax ID</dt><dd>{c.taxIdentifier ?? 'None'}</dd>
+                <dt className="text-muted">Tags</dt><dd>{c.tags.length ? c.tags.join(', ') : 'None'}</dd>
+                <dt className="text-muted">Added</dt><dd>{fmtDateTime(c.createdAt)}</dd>
+              </dl>
+            </Card>
+          </div>
+        </div>
+      )}
 
       <AddContactDialog open={contactOpen} clientId={id} onClose={() => setContactOpen(false)} onDone={refresh} />
       <Dialog open={confirmArchive} onClose={() => setConfirmArchive(false)} title={`Archive ${c.name}?`}

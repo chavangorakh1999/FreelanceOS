@@ -1,11 +1,14 @@
 'use client';
 
+import { LinkedRecords } from '@/components/linked-records';
+import { ProjectBadge, ProposalBadge } from '@/components/status';
+import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { MoveStageDialog, useStages } from '@/components/engagement-dialogs';
-import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Select, Spinner } from '@/components/ui';
+import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Select, Spinner, btnPrimary, btnSecondary } from '@/components/ui';
 import { api, Engagement } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 
@@ -30,18 +33,21 @@ export default function EngagementDetailPage() {
   return (
     <>
       <title>{`${e.title}, FreelanceOS`}</title>
-      <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/engagements" className="hover:underline">Engagements</Link></nav>
+      <Crumbs items={[{ label: 'Engagements', href: '/engagements' }, { label: e.title }]} />
       <PageHeader title={e.title}
         subtitle={e.description ?? undefined}
-        actions={
+        actions={<>
           <Select aria-label="Stage" value={e.stage.id} className="w-44" onChange={(ev) => ev.target.value !== e.stage.id && setTarget(ev.target.value)}>
             {stages.data?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>} />
+          </Select>
+          {/* After discovery the next step is a proposal (PRD §8.1); a project can also start directly for small work. */}
+          <Link href={`/projects?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className={btnSecondary}>Start project</Link>
+          <Link href={`/proposals?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className={btnPrimary}>Create proposal</Link>
+        </>} />
       <div className="-mt-3 flex flex-wrap items-center gap-2">
         <Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'info'}>{e.stage.name}</Badge>
         <Link href={`/clients/${e.client.id}`} className="font-medium text-accent hover:underline">{e.client.name}</Link>
         <span className="text-muted"> Estimated {fmtMoney(e.estimatedValue)}</span>
-        <Link href={`/projects?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className="ml-auto inline-flex h-9 items-center rounded-control border border-line-strong bg-card px-3 text-sm font-medium hover:bg-stat">Convert to project</Link>
       </div>
       {e.lostReason && <p className="rounded-control bg-danger-soft px-3 py-2 text-danger">Lost: {e.lostReason}</p>}
 
@@ -86,6 +92,10 @@ export default function EngagementDetailPage() {
               <dt className="text-muted">Follow-up</dt><dd>{e.followUpAt ? fmtDate(e.followUpAt) : 'None'}</dd>
               <dt className="text-muted">Currency</dt><dd>{e.currency}</dd>
             </dl>
+            <LinkedRecords rows={[
+              ...(e.proposals ?? []).map((x) => ({ kind: 'Proposal', label: x.number, href: `/proposals/${x.id}`, status: <ProposalBadge status={x.status} /> })),
+              ...(e.projects ?? []).map((x) => ({ kind: 'Project', label: x.name, href: `/projects/${x.id}`, status: <ProjectBadge status={x.status} /> })),
+            ]} />
           </Card>
         </div>
       </div>

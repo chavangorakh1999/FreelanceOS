@@ -98,7 +98,7 @@ export default function SettingsPage() {
             {(id, d) => <Input id={id} aria-describedby={d} type="password" autoComplete="new-password" required minLength={12} value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} />}
           </Field>
           <ErrorNote error={change.error} />
-          {done && <p role="status" className="text-sm text-accent-ink">Password updated.</p>}
+          {done && <p role="status" className="text-sm text-ok-ink">Password updated.</p>}
           <div><Button type="submit" variant="primary" disabled={change.isPending}>Update password</Button></div>
         </form>
       </Card>

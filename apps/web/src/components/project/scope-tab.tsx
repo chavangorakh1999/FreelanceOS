@@ -175,7 +175,7 @@ function Editor({ projectId, version: v, onChanged }: { projectId: string; versi
 
       <ErrorNote error={save.error && !problems(save.error) ? save.error : null} />
       <div className="sticky bottom-4 flex flex-wrap items-center justify-end gap-2 rounded-card border border-line bg-card/95 p-3 shadow-[var(--cast-stock-lift)] backdrop-blur">
-        {save.isSuccess && !dirty && <span role="status" className="mr-auto text-sm text-accent-ink">Draft saved</span>}
+        {save.isSuccess && !dirty && <span role="status" className="mr-auto text-sm text-ok-ink">Draft saved</span>}
         <Button onClick={() => save.mutate()} disabled={save.isPending || !dirty}>{save.isPending ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="primary" onClick={() => { submit.reset(); setSubmitting(true); }}>Submit for review…</Button>
       </div>

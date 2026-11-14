@@ -20,6 +20,9 @@
   --color-accent-hover: oklch(46% 0.16 29);
   --color-accent-soft: oklch(95.5% 0.025 35);
   --color-accent-ink: oklch(42% 0.13 30);
+  /* Positive states (active, signed, applied, approved) read as settled, never as an alarm: a quiet sage, not the coral. */
+  --color-ok-soft: oklch(94.5% 0.03 150);
+  --color-ok-ink: oklch(40% 0.08 150);
   --color-warn-soft: oklch(95.5% 0.04 80);
   --color-warn-ink: oklch(42% 0.09 65);
   --color-info-soft: var(--color-paper-3);

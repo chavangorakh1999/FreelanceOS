@@ -1,11 +1,12 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { Card, EmptyState, ErrorNote, PageHeader, Spinner } from '@/components/ui';
+import { Badge, Card, EmptyState, ErrorNote, PageHeader, Spinner } from '@/components/ui';
 import { api, Dashboard } from '@/lib/api';
 import { useMe } from '@/lib/auth';
-import { describeAction, fmtDateTime, fmtMoney } from '@/lib/format';
+import { describeAction, fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 
 /** A ruled ledger rather than a row of tiles: label and note on the left, the figure on the right in tabular type. */
 function Ledger({ title, rows }: { title: string; rows: { label: string; note?: string; value: string; warn?: boolean }[] }) {
@@ -21,6 +22,46 @@ function Ledger({ title, rows }: { title: string; rows: { label: string; note?: 
         ))}
       </dl>
     </Card>
+  );
+}
+
+function Row({ href, title, meta, tag }: { href: string; title: string; meta: string; tag: React.ReactNode }) {
+  return (
+    <li><Link href={href} className="group -mx-2 flex items-center justify-between gap-3 rounded-control px-2 py-2.5 hover:bg-paper-2">
+      <span className="min-w-0"><span className="block truncate font-medium group-hover:underline">{title}</span><span className="block truncate text-[13px] text-muted">{meta}</span></span>
+      <span className="flex shrink-0 items-center gap-2">{tag}<ChevronRight size={16} aria-hidden="true" className="text-muted" /></span>
+    </Link></li>
+  );
+}
+
+/** PRD §7.2: what needs the owner, and what is coming up, before any figure. */
+function Attention({ d }: { d: Dashboard }) {
+  const a = d.attention;
+  const count = a.overdueInvoices.length + a.proposalsAwaitingClient.length + a.changesToAssess.length + a.scopeInReview.length;
+  const soon = d.upcoming.milestones.length + d.upcoming.invoicesDue.length;
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <Card className="p-6" aria-labelledby="att-h">
+        <h2 id="att-h" className="mb-2 flex items-center gap-2 text-lg font-semibold">Needs attention {count > 0 && <Badge tone="warn">{count}</Badge>}</h2>
+        {count === 0 ? <p className="flex items-center gap-2 py-3 text-muted"><CheckCircle2 size={18} aria-hidden="true" className="text-ok-ink" />Nothing is waiting on you.</p> : (
+          <ul className="flex flex-col">
+            {a.overdueInvoices.map((i) => <Row key={i.id} href={`/invoices/${i.id}`} title={`${i.number} is overdue`} meta={`${i.client}, ${fmtMoney(i.outstanding)} outstanding${i.dueDate ? `, due ${fmtDate(i.dueDate)}` : ''}`} tag={<Badge tone="danger">Overdue</Badge>} />)}
+            {a.changesToAssess.map((c) => <Row key={c.id} href={`/change-requests/${c.id}`} title={`${c.number}: ${c.title}`} meta={c.project} tag={<Badge tone="info">Assess impact</Badge>} />)}
+            {a.scopeInReview.map((s) => <Row key={s.projectId} href={`/projects/${s.projectId}?tab=scope`} title={`Scope version ${s.versionNumber} is with the client`} meta={s.project} tag={<Badge tone="info">In review</Badge>} />)}
+            {a.proposalsAwaitingClient.map((p) => <Row key={p.id} href={`/proposals/${p.id}`} title={p.title} meta={`${p.number}, ${p.client}`} tag={<Badge>Awaiting client</Badge>} />)}
+          </ul>
+        )}
+      </Card>
+      <Card className="p-6" aria-labelledby="up-h">
+        <h2 id="up-h" className="mb-2 text-lg font-semibold">Coming up <span className="text-sm font-normal text-muted">next 14 days</span></h2>
+        {soon === 0 ? <p className="py-3 text-muted">No milestones or invoices due.</p> : (
+          <ul className="flex flex-col">
+            {d.upcoming.milestones.map((m) => <Row key={m.id} href={`/projects/${m.project.id}?tab=work`} title={m.name} meta={`Milestone, ${m.project.name}`} tag={<span className="text-[13px] text-muted">{fmtDate(m.dueDate, { day: '2-digit', month: 'short' })}</span>} />)}
+            {d.upcoming.invoicesDue.map((i) => <Row key={i.id} href={`/invoices/${i.id}`} title={`${i.number} due`} meta={`${i.client}, ${fmtMoney(i.outstanding)}`} tag={<span className="text-[13px] text-muted">{i.dueDate ? fmtDate(i.dueDate, { day: '2-digit', month: 'short' }) : ''}</span>} />)}
+          </ul>
+        )}
+      </Card>
+    </div>
   );
 }
 
@@ -42,6 +83,7 @@ export default function DashboardPage() {
       {isLoading && <Spinner />}
       {data && fin && (
         <>
+          <Attention d={data} />
           <div className="grid gap-6 lg:grid-cols-2">
             <Ledger title="Money" rows={[
               { label: 'Overdue', note: fin.overdueInvoices ? `${fin.overdueInvoices} past due` : 'None', value: fmtMoney(fin.overdue), warn: fin.overdueInvoices > 0 },
