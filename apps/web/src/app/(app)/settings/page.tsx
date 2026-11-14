@@ -25,7 +25,7 @@ export default function SettingsPage() {
       <title>Settings · FreelanceOS</title>
       <PageHeader title="Settings" subtitle="Your workspace and account security." />
 
-      <Card className="p-7" aria-labelledby="ws-h">
+      <Card className="p-6" aria-labelledby="ws-h">
         <h2 id="ws-h" className="mb-4 text-lg font-semibold">Workspace</h2>
         <dl className="grid max-w-xl grid-cols-[130px_minmax(0,1fr)] gap-y-3">
           <dt className="text-muted">Business</dt><dd>{me.workspace.name}</dd>
@@ -35,7 +35,7 @@ export default function SettingsPage() {
         </dl>
       </Card>
 
-      <Card className="p-7" aria-labelledby="sess-h">
+      <Card className="p-6" aria-labelledby="sess-h">
         <h2 id="sess-h" className="mb-4 text-lg font-semibold">Active sessions</h2>
         <ErrorNote error={sessions.error ?? revoke.error} />
         {sessions.isLoading ? <Spinner /> : (
@@ -53,7 +53,7 @@ export default function SettingsPage() {
         )}
       </Card>
 
-      <Card className="p-7" aria-labelledby="pw-h">
+      <Card className="p-6" aria-labelledby="pw-h">
         <h2 id="pw-h" className="mb-4 text-lg font-semibold">Change password</h2>
         <form className="flex max-w-md flex-col gap-4" onSubmit={(e) => { e.preventDefault(); setDone(false); change.mutate(); }}>
           <Field label="Current password">{(id) => <Input id={id} type="password" autoComplete="current-password" required value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} />}</Field>

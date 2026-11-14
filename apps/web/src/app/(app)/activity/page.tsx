@@ -19,7 +19,7 @@ export default function ActivityPage() {
       <title>Activity · FreelanceOS</title>
       <PageHeader title="Activity" subtitle="An append-only record of important actions in your workspace." />
       <ErrorNote error={q.error} />
-      <Card className="p-7">
+      <Card className="p-6">
         {q.isLoading ? <Spinner /> : items.length === 0 ? <EmptyState title="Nothing here yet" body="Create a client or engagement and it will be recorded." /> : (
           <ol className="flex flex-col gap-4">
             {items.map((a) => (

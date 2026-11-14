@@ -14,6 +14,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (state.status === 'setup') router.replace('/setup');
   }, [state.status, router]);
 
-  if (state.status !== 'authed') return <div className="min-h-screen bg-outer"><Spinner /></div>;
+  if (state.status !== 'authed') return <div className="min-h-screen bg-panel"><Spinner /></div>;
   return <AppShell>{children}</AppShell>;
 }

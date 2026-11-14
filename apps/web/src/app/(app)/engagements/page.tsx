@@ -25,7 +25,7 @@ function EngagementsView() {
 
   const tab = (v: 'board' | 'list', label: string) => (
     <button type="button" onClick={() => setView(v)} aria-pressed={view === v}
-      className={`h-10 rounded-control px-4 text-sm font-medium ${view === v ? 'border border-[#d4d4d4] bg-card text-ink' : 'text-ink-2 hover:bg-black/5'}`}>{label}</button>
+      className={`h-10 rounded-control px-4 text-sm font-medium ${view === v ? 'border border-line-strong bg-card text-ink' : 'text-ink-2 hover:bg-black/5'}`}>{label}</button>
   );
 
   return (

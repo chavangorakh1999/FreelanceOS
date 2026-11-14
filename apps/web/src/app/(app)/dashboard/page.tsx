@@ -36,7 +36,7 @@ export default function DashboardPage() {
           <div aria-hidden="true" className="border-t border-dashed border-[#d0d0d0]" />
 
           <div className="flex flex-wrap items-start gap-6">
-            <Card className="min-w-0 flex-[999_1_480px] p-7" aria-labelledby="pipe-h">
+            <Card className="min-w-0 flex-[999_1_480px] p-6" aria-labelledby="pipe-h">
               <div className="mb-4 flex items-center justify-between">
                 <h2 id="pipe-h" className="text-lg font-semibold">Pipeline</h2>
                 <Link href="/engagements" className="text-sm font-medium text-accent hover:underline">Open pipeline</Link>
@@ -54,7 +54,7 @@ export default function DashboardPage() {
               </ul>
             </Card>
 
-            <Card className="min-w-0 flex-[1_1_320px] p-7" aria-labelledby="act-h">
+            <Card className="min-w-0 flex-[1_1_320px] p-6" aria-labelledby="act-h">
               <div className="mb-4 flex items-center justify-between">
                 <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
                 <Link href="/activity" className="text-sm font-medium text-accent hover:underline">View all</Link>

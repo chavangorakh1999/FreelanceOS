@@ -48,7 +48,7 @@ export default function EngagementDetailPage() {
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_480px] flex-col gap-6">
-          <Card className="p-7" aria-labelledby="req-h">
+          <Card className="p-6" aria-labelledby="req-h">
             <h2 id="req-h" className="mb-4 text-lg font-semibold">Requirements &amp; discovery notes</h2>
             {e.requirements?.length === 0 && <p className="mb-4 text-muted">Nothing captured yet.</p>}
             <ul className="mb-5 flex flex-col gap-3">
@@ -64,7 +64,7 @@ export default function EngagementDetailPage() {
         </div>
 
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
-          <Card className="p-7" aria-labelledby="hist-h">
+          <Card className="p-6" aria-labelledby="hist-h">
             <h2 id="hist-h" className="mb-4 text-lg font-semibold">Stage history</h2>
             <ol className="flex flex-col gap-4">
               {e.stageHistory?.map((h, i) => (
@@ -79,7 +79,7 @@ export default function EngagementDetailPage() {
               ))}
             </ol>
           </Card>
-          <Card className="p-7" aria-labelledby="d-h">
+          <Card className="p-6" aria-labelledby="d-h">
             <h2 id="d-h" className="mb-4 text-lg font-semibold">Details</h2>
             <dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-y-3">
               <dt className="text-muted">Category</dt><dd>{e.serviceCategory ?? '—'}</dd>

@@ -1,12 +1,11 @@
 @import "tailwindcss";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist";
 
 /* Design tokens — FreelanceOS "soft shell" system (see docs/design-system.md). */
 @theme {
-  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --font-sans: "Geist Variable", Geist, ui-sans-serif, system-ui, sans-serif;
 
-  --color-outer: #d6d6d6;
-  --color-shell: #e8e8e8;
+  --color-shell: #f2f2f2;
   --color-panel: #fafafa;
   --color-card: #ffffff;
   --color-stat: #f0f0f0;
@@ -29,11 +28,11 @@
   --color-danger-soft: #fdecea;
 
   --radius-control: 12px;
-  --radius-card: 24px;
-  --radius-stat: 16px;
+  --radius-card: 16px;
+  --radius-stat: 12px;
 }
 
-html { background: var(--color-outer); }
+html { background: var(--color-panel); }
 body {
   font-family: var(--font-sans);
   font-size: 14px;

@@ -45,7 +45,7 @@ export default function ClientDetailPage() {
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
           <Card className="py-6" aria-labelledby="eng-h">
-            <h2 id="eng-h" className="px-7 pb-4 text-lg font-semibold">Engagements</h2>
+            <h2 id="eng-h" className="px-6 pb-4 text-lg font-semibold">Engagements</h2>
             {engagements.isLoading ? <Spinner /> : engagements.data?.items.length === 0 ? <EmptyState title="No engagements yet" body="Create an engagement to track this opportunity through your pipeline." /> : (
               <Table minWidth={520}>
                 <thead><tr><Th>Title</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
@@ -56,7 +56,7 @@ export default function ClientDetailPage() {
             )}
           </Card>
 
-          <Card className="p-7" aria-labelledby="log-h">
+          <Card className="p-6" aria-labelledby="log-h">
             <h2 id="log-h" className="mb-4 text-lg font-semibold">Interactions</h2>
             <LogInteraction clientId={id} disabled={archived} onDone={() => void qc.invalidateQueries({ queryKey: ['interactions', id] })} />
             <ul className="mt-5 flex flex-col gap-4">
@@ -70,7 +70,7 @@ export default function ClientDetailPage() {
         </div>
 
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
-          <Card className="p-7" aria-labelledby="con-h">
+          <Card className="p-6" aria-labelledby="con-h">
             <div className="mb-4 flex items-center justify-between"><h2 id="con-h" className="text-lg font-semibold">Contacts</h2>
               {!archived && <Button onClick={() => setContactOpen(true)}>Add contact</Button>}</div>
             {c.contacts?.length === 0 ? <p className="text-muted">No contacts yet.</p> : (
@@ -90,7 +90,7 @@ export default function ClientDetailPage() {
               </ul>
             )}
           </Card>
-          <Card className="p-7" aria-labelledby="det-h">
+          <Card className="p-6" aria-labelledby="det-h">
             <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
             <dl className="grid grid-cols-[100px_minmax(0,1fr)] gap-y-3">
               <dt className="text-muted">Status</dt><dd>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</dd>
