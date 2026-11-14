@@ -241,6 +241,21 @@ describe('change requests', () => {
     expect(await h.prisma.changeRequestDecision.count({ where: { party: 'CLIENT' } })).toBe(1);
   });
 
+  it('lists change requests across projects, filterable by status', async () => {
+    const a = await d.baselineProject();
+    const b = await d.baselineProject(a.clientId);
+    const one = await raise(a.id);
+    await raise(b.id, { title: 'On the second project' });
+    await d.post(`/change-requests/${one.id}/withdraw`, { reason: 'No longer needed' }).expect(204);
+    const all = (await d.get('/change-requests').expect(200)).body;
+    expect(all).toHaveLength(2);
+    expect(all[0].project).toMatchObject({ name: 'Billing portal rebuild', client: { name: 'Northwind Labs' } });
+    expect((await d.get('/change-requests?status=WITHDRAWN').expect(200)).body.map((x: { id: string }) => x.id)).toEqual([one.id]);
+    expect((await d.get('/change-requests?status=bogus').expect(400)).body.error.code).toBe('VALIDATION_FAILED');
+    const other = bearer((await seedOtherWorkspace(h)).token);
+    expect((await h.http().get('/change-requests').set(other)).body).toEqual([]);
+  });
+
   it('keeps other workspaces out of change-request routes', async () => {
     const p = await d.baselineProject();
     const cr = await raise(p.id);

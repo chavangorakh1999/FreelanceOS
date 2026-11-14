@@ -45,7 +45,7 @@ database with `TEST_DATABASE_URL`; tests wipe it between cases.
 | 0 Foundation | monorepo, auth + workspace, migrations, audit foundation, design system + responsive shell, CI | **done** (password reset needs email — pending) |
 | 1 Client & sales | dashboard, clients + contacts, engagements + pipeline, activity | **done** (search/filter, board + list, stage history, interactions) |
 | 2 Commercial docs | proposals + immutable versions, decisions, agreements + signature trail, templates, PDF | **done** (see gaps below) |
-| 3 Delivery & scope | projects, scope versions/freeze, milestones, tasks, change requests | |
+| 3 Delivery & scope | projects, scope versions/freeze, milestones, tasks + dependencies, change requests | **done** (see below) |
 | 4 Finance | invoices, payments + allocations, credit notes — *calculation core already in `packages/shared`* | |
 | 5 Portal & comms | client portal, comments, email | |
 | 6 Hardening | security audit, performance, backup/restore | |
@@ -61,6 +61,23 @@ what the client told them, with channel and evidence), email delivery of shared 
 comparison, a template editor UI, and stored documents (PDFs are generated on demand, not yet filed in a document library).
 
 PDF generation needs Chromium. Set `CHROMIUM_PATH`, or run `pnpm --filter @freelanceos/api exec playwright-core install chromium`.
+
+### Phase 3 — what is and isn't there
+Built: projects created by an explicit action from an engagement / accepted proposal / signed agreement (the first scope
+draft is seeded from the accepted proposal); versioned scope with review → approval → freeze and a delta view; milestones
+with deliverables; tasks with dependencies (cycle-checked, start-blocking) in list and board views; change requests with an
+impact assessment, both parties' decisions, a new scope version on approval, and an addendum gate before changed work begins.
+
+**Decisions made (change them in one place if you disagree):**
+- *Progress* has one definition: **completed tasks ÷ non-cancelled tasks**. Milestones are checkpoints with their own status
+  and are never added in, so work is not counted twice (`packages/shared/src/projects.ts`).
+- *Changes after signing:* the assessment records whether the signed agreement needs an **addendum**. If so, the change
+  request stays blocked until you attest it is complete. The signed agreement itself is never edited.
+- Starting delivery (`PLANNING → ACTIVE`) requires an approved scope; completing a project requires no open change requests.
+
+Not yet: comments on tasks and scope (Phase 5, with the portal), client-side approval of scope and change requests (you record
+what the client told you, with channel and evidence), the calendar, generated scope/change-proposal documents, amendment
+documents (the addendum is attested, not authored), milestone acceptance records, and task assignment to other people.
 
 ## Open product decisions
 Carried over from PRD §20 — notably e-signature provider, email provider, GST/TDS invoice rules and invoice

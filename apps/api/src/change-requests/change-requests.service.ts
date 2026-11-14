@@ -23,6 +23,15 @@ const presentAssessment = (x: ChangeRequestAssessment) => {
 export class ChangeRequestsService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly seq: NumberSequenceService) {}
 
+  /** Every change request in the workspace, newest first — backs the "Scope & Changes" overview. */
+  async listAll(a: AuthContext, status?: ChangeRequestStatus) {
+    const rows = await this.prisma.changeRequest.findMany({
+      where: { workspaceId: a.workspaceId, ...(status ? { status } : {}) }, orderBy: { createdAt: 'desc' }, take: 200,
+      include: { project: { select: { id: true, name: true, number: true, client: { select: { id: true, name: true } } } }, assessments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+    return rows.map(({ assessments, ...r }) => ({ ...r, latestAssessment: assessments[0] ? presentAssessment(assessments[0]) : null }));
+  }
+
   async list(a: AuthContext, projectId: string) {
     await loadProject(this.prisma, a.workspaceId, projectId);
     const rows = await this.prisma.changeRequest.findMany({

@@ -58,6 +58,7 @@ export default function ProposalPage() {
             <h2 id="act-h" className="mb-3 text-lg font-semibold">Next steps</h2>
             <div className="flex flex-col gap-2">
               {isLive && <Button variant="primary" onClick={() => setDeciding(true)}>Record client decision</Button>}
+              {p.status === 'ACCEPTED' && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className="inline-flex h-10 items-center justify-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">Start project</Link>}
               {p.status === 'ACCEPTED' && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-accent px-4 text-sm font-medium text-white shadow-[0_6px_14px_rgba(4,120,87,0.25)] hover:bg-accent-hover"><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
               {latest.status === 'DRAFT' && <p className="text-[13px] text-muted">Finish the draft, then share it from the bar at the bottom of the page.</p>}
               {p.status !== 'ACCEPTED' && latest.status !== 'DRAFT' && <Button onClick={() => newVersion.mutate()} disabled={newVersion.isPending}>Start new version</Button>}

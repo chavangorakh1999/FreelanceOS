@@ -45,11 +45,13 @@ export function Field({ label, error, children, hint }: { label: string; error?:
   );
 }
 
-const control = 'h-10 w-full rounded-control border border-line-strong bg-card px-3 text-sm text-ink placeholder:text-muted';
-export const Input = ({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) => <input className={cx(control, className)} {...p} />;
-export const Select = ({ className, ...p }: React.SelectHTMLAttributes<HTMLSelectElement>) => <select className={cx(control, className)} {...p} />;
+const control = 'h-10 rounded-control border border-line-strong bg-card px-3 text-sm text-ink placeholder:text-muted';
+// Controls fill their container unless the caller sets an explicit width (a `w-*` class), which must win.
+const widthOf = (className?: string) => (className && /(^|\s)w-/.test(className) ? '' : 'w-full');
+export const Input = ({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) => <input className={cx(control, widthOf(className), className)} {...p} />;
+export const Select = ({ className, ...p }: React.SelectHTMLAttributes<HTMLSelectElement>) => <select className={cx(control, widthOf(className), className)} {...p} />;
 export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea className={cx(control, 'h-auto min-h-24 py-2', className)} {...p} />
+  <textarea className={cx(control, widthOf(className), 'h-auto min-h-24 py-2', className)} {...p} />
 );
 
 type Tone = 'neutral' | 'success' | 'warn' | 'info' | 'danger';
@@ -133,3 +135,17 @@ export const Th = ({ right, children }: { right?: boolean; children?: React.Reac
 export const Td = ({ right, className, ...p }: React.TdHTMLAttributes<HTMLTableCellElement> & { right?: boolean }) => (
   <td className={cx('border-b border-[#f0f0f0] px-4 py-3.5 align-middle', right && 'text-right', className)} {...p} />
 );
+
+/** Progress as a bar plus text, so it never relies on colour alone. */
+export function ProgressBar({ basisPoints, done, total, label = 'Progress' }: { basisPoints: number; done: number; total: number; label?: string }) {
+  const pct = Math.round(basisPoints / 100);
+  return (
+    <div className="flex items-center gap-3">
+      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={total === 0 ? 'No tasks yet' : `${pct}% (${done} of ${total} tasks)`}
+        className="h-2 flex-1 overflow-hidden rounded-full bg-[#e4e4e4]">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-24 shrink-0 text-right text-[13px] text-muted">{total === 0 ? 'No tasks yet' : `${pct}% · ${done}/${total}`}</span>
+    </div>
+  );
+}

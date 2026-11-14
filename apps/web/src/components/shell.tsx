@@ -19,8 +19,8 @@ const GROUPS: { title?: string; items: Item[] }[] = [
     { label: 'Agreements', href: '/agreements', icon: FileSignature },
   ] },
   { title: 'Delivery', items: [
-    { label: 'Projects', icon: FolderKanban },
-    { label: 'Scope & Changes', icon: Layers },
+    { label: 'Projects', href: '/projects', icon: FolderKanban },
+    { label: 'Scope & Changes', href: '/changes', icon: Layers },
     { label: 'Calendar', icon: CalendarDays },
   ] },
   { title: 'Business', items: [

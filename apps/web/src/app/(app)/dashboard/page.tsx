@@ -27,6 +27,7 @@ export default function DashboardPage() {
           <section aria-label="Summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
             <Stat label="Active clients" value={data.activeClients} />
             <Stat label="Open engagements" value={data.openEngagements} />
+            <Stat label="Active projects" value={data.activeProjects} />
             <Stat
               label="Open pipeline value"
               value={valueByCurrency.size === 0 ? fmtMoney({ amountMinor: '0', currency: me.workspace.defaultCurrency }) : [...valueByCurrency].map(([c, v]) => fmtMoney({ amountMinor: v.toString(), currency: c })).join(' · ')}

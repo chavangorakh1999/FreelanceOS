@@ -41,6 +41,7 @@ export default function EngagementDetailPage() {
         <Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'info'}>{e.stage.name}</Badge>
         <Link href={`/clients/${e.client.id}`} className="font-medium text-accent hover:underline">{e.client.name}</Link>
         <span className="text-muted">· Estimated {fmtMoney(e.estimatedValue)}</span>
+        <Link href={`/projects?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className="ml-auto inline-flex h-9 items-center rounded-control border border-line-strong bg-card px-3 text-sm font-medium hover:bg-stat">Convert to project</Link>
       </div>
       {e.lostReason && <p className="rounded-control bg-danger-soft px-3 py-2 text-danger">Lost: {e.lostReason}</p>}
 

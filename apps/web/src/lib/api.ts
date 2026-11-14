@@ -70,7 +70,7 @@ export interface Engagement {
 export interface Paged<T> { items: T[]; page: number; pageSize: number; total: number }
 export interface AuditEvent { id: string; action: string; targetType: string; targetId: string; metadata: Record<string, unknown> | null; createdAt: string }
 export interface Dashboard {
-  activeClients: number; openEngagements: number; recentActivity: AuditEvent[];
+  activeClients: number; activeProjects: number; openEngagements: number; recentActivity: AuditEvent[];
   pipeline: { stageId: string; name: string; kind: Stage['kind']; count: number; valueByCurrency: { currency: string; amountMinor: string }[] }[];
 }
 export interface SessionInfo { id: string; userAgent: string | null; ipAddress: string | null; createdAt: string; lastUsedAt: string; current: boolean }
@@ -129,3 +129,64 @@ export interface AgreementVersion {
   events: { id: string; type: string; method: string; occurredAt: string; evidence: string | null; signerId: string | null }[];
 }
 export interface TemplateInfo { id: string; kind: 'PROPOSAL' | 'AGREEMENT'; name: string; description: string | null }
+
+// ───────── Phase 3 types ─────────
+
+export interface Progress { done: number; total: number; basisPoints: number }
+export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+export interface ProjectSummary {
+  id: string; number: string; name: string; status: ProjectStatus; targetDate: string | null; startDate: string | null;
+  client: { id: string; name: string }; progress: Progress;
+}
+export interface ProjectDetail extends Omit<ProjectSummary, 'client'> {
+  description: string | null; visibility: string; clientId: string;
+  client: { id: string; name: string };
+  engagement: { id: string; title: string } | null;
+  proposal: { id: string; number: string; title: string } | null;
+  agreement: { id: string; number: string; title: string; status: string } | null;
+  milestoneCount: number; openChangeRequests: number;
+  baseline: { versionNumber: number; approvedAt: string | null } | null;
+  latestScopeVersion: { versionNumber: number; status: ScopeStatus } | null;
+}
+export type ScopeStatus = 'DRAFT' | 'IN_REVIEW' | 'CHANGES_REQUESTED' | 'APPROVED' | 'SUPERSEDED';
+export type ScopeKind = 'REQUIREMENT' | 'FEATURE' | 'DELIVERABLE' | 'ASSUMPTION' | 'EXCLUSION' | 'ACCEPTANCE_CRITERION';
+export interface ScopeItem { itemKey: string; kind: ScopeKind; title: string; description: string }
+export interface ScopeApproval { decision: 'APPROVED' | 'CHANGES_REQUESTED'; channel: string; approverName: string | null; decidedAt: string; note: string | null }
+export interface ScopeVersionSummary {
+  id: string; versionNumber: number; status: ScopeStatus; summary: string | null; submittedAt: string | null; approvedAt: string | null;
+  itemCount: number; approval: ScopeApproval | null; changeRequest: { id: string; number: string; title: string } | null;
+}
+export interface ScopeOverview { documentId: string; baseline: number | null; versions: ScopeVersionSummary[] }
+export interface ScopeVersionFull {
+  id: string; versionNumber: number; status: ScopeStatus; summary: string | null; submittedAt: string | null; approvedAt: string | null;
+  items: ScopeItem[]; approval: ScopeApproval | null; resultOfRequest: { id: string; number: string; title: string } | null;
+}
+export interface ScopeDiff { from: number; to: number; added: ScopeItem[]; removed: ScopeItem[]; changed: { before: ScopeItem; after: ScopeItem }[]; unchangedCount: number }
+export type MilestoneStatus = 'PLANNED' | 'IN_PROGRESS' | 'DELIVERED' | 'ACCEPTED';
+export interface Milestone {
+  id: string; name: string; description: string | null; dueDate: string | null; status: MilestoneStatus; progress: Progress;
+  deliverables: { id: string; title: string; done: boolean }[];
+}
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+export interface Task {
+  id: string; title: string; description: string | null; internalNotes: string | null; priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: TaskStatus; dueDate: string | null; milestoneId: string | null; dependsOn: string[]; blockedBy: string[];
+}
+export type ChangeStatus = 'SUBMITTED' | 'NEEDS_CLARIFICATION' | 'ASSESSED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+export interface Assessment {
+  id: string; costDelta: MoneyJson; timelineDeltaDays: number; deliverablesImpact: string; dependenciesImpact: string;
+  risk: 'LOW' | 'MEDIUM' | 'HIGH'; riskNotes: string | null; requiresAddendum: boolean; createdAt: string;
+}
+export interface ChangeSummary {
+  id: string; number: string; title: string; status: ChangeStatus; requestedBy: 'FREELANCER' | 'CLIENT'; requestedAt: string;
+  latestAssessment: Assessment | null; project?: { id: string; name: string; number: string; client: { id: string; name: string } };
+}
+export interface ChangeDetail extends Omit<ChangeSummary, 'project'> {
+  description: string; reason: string; requesterName: string | null; addendumStatus: 'NOT_REQUIRED' | 'REQUIRED' | 'COMPLETED'; addendumNote: string | null; withdrawnReason: string | null;
+  project: { id: string; name: string; number: string; status: ProjectStatus };
+  baseScopeVersion: { versionNumber: number; status: ScopeStatus }; resultingVersion: { versionNumber: number; status: ScopeStatus } | null;
+  assessments: Assessment[];
+  decisions: { id: string; party: 'FREELANCER' | 'CLIENT'; decision: 'APPROVED' | 'REJECTED' | 'CLARIFICATION_REQUESTED'; channel: string; decidedAt: string; note: string | null }[];
+  delta: { added: ScopeItem[]; removed: ScopeItem[]; changed: { before: ScopeItem; after: ScopeItem }[]; unchangedCount: number } | null;
+  readiness: { readyToStart: boolean; blockers: string[] };
+}

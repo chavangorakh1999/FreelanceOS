@@ -30,6 +30,12 @@ docs/               PRD, design system, these notes
 | Acceptance ≠ signature ≠ scope approval (§2 #7) | separate tables and states; an agreement can only be created from an *accepted* proposal and records the accepted version id |
 | Signature events idempotent (§7.6, App. B #18) | `Idempotency-Key` unique per version; the version row is locked (`FOR UPDATE`) so simultaneous signatures cannot both win |
 | Honest about legal weight (§7.6) | manual signatures require an evidence note; templates are labelled a starting point; documents with unresolved `[template guidance]` cannot be shared or sent |
+| Frozen scope can't be edited (App. B #6-7) | DB triggers freeze a scope version and its items once submitted; one live APPROVED version per project; the only way to a new draft from approved scope is an approved change request |
+| Scope approval references an exact version (§7.7) | `scope_approvals` is append-only and unique per version; approval supersedes the previous baseline in the same transaction |
+| Change approval ≠ contract amendment (App. B #8) | approving creates a *draft scope version*, never touches agreement tables; `addendumStatus` gates "changed work may begin" |
+| Rejected change leaves baseline untouched (§7.9) | rejection writes only a decision row; tested that no scope version is created |
+| Original scope preserved, delta shown (§7.9) | items keep a stable `itemKey` across versions; the delta is computed, never stored |
+| One progress method (App. B #19) | `progressOf()` in the shared package; milestones excluded from the percentage |
 | Stable error codes (§13) | `{ error: { code, message, details? } }` for every failure |
 | Rate limiting (§10.1) | global throttler; stricter on `/auth/setup`, `/auth/login` |
 
