@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {GROUPS.map((g, gi) => (
           <div key={gi} className="flex flex-col gap-0.5">
-            {g.title && <div className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted">{g.title}</div>}
+            {g.title && <div className="px-3 pb-1 pt-3 text-[13px] text-muted">{g.title}</div>}
             {g.items.map(({ label, href, icon: Icon }) => {
               const active = href ? path === href || path.startsWith(href + '/') : false;
               const cls = 'flex h-10 items-center gap-3 rounded-control px-3 text-sm';

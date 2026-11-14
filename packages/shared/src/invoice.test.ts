@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateInvoice,
   deriveInvoiceStatus,
+  formatDocumentNumber,
   formatInvoiceNumber,
   indianFinancialYear,
   validateAllocations,
@@ -96,7 +97,8 @@ describe('numbering', () => {
     expect(indianFinancialYear(new Date('2027-03-31T12:00:00Z'))).toBe('26-27');
     expect(indianFinancialYear(new Date('2027-04-01T00:00:00Z'))).toBe('27-28');
   });
-  it('formats invoice numbers', () => {
+  it('formats invoice and other document numbers', () => {
     expect(formatInvoiceNumber('INV', '26-27', 42)).toBe('INV/26-27/0042');
+    expect(formatDocumentNumber('PROP', '26-27', 7)).toBe('PROP/26-27/0007');
   });
 });

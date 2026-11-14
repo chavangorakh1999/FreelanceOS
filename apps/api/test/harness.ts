@@ -21,17 +21,14 @@ export async function createHarness(): Promise<Harness> {
   await app.init();
   const prisma = app.get(PrismaService);
   const reset = async () => {
-    // Audit tables are append-only by trigger; tests may wipe them only by disabling user triggers.
+    // Append-only tables are guarded by triggers; tests may wipe them only by switching to replica mode,
+    // which skips triggers for this transaction. Tables are discovered, so new ones are never forgotten.
+    const tables = await prisma.$queryRaw<{ tablename: string }[]>`
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations', 'currencies')`;
+    const list = tables.map((t) => `"${t.tablename}"`).join(', ');
     await prisma.$transaction([
-      prisma.$executeRawUnsafe('ALTER TABLE audit_events DISABLE TRIGGER USER'),
-      prisma.$executeRawUnsafe('ALTER TABLE engagement_stage_history DISABLE TRIGGER USER'),
-      prisma.$executeRawUnsafe(
-        `TRUNCATE audit_events, engagement_stage_history, engagement_requirements, engagements, pipeline_stages,
-         client_interactions, client_addresses, client_contacts, clients, number_sequences, workspace_settings,
-         user_sessions, workspace_memberships, workspaces, users RESTART IDENTITY CASCADE`,
-      ),
-      prisma.$executeRawUnsafe('ALTER TABLE audit_events ENABLE TRIGGER USER'),
-      prisma.$executeRawUnsafe('ALTER TABLE engagement_stage_history ENABLE TRIGGER USER'),
+      prisma.$executeRawUnsafe('SET LOCAL session_replication_role = replica'),
+      prisma.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`),
     ]);
   };
   return { app, prisma, http: () => request(app.getHttpServer()), reset, close: () => app.close() };
@@ -55,3 +52,8 @@ export async function seedOtherWorkspace(h: Harness) {
 }
 
 export const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
+
+/** Run raw SQL with triggers disabled — only for arranging state a test could not otherwise reach (e.g. backdating). */
+export async function backdoor(h: Harness, sql: string) {
+  await h.prisma.$transaction([h.prisma.$executeRawUnsafe('SET LOCAL session_replication_role = replica'), h.prisma.$executeRawUnsafe(sql)]);
+}

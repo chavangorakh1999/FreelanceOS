@@ -25,13 +25,13 @@ enum WorkspaceRole {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique // stored lower-cased by the application
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique // stored lower-cased by the application
   passwordHash String
   name         String
   disabledAt   DateTime? @db.Timestamptz
-  createdAt    DateTime @default(now()) @db.Timestamptz
-  updatedAt    DateTime @updatedAt @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
 
   memberships WorkspaceMembership[]
   sessions    UserSession[]
@@ -51,20 +51,23 @@ model Workspace {
   region          String?
   postalCode      String?
   country         String?  @db.Char(2) // ISO 3166-1 alpha-2
-  taxIdentifier   String?  // e.g. GSTIN; not assumed to be Indian
+  taxIdentifier   String? // e.g. GSTIN; not assumed to be Indian
   defaultCurrency String   @default("INR") @db.Char(3)
   timezone        String   @default("Asia/Kolkata")
   locale          String   @default("en-IN")
   createdAt       DateTime @default(now()) @db.Timestamptz
   updatedAt       DateTime @updatedAt @db.Timestamptz
 
-  memberships    WorkspaceMembership[]
-  settings       WorkspaceSettings?
-  clients        Client[]
-  pipelineStages PipelineStage[]
-  engagements    Engagement[]
-  auditEvents    AuditEvent[]
+  memberships     WorkspaceMembership[]
+  settings        WorkspaceSettings?
+  clients         Client[]
+  pipelineStages  PipelineStage[]
+  engagements     Engagement[]
+  auditEvents     AuditEvent[]
   numberSequences NumberSequence[]
+  templates       DocumentTemplate[]
+  proposals       Proposal[]
+  agreements      Agreement[]
 
   @@map("workspaces")
 }
@@ -104,18 +107,18 @@ model UserSession {
 // ───────────────────────── Configuration ─────────────────────────
 
 enum NumberingScope {
-  WORKSPACE      // one continuous sequence
+  WORKSPACE // one continuous sequence
   FINANCIAL_YEAR // resets every April (Indian FY)
 }
 
 model WorkspaceSettings {
-  workspaceId        String         @id @db.Uuid
-  invoicePrefix      String         @default("INV")
-  invoiceNumbering   NumberingScope @default(FINANCIAL_YEAR)
-  invoicePadding     Int            @default(4)
-  defaultPaymentTermsDays Int       @default(30)
-  defaultTaxBps      Int            @default(1800)
-  updatedAt          DateTime       @updatedAt @db.Timestamptz
+  workspaceId             String         @id @db.Uuid
+  invoicePrefix           String         @default("INV")
+  invoiceNumbering        NumberingScope @default(FINANCIAL_YEAR)
+  invoicePadding          Int            @default(4)
+  defaultPaymentTermsDays Int            @default(30)
+  defaultTaxBps           Int            @default(1800)
+  updatedAt               DateTime       @updatedAt @db.Timestamptz
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
 
@@ -140,7 +143,7 @@ model NumberSequence {
 model Currency {
   code     String @id @db.Char(3)
   name     String
-  exponent Int    // minor-unit digits: INR 2, JPY 0, KWD 3
+  exponent Int // minor-unit digits: INR 2, JPY 0, KWD 3
 
   @@map("currencies")
 }
@@ -173,26 +176,28 @@ enum ClientStatus {
 }
 
 model Client {
-  id          String       @id @default(uuid()) @db.Uuid
-  workspaceId String       @db.Uuid
-  type        ClientType
-  name        String
-  status      ClientStatus @default(ACTIVE)
-  email       String?
-  phone       String?
-  website     String?
+  id            String       @id @default(uuid()) @db.Uuid
+  workspaceId   String       @db.Uuid
+  type          ClientType
+  name          String
+  status        ClientStatus @default(ACTIVE)
+  email         String?
+  phone         String?
+  website       String?
   taxIdentifier String?
-  notes       String?
-  tags        String[]     @default([])
-  archivedAt  DateTime?    @db.Timestamptz
-  createdAt   DateTime     @default(now()) @db.Timestamptz
-  updatedAt   DateTime     @updatedAt @db.Timestamptz
+  notes         String?
+  tags          String[]     @default([])
+  archivedAt    DateTime?    @db.Timestamptz
+  createdAt     DateTime     @default(now()) @db.Timestamptz
+  updatedAt     DateTime     @updatedAt @db.Timestamptz
 
   workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   contacts     ClientContact[]
   addresses    ClientAddress[]
   interactions ClientInteraction[]
   engagements  Engagement[]
+  proposals    Proposal[]
+  agreements   Agreement[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, name])
@@ -297,30 +302,32 @@ model PipelineStage {
 }
 
 model Engagement {
-  id                 String    @id @default(uuid()) @db.Uuid
-  workspaceId        String    @db.Uuid
-  clientId           String    @db.Uuid
-  stageId            String    @db.Uuid
-  ownerId            String    @db.Uuid
-  title              String
-  description        String?
-  serviceCategory    String?
-  source             String?
-  estimatedValueMinor BigInt   @default(0)
-  currency           String    @db.Char(3)
-  expectedStartDate  DateTime? @db.Date
-  expectedCloseDate  DateTime? @db.Date
-  lostReason         String?
-  followUpAt         DateTime? @db.Date
-  archivedAt         DateTime? @db.Timestamptz
-  createdAt          DateTime  @default(now()) @db.Timestamptz
-  updatedAt          DateTime  @updatedAt @db.Timestamptz
+  id                  String    @id @default(uuid()) @db.Uuid
+  workspaceId         String    @db.Uuid
+  clientId            String    @db.Uuid
+  stageId             String    @db.Uuid
+  ownerId             String    @db.Uuid
+  title               String
+  description         String?
+  serviceCategory     String?
+  source              String?
+  estimatedValueMinor BigInt    @default(0)
+  currency            String    @db.Char(3)
+  expectedStartDate   DateTime? @db.Date
+  expectedCloseDate   DateTime? @db.Date
+  lostReason          String?
+  followUpAt          DateTime? @db.Date
+  archivedAt          DateTime? @db.Timestamptz
+  createdAt           DateTime  @default(now()) @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @db.Timestamptz
 
   workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   client       Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   stage        PipelineStage            @relation(fields: [stageId], references: [id], onDelete: Restrict)
   requirements EngagementRequirement[]
   stageHistory EngagementStageHistory[]
+  proposals    Proposal[]
+  agreements   Agreement[]
 
   @@index([workspaceId, stageId])
   @@index([workspaceId, clientId])
@@ -380,7 +387,7 @@ model AuditEvent {
   workspaceId   String         @db.Uuid
   actorType     AuditActorType @default(USER)
   actorId       String?        @db.Uuid
-  action        String         // e.g. "client.created", "engagement.stage_changed"
+  action        String // e.g. "client.created", "engagement.stage_changed"
   targetType    String
   targetId      String         @db.Uuid
   objectVersion Int?
@@ -393,4 +400,379 @@ model AuditEvent {
   @@index([workspaceId, createdAt(sort: Desc)])
   @@index([workspaceId, targetType, targetId])
   @@map("audit_events")
+}
+
+// ───────────────────────── Phase 2: commercial documents ─────────────────────────
+
+enum TemplateKind {
+  PROPOSAL
+  AGREEMENT
+}
+
+/// Reusable starting points. `body` is { sections: [...] } for proposals, { clauses: [...] } for agreements.
+model DocumentTemplate {
+  id          String       @id @default(uuid()) @db.Uuid
+  workspaceId String       @db.Uuid
+  kind        TemplateKind
+  name        String
+  description String?
+  body        Json
+  archivedAt  DateTime?    @db.Timestamptz
+  createdAt   DateTime     @default(now()) @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, kind, name])
+  @@map("document_templates")
+}
+
+enum ProposalStatus {
+  DRAFT
+  SHARED
+  ACCEPTED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum ProposalVersionStatus {
+  DRAFT
+  SHARED
+  SUPERSEDED
+  ACCEPTED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum PricingModel {
+  FIXED
+  MILESTONE
+  HOURLY
+  DAILY
+  TIME_AND_MATERIALS
+  RETAINER
+  HYBRID
+}
+
+enum SectionKind {
+  INTRODUCTION
+  SCOPE
+  DELIVERABLES
+  TIMELINE
+  ASSUMPTIONS
+  EXCLUSIONS
+  TERMS
+  CUSTOM
+}
+
+enum PaymentTermKind {
+  UPFRONT
+  MILESTONE
+  ON_COMPLETION
+  NET_DAYS
+}
+
+enum DecisionKind {
+  ACCEPTED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum DecisionChannel {
+  PORTAL
+  EMAIL
+  MEETING
+  OTHER
+}
+
+/// Identity of a proposal. Content lives in immutable-once-shared versions (PRD §7.5).
+model Proposal {
+  id                String         @id @default(uuid()) @db.Uuid
+  workspaceId       String         @db.Uuid
+  clientId          String         @db.Uuid
+  engagementId      String?        @db.Uuid
+  number            String
+  title             String
+  status            ProposalStatus @default(DRAFT)
+  acceptedVersionId String?        @db.Uuid
+  createdById       String         @db.Uuid
+  archivedAt        DateTime?      @db.Timestamptz
+  createdAt         DateTime       @default(now()) @db.Timestamptz
+  updatedAt         DateTime       @updatedAt @db.Timestamptz
+
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  client          Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  engagement      Engagement?        @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+  versions        ProposalVersion[]  @relation("ProposalVersions")
+  acceptedVersion ProposalVersion?   @relation("AcceptedVersion", fields: [acceptedVersionId], references: [id], onDelete: Restrict)
+  decisions       ProposalDecision[]
+  agreements      Agreement[]
+
+  @@unique([workspaceId, number])
+  @@index([workspaceId, clientId])
+  @@index([workspaceId, status])
+  @@map("proposals")
+}
+
+model ProposalVersion {
+  id            String                @id @default(uuid()) @db.Uuid
+  workspaceId   String                @db.Uuid
+  proposalId    String                @db.Uuid
+  versionNumber Int
+  status        ProposalVersionStatus @default(DRAFT)
+  currency      String                @db.Char(3)
+  pricingModel  PricingModel          @default(FIXED)
+  validUntil    DateTime?             @db.Date
+  summary       String?
+  subtotalMinor BigInt                @default(0)
+  discountMinor BigInt                @default(0)
+  taxMinor      BigInt                @default(0)
+  totalMinor    BigInt                @default(0)
+  sharedAt      DateTime?             @db.Timestamptz
+  sharedById    String?               @db.Uuid
+  createdById   String                @db.Uuid
+  createdAt     DateTime              @default(now()) @db.Timestamptz
+
+  proposal     Proposal              @relation("ProposalVersions", fields: [proposalId], references: [id], onDelete: Restrict)
+  acceptedFor  Proposal[]            @relation("AcceptedVersion")
+  sections     ProposalSection[]
+  lineItems    ProposalLineItem[]
+  paymentTerms ProposalPaymentTerm[]
+  decision     ProposalDecision?
+  agreements   Agreement[]
+
+  @@unique([proposalId, versionNumber])
+  @@index([workspaceId, proposalId])
+  @@map("proposal_versions")
+}
+
+model ProposalSection {
+  id          String      @id @default(uuid()) @db.Uuid
+  workspaceId String      @db.Uuid
+  versionId   String      @db.Uuid
+  position    Int
+  kind        SectionKind @default(CUSTOM)
+  title       String
+  body        String      @default("")
+
+  version ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([versionId, position])
+  @@map("proposal_sections")
+}
+
+model ProposalLineItem {
+  id            String  @id @default(uuid()) @db.Uuid
+  workspaceId   String  @db.Uuid
+  versionId     String  @db.Uuid
+  position      Int
+  description   String
+  quantity      Decimal @db.Decimal(18, 4)
+  unitLabel     String  @default("unit")
+  unitRateMinor BigInt
+  discountBps   Int     @default(0)
+  taxBps        Int     @default(0)
+  netMinor      BigInt // computed server-side with @freelanceos/shared and stored for history
+  taxMinor      BigInt
+
+  version ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([versionId, position])
+  @@map("proposal_line_items")
+}
+
+model ProposalPaymentTerm {
+  id            String          @id @default(uuid()) @db.Uuid
+  workspaceId   String          @db.Uuid
+  versionId     String          @db.Uuid
+  position      Int
+  label         String
+  kind          PaymentTermKind
+  percentageBps Int?
+  amountMinor   BigInt?
+  dueInDays     Int?
+
+  version ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([versionId, position])
+  @@map("proposal_payment_terms")
+}
+
+/// A decision references the exact version it was made on, and never changes (trigger-enforced).
+/// Until the client portal exists (Phase 5) the owner records decisions received by email/meeting,
+/// with channel + note as evidence; `recordedById` always names who entered it.
+model ProposalDecision {
+  id           String          @id @default(uuid()) @db.Uuid
+  workspaceId  String          @db.Uuid
+  proposalId   String          @db.Uuid
+  versionId    String          @unique @db.Uuid
+  decision     DecisionKind
+  channel      DecisionChannel @default(OTHER)
+  decidedAt    DateTime        @db.Timestamptz
+  recordedById String          @db.Uuid
+  note         String?
+  createdAt    DateTime        @default(now()) @db.Timestamptz
+
+  proposal Proposal        @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  version  ProposalVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, proposalId])
+  @@map("proposal_decisions")
+}
+
+enum AgreementStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PARTIALLY_SIGNED
+  SIGNED
+  DECLINED
+  EXPIRED
+  VOIDED
+}
+
+enum AgreementVersionStatus {
+  DRAFT
+  SENT
+  SIGNED
+  DECLINED
+  VOID
+}
+
+enum SignerRole {
+  FREELANCER
+  CLIENT
+  WITNESS
+}
+
+enum SignerStatus {
+  PENDING
+  SIGNED
+  DECLINED
+}
+
+enum SignatureEventType {
+  SENT
+  VIEWED
+  SIGNED
+  DECLINED
+  VOIDED
+}
+
+/// MANUAL_RECORDED = the owner records a signature obtained outside the system (evidence note required).
+/// PROVIDER = a validated e-signature provider event. Neither is claimed to be legally sufficient (PRD §7.6).
+enum SignatureMethod {
+  MANUAL_RECORDED
+  PROVIDER
+}
+
+model Agreement {
+  id                String          @id @default(uuid()) @db.Uuid
+  workspaceId       String          @db.Uuid
+  clientId          String          @db.Uuid
+  engagementId      String?         @db.Uuid
+  proposalId        String?         @db.Uuid
+  proposalVersionId String?         @db.Uuid
+  templateId        String?         @db.Uuid
+  number            String
+  title             String
+  status            AgreementStatus @default(DRAFT)
+  expiresAt         DateTime?       @db.Date
+  voidReason        String?
+  createdById       String          @db.Uuid
+  archivedAt        DateTime?       @db.Timestamptz
+  createdAt         DateTime        @default(now()) @db.Timestamptz
+  updatedAt         DateTime        @updatedAt @db.Timestamptz
+
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  client          Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  engagement      Engagement?        @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+  proposal        Proposal?          @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  proposalVersion ProposalVersion?   @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  versions        AgreementVersion[]
+
+  @@unique([workspaceId, number])
+  @@index([workspaceId, clientId])
+  @@index([workspaceId, status])
+  @@map("agreements")
+}
+
+model AgreementVersion {
+  id            String                 @id @default(uuid()) @db.Uuid
+  workspaceId   String                 @db.Uuid
+  agreementId   String                 @db.Uuid
+  versionNumber Int
+  status        AgreementVersionStatus @default(DRAFT)
+  /// SHA-256 of the canonical clause + signer content, fixed at send time (tamper evidence).
+  contentHash   String?
+  sentAt        DateTime?              @db.Timestamptz
+  signedAt      DateTime?              @db.Timestamptz
+  createdById   String                 @db.Uuid
+  createdAt     DateTime               @default(now()) @db.Timestamptz
+
+  agreement Agreement         @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  clauses   AgreementClause[]
+  signers   AgreementSigner[]
+  events    SignatureEvent[]
+
+  @@unique([agreementId, versionNumber])
+  @@index([workspaceId, agreementId])
+  @@map("agreement_versions")
+}
+
+model AgreementClause {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  versionId   String @db.Uuid
+  position    Int
+  heading     String
+  body        String
+
+  version AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([versionId, position])
+  @@map("agreement_clauses")
+}
+
+model AgreementSigner {
+  id            String       @id @default(uuid()) @db.Uuid
+  workspaceId   String       @db.Uuid
+  versionId     String       @db.Uuid
+  role          SignerRole
+  name          String
+  email         String
+  contactId     String?      @db.Uuid
+  signingOrder  Int          @default(1)
+  status        SignerStatus @default(PENDING)
+  signedAt      DateTime?    @db.Timestamptz
+  declinedAt    DateTime?    @db.Timestamptz
+  declineReason String?
+
+  version AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  events  SignatureEvent[]
+
+  @@index([versionId])
+  @@map("agreement_signers")
+}
+
+model SignatureEvent {
+  id             String             @id @default(uuid()) @db.Uuid
+  workspaceId    String             @db.Uuid
+  versionId      String             @db.Uuid
+  signerId       String?            @db.Uuid
+  type           SignatureEventType
+  method         SignatureMethod    @default(MANUAL_RECORDED)
+  occurredAt     DateTime           @db.Timestamptz
+  recordedById   String?            @db.Uuid
+  evidence       String?
+  /// Makes retries and provider webhook redeliveries safe (PRD §7.6, App. B #18).
+  idempotencyKey String?
+  createdAt      DateTime           @default(now()) @db.Timestamptz
+
+  version AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  signer  AgreementSigner? @relation(fields: [signerId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, idempotencyKey])
+  @@index([workspaceId, versionId, occurredAt])
+  @@map("signature_events")
 }

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { formatDocumentNumber, indianFinancialYear } from '@freelanceos/shared';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -20,5 +21,12 @@ export class NumberSequenceService {
       DO UPDATE SET "lastValue" = "number_sequences"."lastValue" + 1
       RETURNING "lastValue"`;
     return rows[0]!.lastValue;
+  }
+
+  /** e.g. PROP/26-27/0007 — numbered per Indian financial year in the workspace's timezone. */
+  async nextDocumentNumber(db: Db, workspaceId: string, key: string, prefix: string): Promise<string> {
+    const ws = await db.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { timezone: true } });
+    const fy = indianFinancialYear(new Date(), ws.timezone);
+    return formatDocumentNumber(prefix, fy, await this.next(db, workspaceId, key, fy));
   }
 }

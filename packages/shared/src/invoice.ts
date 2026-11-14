@@ -141,6 +141,8 @@ export function indianFinancialYear(date: Date, timeZone = 'Asia/Kolkata'): stri
   return `${String(start).slice(-2)}-${String(start + 1).slice(-2)}`;
 }
 
-export function formatInvoiceNumber(prefix: string, scope: string, sequence: number, pad = 4): string {
+export function formatDocumentNumber(prefix: string, scope: string, sequence: number, pad = 4): string {
   return `${prefix}/${scope}/${String(sequence).padStart(pad, '0')}`;
 }
+
+export const formatInvoiceNumber = formatDocumentNumber;

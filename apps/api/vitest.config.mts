@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
@@ -13,6 +14,8 @@ export default defineConfig({
       JWT_ACCESS_SECRET: 'test-secret-test-secret-test-secret-123456',
       NODE_ENV: 'test',
       THROTTLE_DISABLED: 'true',
+      // Use a preinstalled Chromium when present (CI installs one with `playwright-core install`).
+      ...(existsSync('/opt/pw-browsers/chromium') ? { CHROMIUM_PATH: '/opt/pw-browsers/chromium' } : {}),
     },
   },
 });

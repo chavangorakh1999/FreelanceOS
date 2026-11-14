@@ -33,12 +33,10 @@ export default function EngagementDetailPage() {
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/engagements" className="hover:underline">Engagements</Link></nav>
       <PageHeader title={e.title}
         subtitle={e.description ?? undefined}
-        actions={<div className="flex items-end gap-2">
-          <Field label="Stage">{(sid) => (
-            <Select id={sid} value={e.stage.id} className="w-44" onChange={(ev) => ev.target.value !== e.stage.id && setTarget(ev.target.value)}>
-              {stages.data?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </Select>)}</Field>
-        </div>} />
+        actions={
+          <Select aria-label="Stage" value={e.stage.id} className="w-44" onChange={(ev) => ev.target.value !== e.stage.id && setTarget(ev.target.value)}>
+            {stages.data?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>} />
       <div className="-mt-3 flex flex-wrap items-center gap-2">
         <Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'info'}>{e.stage.name}</Badge>
         <Link href={`/clients/${e.client.id}`} className="font-medium text-accent hover:underline">{e.client.name}</Link>

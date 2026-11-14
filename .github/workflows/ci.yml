@@ -31,6 +31,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @freelanceos/api prisma:generate
+      - run: pnpm --filter @freelanceos/api exec playwright-core install --with-deps chromium
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test

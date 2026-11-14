@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AgreementsModule } from './agreements/agreements.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -11,7 +12,10 @@ import { DashboardController } from './dashboard/dashboard.controller';
 import { EngagementsModule } from './engagements/engagements.module';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
-import { NumberSequenceService } from './sequences/number-sequence.service';
+import { DocumentsModule } from './documents/documents.module';
+import { ProposalsModule } from './proposals/proposals.module';
+import { SequencesModule } from './sequences/sequences.module';
+import { TemplatesModule } from './templates/templates.module';
 
 @Module({
   imports: [
@@ -26,14 +30,17 @@ import { NumberSequenceService } from './sequences/number-sequence.service';
     AuthModule,
     ClientsModule,
     EngagementsModule,
+    SequencesModule,
+    TemplatesModule,
+    DocumentsModule,
+    ProposalsModule,
+    AgreementsModule,
   ],
   controllers: [HealthController, DashboardController],
   providers: [
-    NumberSequenceService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorEnvelopeFilter },
   ],
-  exports: [NumberSequenceService],
 })
 export class AppModule {}
