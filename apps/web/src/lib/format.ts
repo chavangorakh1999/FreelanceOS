@@ -12,6 +12,15 @@ export const fmtDateTime = (iso: string | Date) =>
 
 const LABELS: Record<string, (m: Record<string, unknown> | null) => string> = {
   'workspace.created': () => 'Workspace created',
+  'document.uploaded': (m) => `Document uploaded${m?.title ? `: ${String(m.title)}` : ''}`,
+  'document.version_added': () => 'New document version added',
+  'document.updated': () => 'Document details changed',
+  'document.linked': () => 'Document linked to a record',
+  'document.unlinked': () => 'Document link removed',
+  'document.shared': (m) => `Document shared with the client${m?.title ? `: ${String(m.title)}` : ''}`,
+  'document.unshared': () => 'Document no longer shared',
+  'document.archived': () => 'Document archived',
+  'document.restored': () => 'Document restored',
   'portal.invited': () => 'Client invited to the portal',
   'portal.invitation_revoked': () => 'Portal invitation cancelled',
   'portal.invitation_accepted': () => 'Client joined the portal',
@@ -72,3 +81,5 @@ const LABELS: Record<string, (m: Record<string, unknown> | null) => string> = {
 };
 
 export const describeAction = (action: string, meta: Record<string, unknown> | null) => LABELS[action]?.(meta) ?? action;
+
+export const fmtBytes = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB` : `${(n / 1048576).toFixed(1)} MB`);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Bell, FileSignature, FileText, FolderKanban, Home, LogOut, Receipt, UserRound } from 'lucide-react';
+import { Bell, Files, FileSignature, FileText, FolderKanban, Home, LogOut, Receipt, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { papi } from '@/lib/portal-api';
@@ -13,6 +13,7 @@ const NAV = [
   { label: 'Agreements', href: '/portal/agreements', icon: FileSignature },
   { label: 'Projects', href: '/portal/projects', icon: FolderKanban },
   { label: 'Invoices', href: '/portal/invoices', icon: Receipt },
+  { label: 'Documents', href: '/portal/documents', icon: Files },
 ];
 const ICON = { size: 18, strokeWidth: 1.75, 'aria-hidden': true } as const;
 
@@ -56,10 +57,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <nav aria-label="Portal sections" className="fixed inset-x-0 bottom-0 z-[300] border-t border-line bg-shell pb-[env(safe-area-inset-bottom)] sm:hidden">
-        <ul className="grid grid-cols-5">
+        <ul className="grid grid-cols-6">
           {NAV.map(({ label, href, icon: Icon, exact }) => (
             <li key={href}><Link href={href} aria-current={isActive(href, exact) ? 'page' : undefined}
-              className={`relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${isActive(href, exact) ? 'text-ink' : 'text-muted'}`}>
+              className={`relative flex h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${isActive(href, exact) ? 'text-ink' : 'text-muted'}`}>
               {isActive(href, exact) && <span aria-hidden="true" className="absolute inset-x-4 top-0 h-[3px] rounded-b-sm bg-accent" />}
               <Icon {...ICON} size={20} />{label}</Link></li>
           ))}

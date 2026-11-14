@@ -49,9 +49,13 @@ docs/               PRD, design system, these notes
 | Clients see only what is shared (§4.2) | one visibility module (`portal/visibility.ts`); everything else is a 404; presenters pick fields explicitly (no `internalNotes`, `riskNotes`) |
 | A client's decision is theirs (§7.5–7.9) | decision rows carry `decidedByPortalUserId` XOR `recordedById` (CHECK); portal calls the same services as an actor |
 | Notifications never lost (§7.13) | transactional outbox, lease + backoff, dead-letter visible to the owner, thin emails |
+| Files are private (§7.11) | random storage keys behind an adapter; bytes only via authenticated, logged downloads with `nosniff` and a sandbox CSP |
+| File types are what the bytes say (§7.11) | magic-byte sniffing; executables, archives and unknown types refused before anything is written |
+| Document history is permanent (§7.11) | versions and access logs append-only by trigger; links scoped to the document's workspace and client by trigger |
+| The calendar cannot drift (§7.14) | events are derived from milestones, tasks, proposals, invoices and agreements on every read; nothing is stored |
 | Stable error codes (§13) | `{ error: { code, message, details? } }` for every failure |
 | Rate limiting (§10.1) | global throttler; stricter on `/auth/setup`, `/auth/login` |
 
 ## Deliberately not built yet
-Password reset by email, magic links, optimistic-concurrency version checks on edits, document library, e-signature provider.
+Password reset by email, magic links, optimistic-concurrency version checks on edits, document preview, S3 storage adapter, malware scanning, e-signature provider.
 See the README roadmap.

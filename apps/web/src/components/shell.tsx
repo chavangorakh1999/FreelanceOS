@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Activity, BadgeCheck, Bell, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
+  Activity, Bell, Files, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
   PanelLeftClose, PanelLeftOpen, Receipt, Settings, Users, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -28,11 +28,11 @@ const GROUPS: { title?: string; items: Item[] }[] = [
   { title: 'Deliver', items: [
     { label: 'Projects', href: '/projects', icon: FolderKanban },
     { label: 'Scope & Changes', href: '/changes', icon: Layers },
-    { label: 'Calendar', icon: CalendarDays },
+    { label: 'Calendar', href: '/calendar', icon: CalendarDays },
   ] },
   { title: 'Business', items: [
     { label: 'Finance', href: '/finance', icon: Receipt },
-    { label: 'Documents', icon: BadgeCheck },
+    { label: 'Documents', href: '/documents', icon: Files },
     { label: 'Activity', href: '/activity', icon: Activity },
     { label: 'Settings', href: '/settings', icon: Settings },
   ] },

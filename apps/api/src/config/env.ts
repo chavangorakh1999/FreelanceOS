@@ -11,6 +11,9 @@ export interface Env {
   emailFrom: string;
   /** Runs the outbox + reminder loop inside the API process. Off in tests (they drive it directly). */
   emailWorker: boolean;
+  /** Private file storage root for documents. Never served directly. */
+  storageDir: string;
+  maxUploadBytes: number;
 }
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -34,5 +37,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     smtpUrl: source.SMTP_URL,
     emailFrom: source.EMAIL_FROM ?? 'FreelanceOS <no-reply@localhost>',
     emailWorker: (source.EMAIL_WORKER ?? 'on') !== 'off',
+    storageDir: source.STORAGE_DIR ?? './var/storage',
+    maxUploadBytes: Number(source.MAX_UPLOAD_MB ?? 20) * 1024 * 1024,
   };
 }

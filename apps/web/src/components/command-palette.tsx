@@ -1,14 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { FileSignature, FileText, FolderKanban, Funnel, Layers, Receipt, Search, Users, type LucideIcon } from 'lucide-react';
+import { FileSignature, Files, FileText, FolderKanban, Funnel, Layers, Receipt, Search, Users, type LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 
-interface Hit { type: 'client' | 'engagement' | 'proposal' | 'agreement' | 'project' | 'change' | 'invoice'; id: string; title: string; subtitle: string; href: string }
-const ICONS: Record<Hit['type'], LucideIcon> = { client: Users, engagement: Funnel, proposal: FileText, agreement: FileSignature, project: FolderKanban, change: Layers, invoice: Receipt };
-const KIND: Record<Hit['type'], string> = { client: 'Client', engagement: 'Engagement', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice' };
+interface Hit { type: 'client' | 'engagement' | 'proposal' | 'agreement' | 'project' | 'change' | 'invoice' | 'document'; id: string; title: string; subtitle: string; href: string }
+const ICONS: Record<Hit['type'], LucideIcon> = { client: Users, engagement: Funnel, proposal: FileText, agreement: FileSignature, project: FolderKanban, change: Layers, invoice: Receipt, document: Files };
+const KIND: Record<Hit['type'], string> = { client: 'Client', engagement: 'Engagement', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice', document: 'Document' };
 const JUMPS: Hit[] = [
   { type: 'client', id: 'j-clients', title: 'Clients', subtitle: 'Go to', href: '/clients' },
   { type: 'project', id: 'j-projects', title: 'Projects', subtitle: 'Go to', href: '/projects' },

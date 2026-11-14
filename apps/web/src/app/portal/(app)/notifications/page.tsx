@@ -6,7 +6,7 @@ import { Button, Card, EmptyState, ErrorNote, PageHeader, Spinner } from '@/comp
 import { fmtDateTime } from '@/lib/format';
 import { NotificationItem, papi, PrefItem } from '@/lib/portal-api';
 
-const CLIENT_CATEGORIES = ['INVITATION', 'PROPOSAL_SHARED', 'AGREEMENT_SENT', 'SCOPE_REVIEW', 'CHANGE_UPDATE', 'INVOICE_SHARED', 'INVOICE_REMINDER', 'COMMENT'];
+const CLIENT_CATEGORIES = ['INVITATION', 'PROPOSAL_SHARED', 'AGREEMENT_SENT', 'SCOPE_REVIEW', 'CHANGE_UPDATE', 'INVOICE_SHARED', 'INVOICE_REMINDER', 'COMMENT', 'DOCUMENT_SHARED'];
 
 export default function PortalNotifications() {
   const qc = useQueryClient();

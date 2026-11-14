@@ -48,6 +48,7 @@ database with `TEST_DATABASE_URL`; tests wipe it between cases.
 | 3 Delivery & scope | projects, scope versions/freeze, milestones, tasks + dependencies, change requests | **done** (see below) |
 | 4 Finance | invoices, payments + allocations, credit notes — *calculation core already in `packages/shared`* | **done** (see below) |
 | 5 Portal & comms | client portal, comments, email notifications | **done** (see below) |
+| Docs & calendar | document library (PRD §7.11), calendar (§7.14) | **done** (see below) |
 | 6 Hardening | security audit, performance, backup/restore | |
 
 ### Phase 2 — what is and isn't there
@@ -126,6 +127,22 @@ for numbering (the columns exist), and the client-side view of shared invoices (
 
 Not yet: magic-link sign-in, secure-link sharing without an account, a document library/file storage, email-event webhooks (bounces),
 e-signature provider integration (portal signatures are typed-name evidence, not a qualified e-signature), calendar.
+
+### Documents and calendar: what is and isn't there
+
+- **Documents** (`/documents`, and a Documents tab on each client and project): upload, versions, links, client sharing and an access log.
+  - **Storage:** files go to private storage behind a `FileStorage` adapter (local disk in `STORAGE_DIR`; an S3-compatible adapter fits the same interface) under random keys. Nothing is ever served from a public path.
+  - **Upload checks:** the type is decided from the file's bytes (PDF, PNG, JPEG, WebP, Word/Excel/PowerPoint, text, CSV), within `MAX_UPLOAD_MB`. A malware-scanning hook (`UploadScanner`) is in place; the default accepts every file.
+  - **Versions:** immutable (enforced by the database) and fingerprinted with SHA-256. Earlier versions stay downloadable.
+  - **Links:** a document links to engagements, proposals, agreements, projects, change requests or invoices of its own client only (checked by the database too).
+  - **Sharing:** an explicit, audited step. The client sees it in the portal under Documents, only if they can see a linked project, and always gets the current version.
+  - **Access log:** every download, staff or client, is recorded and shown on the document.
+- **Calendar** (`/calendar`): milestones, task deadlines, proposal expiry, invoice due dates and agreement signing deadlines.
+  - Every event is read from the records, so the calendar can never disagree with them.
+  - Month and agenda views, with filters by type and by project.
+  - `.ics` export, with stable event IDs so a re-import updates instead of duplicating.
+
+Not yet: in-browser document preview, an S3 adapter, a real malware scanner, templates for scope documents and client emails, saving generated PDFs into the library automatically, e-signature provider handoff.
 
 ## Open product decisions
 Carried over from PRD §20 — notably e-signature provider, email provider, GST/TDS invoice rules and invoice

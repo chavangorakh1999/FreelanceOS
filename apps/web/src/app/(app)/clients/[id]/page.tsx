@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { ClientDeals, ClientMoney, ClientProjects } from '@/components/client-records';
+import { DocumentsPanel } from '@/components/documents/panel';
 import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary, RowLink } from '@/components/ui';
 import { PortalAccessCard } from '@/components/portal-access';
 import { api, Client, Engagement, Paged } from '@/lib/api';
@@ -13,7 +14,7 @@ import { fmtDateTime, fmtMoney } from '@/lib/format';
 
 interface Interaction { id: string; type: string; summary: string; occurredAt: string }
 
-const TABS = [['overview', 'Overview'], ['deals', 'Proposals & agreements'], ['projects', 'Projects'], ['money', 'Invoices & payments']] as const;
+const TABS = [['overview', 'Overview'], ['deals', 'Proposals & agreements'], ['projects', 'Projects'], ['money', 'Invoices & payments'], ['documents', 'Documents']] as const;
 type Tab = (typeof TABS)[number][0];
 
 export default function ClientDetailPage() {
@@ -64,6 +65,7 @@ function ClientDetail() {
       {tab === 'deals' && <ClientDeals clientId={id} archived={archived} />}
       {tab === 'projects' && <ClientProjects clientId={id} archived={archived} />}
       {tab === 'money' && <ClientMoney clientId={id} archived={archived} />}
+      {tab === 'documents' && <DocumentsPanel scope={{ clientId: id }} archived={archived} />}
       {tab === 'overview' && (
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">

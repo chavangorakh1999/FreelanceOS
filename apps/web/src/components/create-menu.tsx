@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, FilePlus2, FolderPlus, Funnel, Plus, Receipt, UserPlus, type LucideIcon } from 'lucide-react';
+import { ChevronDown, FilePlus2, FileUp, FolderPlus, Funnel, Plus, Receipt, UserPlus, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ const ITEMS: { label: string; hint: string; href: string; icon: LucideIcon }[] =
   { label: 'Proposal', hint: 'Scope and price to share', href: '/proposals?new=1', icon: FilePlus2 },
   { label: 'Project', hint: 'Agreed work to deliver', href: '/projects?new=1', icon: FolderPlus },
   { label: 'Invoice', hint: 'Bill a client', href: '/finance?tab=invoices&new=1', icon: Receipt },
+  { label: 'Document', hint: 'Upload a private file', href: '/documents?new=1', icon: FileUp },
 ];
 
 export function CreateMenu() {

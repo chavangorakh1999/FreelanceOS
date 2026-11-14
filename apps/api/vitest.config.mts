@@ -15,6 +15,8 @@ export default defineConfig({
       NODE_ENV: 'test',
       THROTTLE_DISABLED: 'true',
       EMAIL_WORKER: 'off', // tests drive the outbox directly
+      STORAGE_DIR: '/tmp/fos-test-storage',
+      MAX_UPLOAD_MB: '1',
       WEB_ORIGIN: 'https://app.example.test',
       // Use a preinstalled Chromium when present (CI installs one with `playwright-core install`).
       ...(existsSync('/opt/pw-browsers/chromium') ? { CHROMIUM_PATH: '/opt/pw-browsers/chromium' } : {}),

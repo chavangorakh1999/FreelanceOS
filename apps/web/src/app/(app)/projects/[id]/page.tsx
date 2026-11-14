@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { CommentsPanel } from '@/components/comments';
+import { DocumentsPanel } from '@/components/documents/panel';
 import { ChangesTab } from '@/components/project/changes-tab';
 import { ScopeTab } from '@/components/project/scope-tab';
 import { WorkTab } from '@/components/project/work-tab';
@@ -15,7 +16,7 @@ import { api, ProjectDetail, ProjectStatus } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
 
-const TABS = [['overview', 'Overview'], ['scope', 'Scope'], ['work', 'Work'], ['changes', 'Changes']] as const;
+const TABS = [['overview', 'Overview'], ['scope', 'Scope'], ['work', 'Work'], ['changes', 'Changes'], ['documents', 'Documents']] as const;
 type Tab = (typeof TABS)[number][0];
 const NEXT: Record<ProjectStatus, ProjectStatus[]> = { PLANNING: ['ACTIVE', 'CANCELLED'], ACTIVE: ['ON_HOLD', 'COMPLETED', 'CANCELLED'], ON_HOLD: ['ACTIVE', 'CANCELLED'], COMPLETED: [], CANCELLED: [] };
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -97,6 +98,7 @@ function ProjectView() {
       )}
       {tab === 'scope' && <ScopeTab projectId={id} closed={closed} onChanged={refresh} goChanges={() => go('changes')} />}
       {tab === 'work' && <WorkTab projectId={id} closed={closed} onChanged={refresh} />}
+      {tab === 'documents' && <DocumentsPanel scope={{ link: { type: 'project', id } }} archived={closed} />}
       {tab === 'changes' && <ChangesTab projectId={id} closed={closed} hasBaseline={!!p.baseline} onChanged={refresh} />}
 
       <Dialog open={moving !== null} onClose={() => { setMoving(null); move.reset(); }} title={`Move to ${moving ? label(moving) : ''}`}

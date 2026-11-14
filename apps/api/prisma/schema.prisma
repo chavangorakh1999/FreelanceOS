@@ -183,6 +183,7 @@ enum ClientStatus {
 
 model Client {
   id            String       @id @default(uuid()) @db.Uuid
+  documents     Document[]
   workspaceId   String       @db.Uuid
   type          ClientType
   name          String
@@ -316,24 +317,25 @@ model PipelineStage {
 }
 
 model Engagement {
-  id                  String    @id @default(uuid()) @db.Uuid
-  workspaceId         String    @db.Uuid
-  clientId            String    @db.Uuid
-  stageId             String    @db.Uuid
-  ownerId             String    @db.Uuid
+  id                  String         @id @default(uuid()) @db.Uuid
+  documentLinks       DocumentLink[]
+  workspaceId         String         @db.Uuid
+  clientId            String         @db.Uuid
+  stageId             String         @db.Uuid
+  ownerId             String         @db.Uuid
   title               String
   description         String?
   serviceCategory     String?
   source              String?
-  estimatedValueMinor BigInt    @default(0)
-  currency            String    @db.Char(3)
-  expectedStartDate   DateTime? @db.Date
-  expectedCloseDate   DateTime? @db.Date
+  estimatedValueMinor BigInt         @default(0)
+  currency            String         @db.Char(3)
+  expectedStartDate   DateTime?      @db.Date
+  expectedCloseDate   DateTime?      @db.Date
   lostReason          String?
-  followUpAt          DateTime? @db.Date
-  archivedAt          DateTime? @db.Timestamptz
-  createdAt           DateTime  @default(now()) @db.Timestamptz
-  updatedAt           DateTime  @updatedAt @db.Timestamptz
+  followUpAt          DateTime?      @db.Date
+  archivedAt          DateTime?      @db.Timestamptz
+  createdAt           DateTime       @default(now()) @db.Timestamptz
+  updatedAt           DateTime       @updatedAt @db.Timestamptz
 
   workspace    Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   client       Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -503,6 +505,7 @@ enum DecisionChannel {
 /// Identity of a proposal. Content lives in immutable-once-shared versions (PRD §7.5).
 model Proposal {
   id                String         @id @default(uuid()) @db.Uuid
+  documentLinks     DocumentLink[]
   workspaceId       String         @db.Uuid
   clientId          String         @db.Uuid
   engagementId      String?        @db.Uuid
@@ -690,6 +693,7 @@ enum SignatureMethod {
 
 model Agreement {
   id                String          @id @default(uuid()) @db.Uuid
+  documentLinks     DocumentLink[]
   workspaceId       String          @db.Uuid
   clientId          String          @db.Uuid
   engagementId      String?         @db.Uuid
@@ -823,23 +827,24 @@ enum Visibility {
 
 /// The delivery container. Created by an explicit action — an engagement never becomes a project by itself.
 model Project {
-  id           String        @id @default(uuid()) @db.Uuid
-  workspaceId  String        @db.Uuid
-  clientId     String        @db.Uuid
-  engagementId String?       @db.Uuid
-  proposalId   String?       @db.Uuid
-  agreementId  String?       @db.Uuid
-  number       String
-  name         String
-  description  String?
-  status       ProjectStatus @default(PLANNING)
-  startDate    DateTime?     @db.Date
-  targetDate   DateTime?     @db.Date
-  ownerId      String        @db.Uuid
-  visibility   Visibility    @default(INTERNAL)
-  archivedAt   DateTime?     @db.Timestamptz
-  createdAt    DateTime      @default(now()) @db.Timestamptz
-  updatedAt    DateTime      @updatedAt @db.Timestamptz
+  id            String         @id @default(uuid()) @db.Uuid
+  documentLinks DocumentLink[]
+  workspaceId   String         @db.Uuid
+  clientId      String         @db.Uuid
+  engagementId  String?        @db.Uuid
+  proposalId    String?        @db.Uuid
+  agreementId   String?        @db.Uuid
+  number        String
+  name          String
+  description   String?
+  status        ProjectStatus  @default(PLANNING)
+  startDate     DateTime?      @db.Date
+  targetDate    DateTime?      @db.Date
+  ownerId       String         @db.Uuid
+  visibility    Visibility     @default(INTERNAL)
+  archivedAt    DateTime?      @db.Timestamptz
+  createdAt     DateTime       @default(now()) @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @db.Timestamptz
 
   workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -1100,6 +1105,7 @@ enum ChangeDecisionKind {
 
 model ChangeRequest {
   id                      String              @id @default(uuid()) @db.Uuid
+  documentLinks           DocumentLink[]
   workspaceId             String              @db.Uuid
   projectId               String              @db.Uuid
   number                  String
@@ -1206,18 +1212,19 @@ enum PaymentMethod {
 
 /// A draft has no number: the number is reserved at issue, inside the same transaction, so numbering stays gap-free.
 model Invoice {
-  id               String        @id @default(uuid()) @db.Uuid
-  workspaceId      String        @db.Uuid
-  clientId         String        @db.Uuid
-  projectId        String?       @db.Uuid
-  milestoneId      String?       @db.Uuid
-  changeRequestId  String?       @db.Uuid
+  id               String         @id @default(uuid()) @db.Uuid
+  documentLinks    DocumentLink[]
+  workspaceId      String         @db.Uuid
+  clientId         String         @db.Uuid
+  projectId        String?        @db.Uuid
+  milestoneId      String?        @db.Uuid
+  changeRequestId  String?        @db.Uuid
   number           String?
-  status           InvoiceStatus @default(DRAFT)
-  currency         String        @db.Char(3)
-  issueDate        DateTime?     @db.Date
-  dueDate          DateTime?     @db.Date
-  paymentTermsDays Int           @default(30)
+  status           InvoiceStatus  @default(DRAFT)
+  currency         String         @db.Char(3)
+  issueDate        DateTime?      @db.Date
+  dueDate          DateTime?      @db.Date
+  paymentTermsDays Int            @default(30)
   notes            String?
   /// Parties as they were at issue. Later edits to the client or business profile never rewrite an issued invoice.
   supplierName     String?
@@ -1226,19 +1233,19 @@ model Invoice {
   billToName       String?
   billToTaxId      String?
   billToAddress    String?
-  subtotalMinor    BigInt        @default(0)
-  discountMinor    BigInt        @default(0)
-  taxMinor         BigInt        @default(0)
-  totalMinor       BigInt        @default(0)
-  issuedAt         DateTime?     @db.Timestamptz
-  issuedById       String?       @db.Uuid
-  voidedAt         DateTime?     @db.Timestamptz
+  subtotalMinor    BigInt         @default(0)
+  discountMinor    BigInt         @default(0)
+  taxMinor         BigInt         @default(0)
+  totalMinor       BigInt         @default(0)
+  issuedAt         DateTime?      @db.Timestamptz
+  issuedById       String?        @db.Uuid
+  voidedAt         DateTime?      @db.Timestamptz
   voidReason       String?
-  visibility       Visibility    @default(INTERNAL)
-  sharedAt         DateTime?     @db.Timestamptz
-  createdById      String        @db.Uuid
-  createdAt        DateTime      @default(now()) @db.Timestamptz
-  updatedAt        DateTime      @updatedAt @db.Timestamptz
+  visibility       Visibility     @default(INTERNAL)
+  sharedAt         DateTime?      @db.Timestamptz
+  createdById      String         @db.Uuid
+  createdAt        DateTime       @default(now()) @db.Timestamptz
+  updatedAt        DateTime       @updatedAt @db.Timestamptz
 
   workspace     Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   client        Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -1373,6 +1380,7 @@ enum NotificationCategory {
   INVOICE_SHARED
   INVOICE_REMINDER
   COMMENT
+  DOCUMENT_SHARED
 }
 
 enum DeliveryStatus {
@@ -1384,13 +1392,14 @@ enum DeliveryStatus {
 
 /// A person who signs in to the portal. May belong to several client organisations through memberships.
 model PortalUser {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique // lower-cased by the application
-  name         String
-  passwordHash String
-  disabledAt   DateTime? @db.Timestamptz
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  id             String              @id @default(uuid()) @db.Uuid
+  documentAccess DocumentAccessLog[]
+  email          String              @unique // lower-cased by the application
+  name           String
+  passwordHash   String
+  disabledAt     DateTime?           @db.Timestamptz
+  createdAt      DateTime            @default(now()) @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @db.Timestamptz
 
   memberships       PortalMembership[]
   sessions          PortalSession[]
@@ -1584,4 +1593,116 @@ model Comment {
   @@index([projectId, createdAt])
   @@index([changeRequestId, createdAt])
   @@map("comments")
+}
+
+// ───────────────────────── Phase 6: documents and calendar ─────────────────────────
+
+enum DocumentCategory {
+  CONTRACT
+  BRIEF
+  DESIGN
+  DELIVERABLE
+  FINANCE
+  CORRESPONDENCE
+  OTHER
+}
+
+enum DocumentAccessAction {
+  DOWNLOAD
+}
+
+/// A stored file with metadata (PRD §7.11). The bytes live in private storage under a random key; the record never
+/// exposes where. Content changes only by adding a version, so history is never overwritten.
+model Document {
+  id          String           @id @default(uuid()) @db.Uuid
+  workspaceId String           @db.Uuid
+  /// The client the document belongs to. Required before it can be shared with that client.
+  clientId    String?          @db.Uuid
+  title       String
+  description String?
+  category    DocumentCategory @default(OTHER)
+  visibility  Visibility       @default(INTERNAL)
+  sharedAt    DateTime?        @db.Timestamptz
+  createdById String           @db.Uuid
+  archivedAt  DateTime?        @db.Timestamptz
+  createdAt   DateTime         @default(now()) @db.Timestamptz
+  updatedAt   DateTime         @updatedAt @db.Timestamptz
+
+  client     Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  versions   DocumentVersion[]
+  links      DocumentLink[]
+  accessLogs DocumentAccessLog[]
+
+  @@index([workspaceId, clientId])
+  @@index([workspaceId, archivedAt, updatedAt])
+  @@map("documents")
+}
+
+/// Immutable (trigger-enforced). The fingerprint lets anyone check a downloaded file is the one recorded.
+model DocumentVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  workspaceId   String   @db.Uuid
+  documentId    String   @db.Uuid
+  versionNumber Int
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  sha256        String
+  storageKey    String   @unique
+  note          String?
+  uploadedById  String   @db.Uuid
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  document   Document            @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  accessLogs DocumentAccessLog[]
+
+  @@unique([documentId, versionNumber])
+  @@map("document_versions")
+}
+
+/// Associates a document with exactly one business record per row (a document may have several rows).
+model DocumentLink {
+  id              String   @id @default(uuid()) @db.Uuid
+  workspaceId     String   @db.Uuid
+  documentId      String   @db.Uuid
+  engagementId    String?  @db.Uuid
+  proposalId      String?  @db.Uuid
+  agreementId     String?  @db.Uuid
+  projectId       String?  @db.Uuid
+  changeRequestId String?  @db.Uuid
+  invoiceId       String?  @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz
+
+  document      Document       @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  engagement    Engagement?    @relation(fields: [engagementId], references: [id], onDelete: Restrict)
+  proposal      Proposal?      @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  agreement     Agreement?     @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  project       Project?       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  changeRequest ChangeRequest? @relation(fields: [changeRequestId], references: [id], onDelete: Restrict)
+  invoice       Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([projectId])
+  @@map("document_links")
+}
+
+/// Append-only record of who opened which version, staff or client (PRD §7.11 P1).
+model DocumentAccessLog {
+  id           String               @id @default(uuid()) @db.Uuid
+  workspaceId  String               @db.Uuid
+  documentId   String               @db.Uuid
+  versionId    String               @db.Uuid
+  userId       String?              @db.Uuid
+  portalUserId String?              @db.Uuid
+  action       DocumentAccessAction @default(DOWNLOAD)
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime             @default(now()) @db.Timestamptz
+
+  document   Document        @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  version    DocumentVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  portalUser PortalUser?     @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@index([documentId, createdAt])
+  @@map("document_access_logs")
 }

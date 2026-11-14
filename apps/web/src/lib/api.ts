@@ -50,6 +50,18 @@ export async function api<T = unknown>(path: string, opts: Options = {}, retried
   return data as T;
 }
 
+/** Multipart upload with the same auth, refresh and error envelope as `api`. The browser sets the boundary. */
+export async function upload<T = unknown>(path: string, form: FormData, retried = false): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', credentials: 'include', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}, body: form });
+  if (res.status === 401 && !retried && (await refreshSession())) return upload<T>(path, form, true);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const e = (data as { error?: { code: string; message: string; details?: unknown } } | null)?.error;
+    throw new ApiError(res.status, e?.code ?? 'HTTP_ERROR', e?.message ?? (res.status === 413 ? 'That file is too large' : res.statusText), e?.details);
+  }
+  return data as T;
+}
+
 // ───────── shared response types ─────────
 
 export interface MoneyJson { amountMinor: string; currency: string; decimal: string }
@@ -246,3 +258,20 @@ export interface PortalContactRow {
 }
 export interface PortalOverview { client: { id: string; name: string }; projects: { id: string; name: string; number: string; visibility: string }[]; contacts: PortalContactRow[] }
 export interface EmailDelivery { id: string; toEmail: string; category: string; subject: string; status: 'PENDING' | 'SENT' | 'FAILED' | 'DEAD'; attempts: number; nextAttemptAt: string | null; lastError: string | null; sentAt: string | null; createdAt: string }
+
+// ───────── Phase 6 types ─────────
+
+export type DocumentCategory = 'CONTRACT' | 'BRIEF' | 'DESIGN' | 'DELIVERABLE' | 'FINANCE' | 'CORRESPONDENCE' | 'OTHER';
+export type LinkType = 'engagement' | 'proposal' | 'agreement' | 'project' | 'change' | 'invoice';
+export interface DocVersion { id: string; versionNumber: number; fileName: string; mimeType: string; sizeBytes: number; sha256: string; note: string | null; createdAt: string }
+export interface DocLink { id: string; type: LinkType; targetId: string; label: string; href: string }
+export interface DocumentSummary {
+  id: string; title: string; category: DocumentCategory; visibility: 'INTERNAL' | 'CLIENT_VISIBLE'; client: { id: string; name: string } | null;
+  updatedAt: string; archivedAt: string | null; current: DocVersion | null; links: DocLink[];
+}
+export interface DocumentDetail extends Omit<DocumentSummary, 'current'> {
+  description: string | null; sharedAt: string | null; createdAt: string; versions: DocVersion[];
+  access: { id: string; at: string; versionNumber: number; who: string; kind: 'TEAM' | 'CLIENT' }[];
+}
+export type CalendarType = 'milestone' | 'task' | 'proposal' | 'invoice' | 'agreement';
+export interface CalendarEvent { id: string; type: CalendarType; date: string; title: string; subtitle: string; href: string; state: 'open' | 'overdue' | 'done' }

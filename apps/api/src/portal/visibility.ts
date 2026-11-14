@@ -32,6 +32,12 @@ export const invoiceWhere = (p: PortalContext): Prisma.InvoiceWhereInput => ({
   OR: [{ projectId: null }, { project: { portalProjectGrants: { some: { contactId: p.contactId, revokedAt: null } } } }],
 });
 
+/** A document is visible once shared with the client; if it is tied to projects, the person needs one of them. */
+export const documentWhere = (p: PortalContext): Prisma.DocumentWhereInput => ({
+  workspaceId: p.workspaceId, clientId: p.clientId, archivedAt: null, visibility: 'CLIENT_VISIBLE',
+  OR: [{ links: { none: { projectId: { not: null } } } }, { links: { some: { project: { portalProjectGrants: { some: { contactId: p.contactId, revokedAt: null } } } } } }],
+});
+
 export async function mustSee(db: Db, kind: 'proposal' | 'project' | 'change', p: PortalContext, id: string): Promise<{ id: string; projectId?: string }> {
   const row =
     kind === 'proposal' ? await db.proposal.findFirst({ where: { id, ...proposalWhere(p) }, select: { id: true } })
