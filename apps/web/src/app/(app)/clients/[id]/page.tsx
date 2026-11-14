@@ -8,7 +8,7 @@ import { Suspense, useState } from 'react';
 import { ClientDeals, ClientMoney, ClientProjects } from '@/components/client-records';
 import { DocumentsPanel } from '@/components/documents/panel';
 import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary, RowLink } from '@/components/ui';
-import { PortalAccessCard } from '@/components/portal-access';
+import { DevInviteLink, PortalAccessCard } from '@/components/portal-access';
 import { api, Client, Engagement, Paged } from '@/lib/api';
 import { fmtDateTime, fmtMoney } from '@/lib/format';
 
@@ -159,11 +159,33 @@ function LogInteraction({ clientId, onDone, disabled }: { clientId: string; onDo
 function AddContactDialog({ open, clientId, onClose, onDone }: { open: boolean; clientId: string; onClose: () => void; onDone: () => void }) {
   const empty = { firstName: '', lastName: '', email: '', phone: '', jobTitle: '' };
   const [f, setF] = useState(empty);
+  const [invite, setInvite] = useState(false);
+  const [devLink, setDevLink] = useState<string | null>(null);
+  const [createdId, setCreatedId] = useState<string | null>(null); // so a retry after a failed invite doesn't add the contact twice
+  const qc = useQueryClient();
   const m = useMutation({
-    mutationFn: () => api(`/clients/${clientId}/contacts`, { body: Object.fromEntries(Object.entries(f).filter(([, v]) => v)) }),
-    onSuccess: () => { setF(empty); onDone(); onClose(); },
+    mutationFn: async () => {
+      const id = createdId ?? (await api<{ id: string }>(`/clients/${clientId}/contacts`, { body: Object.fromEntries(Object.entries(f).filter(([, v]) => v)) })).id;
+      setCreatedId(id);
+      // Approver with no projects yet: they see shared proposals, agreements and invoices; grant projects from Client portal.
+      if (invite && f.email) {
+        try { return await api<{ devLink?: string }>(`/clients/${clientId}/portal/invitations`, { body: { contactId: id, role: 'APPROVER', projectIds: [] } }); }
+        catch (e) { onDone(); throw new Error(`Contact added, but the invitation failed: ${(e as Error).message}`); }
+      }
+      return {};
+    },
+    onSuccess: (r) => {
+      setF(empty); setInvite(false); setCreatedId(null); onDone(); void qc.invalidateQueries({ queryKey: ['portal-admin', clientId] });
+      if (r.devLink) setDevLink(r.devLink); else onClose();
+    },
   });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const close = () => { setDevLink(null); onClose(); };
+  if (devLink) return (
+    <Dialog open={open} onClose={close} title="Contact added and invited" footer={<Button variant="primary" onClick={close}>Done</Button>}>
+      <DevInviteLink link={devLink} />
+    </Dialog>
+  );
   return (
     <Dialog open={open} onClose={onClose} title="Add contact"
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="add-contact" disabled={m.isPending}>Add contact</Button></>}>
@@ -177,6 +199,10 @@ function AddContactDialog({ open, clientId, onClose, onDone }: { open: boolean; 
           <Field label="Phone">{(id) => <Input id={id} value={f.phone} onChange={set('phone')} />}</Field>
           <Field label="Job title">{(id) => <Input id={id} value={f.jobTitle} onChange={set('jobTitle')} />}</Field>
         </div>
+        <label className={`flex items-start gap-3 text-sm ${f.email ? '' : 'text-muted'}`}>
+          <input type="checkbox" className="mt-0.5 size-4" disabled={!f.email} checked={invite && !!f.email} onChange={(e) => setInvite(e.target.checked)} />
+          <span>Invite to the client portal<span className="block text-[13px] text-muted">{f.email ? 'Emails a one-time link, valid for 7 days, as an approver. Grant projects later under Client portal.' : 'Add an email address to invite them.'}</span></span>
+        </label>
         <ErrorNote error={m.error} />
       </form>
     </Dialog>

@@ -139,7 +139,7 @@ export default function InvoicePage() {
       <IssueDialog open={dialog === 'issue'} id={id} terms={inv.paymentTermsDays} onClose={() => setDialog(null)} onDone={refresh} />
       <CreditDialog open={dialog === 'credit'} id={id} inv={inv} onClose={() => setDialog(null)} onDone={refresh} />
       <VoidDialog open={dialog === 'void'} id={id} number={inv.number} onClose={() => setDialog(null)} onDone={refresh} />
-      <RecordPaymentDialog open={dialog === 'pay'} onClose={() => setDialog(null)} defaultClientId={inv.client.id} onDone={refresh} />
+      <RecordPaymentDialog open={dialog === 'pay'} onClose={() => setDialog(null)} defaultClientId={inv.client.id} defaultInvoiceId={inv.id} onDone={refresh} />
     </>
   );
 }

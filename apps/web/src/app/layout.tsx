@@ -7,8 +7,8 @@ export const metadata: Metadata = { title: { default: 'FreelanceOS', template: '
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body><FontLoader /><Providers>{children}</Providers></body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning><FontLoader /><Providers>{children}</Providers></body>
     </html>
   );
 }

@@ -450,6 +450,64 @@ describe('finance', () => {
     expect([f.invoiced.decimal, f.cashReceived.decimal, f.outstanding.decimal]).toEqual(['118000.00', '50000.00', '68000.00']);
   });
 
+  it('reconciles every figure through a full lifecycle: unallocated cash, allocation, TDS, credit note, reversal', async () => {
+    const clientId = await d.makeClient();
+    const a = await invoice(clientId);                       // 1,18,000
+    const b = await invoice(clientId, { rate: '50000' });    //   59,000
+    const minor = (m: { amountMinor: string }) => BigInt(m.amountMinor);
+
+    /** Every screen derives from the same records, so they must agree with each other and with the stated expectation. */
+    const check = async (want: { a: string; b: string; unallocated: string }) => {
+      const [ai, bi] = [await inv(a.id), await inv(b.id)];
+      for (const i of [ai, bi]) {
+        const bal = i.balance;
+        expect(minor(bal.outstanding)).toBe(minor(bal.total) - minor(bal.cashReceived) - minor(bal.withheld) - minor(bal.credited));
+      }
+      expect([ai.balance.outstanding.decimal, bi.balance.outstanding.decimal]).toEqual([want.a, want.b]);
+      const ov = (await get('/finance/overview').expect(200)).body.currencies[0];
+      expect(minor(ov.outstanding)).toBe(minor(ai.balance.outstanding) + minor(bi.balance.outstanding));
+      expect(ov.unallocatedCash.decimal).toBe(want.unallocated);
+      const payments = (await get('/payments').expect(200)).body.items as { unallocated: { amountMinor: string } }[];
+      expect(payments.reduce((s, p) => s + minor(p.unallocated), 0n)).toBe(minor(ov.unallocatedCash));
+      expect((await get('/dashboard').expect(200)).body.finance.currencies[0].outstanding.decimal).toBe(ov.outstanding.decimal);
+      const open = (await get('/invoices?view=open').expect(200)).body.items.map((x: { id: string }) => x.id).sort();
+      expect(open).toEqual([[a.id, want.a], [b.id, want.b]].filter(([, o]) => o !== '0.00').map(([id]) => id).sort());
+    };
+
+    await check({ a: '118000.00', b: '59000.00', unallocated: '0.00' });
+
+    // Money received but not yet applied to an invoice is cash on account: it does not reduce any invoice yet.
+    const p1 = (await pay(clientId, '50000').expect(201)).body;
+    await check({ a: '118000.00', b: '59000.00', unallocated: '50000.00' });
+
+    // Applying it reduces the invoice's outstanding by exactly that amount.
+    await alloc(p1.id, [{ invoiceId: a.id, amount: '50000' }]).expect(200);
+    await check({ a: '68000.00', b: '59000.00', unallocated: '0.00' });
+
+    // Client pays B net of 10,000 TDS: cash 49,000 + withholding 10,000 clears all 59,000.
+    await pay(clientId, '49000', { allocations: [{ invoiceId: b.id, amount: '49000', withholding: '10000' }] }).expect(201);
+    await check({ a: '68000.00', b: '0.00', unallocated: '0.00' });
+    expect((await inv(b.id)).status).toBe('PAID');
+
+    // A credit note reduces what is owed; one paisa of cash still counts exactly.
+    await post(`/invoices/${a.id}/credit-notes`, { amount: '8000', reason: 'Discount agreed' }).expect(201);
+    await pay(clientId, '0.01', { allocations: [{ invoiceId: a.id, amount: '0.01' }] }).expect(201);
+    await check({ a: '59999.99', b: '0.00', unallocated: '0.00' });
+    expect((await inv(a.id)).status).toBe('PARTIALLY_PAID');
+
+    // Reversing the first payment puts its 50,000 back on A; the credit note and the paisa stay.
+    await post(`/payments/${p1.id}/reverse`, { reason: 'Bounced' }).expect(200);
+    await check({ a: '109999.99', b: '0.00', unallocated: '0.00' });
+
+    // Settle the rest exactly; nothing is left anywhere.
+    await pay(clientId, '109999.99', { allocations: [{ invoiceId: a.id, amount: '109999.99' }] }).expect(201);
+    await check({ a: '0.00', b: '0.00', unallocated: '0.00' });
+    expect((await inv(a.id)).status).toBe('PAID');
+    const ov = (await get('/finance/overview').expect(200)).body.currencies[0];
+    expect([ov.invoiced.decimal, ov.cashReceived.decimal, ov.withheld.decimal, ov.credited.decimal]).toEqual(['177000.00', '159000.00', '10000.00', '8000.00']);
+    // invoiced 1,77,000 = cash that still counts (1,59,000) + TDS (10,000) + credit (8,000)
+  });
+
   it('produces an invoice PDF', async () => {
     const clientId = await d.makeClient();
     const a = await invoice(clientId, { lines: SAMPLE });

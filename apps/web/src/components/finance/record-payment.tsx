@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { add, compare, formatMoney, money, parseMoney, sub, zero, type Money } from '@freelanceos/shared';
+import { add, compare, formatMoney, min, money, parseMoney, sub, toDecimalString, zero, type Money } from '@freelanceos/shared';
 import { useMemo, useState } from 'react';
 import { Button, Dialog, ErrorNote, Field, Input, Select, Textarea } from '@/components/ui';
 import { api, ApiError, Client, InvoiceSummary, Paged, PaymentSummary } from '@/lib/api';
@@ -22,6 +22,7 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
   const [f, setF] = useState({ clientId: defaultClientId ?? '', amount: '', currency: me.workspace.defaultCurrency, receivedAt: todayLocal(), method: 'BANK_TRANSFER', reference: '', note: '' });
   const [cash, setCash] = useState<Record<string, string>>({});
   const [tds, setTds] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState(false); // once the user edits an allocation, stop pre-filling it
   const [key] = useState(() => crypto.randomUUID()); // a double-click or retry of this submission can never record twice
   const clientId = f.clientId || defaultClientId || '';
 
@@ -47,11 +48,21 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
     const next: Record<string, string> = {};
     for (const r of rows) {
       if (left.amountMinor <= 0n) break;
-      const take = compare(left, r.left) < 0 ? left : r.left;
-      next[r.inv.id] = formatMoney(take, { locale: 'en-US' }).replace(/[^0-9.]/g, '');
+      const take = min(left, r.left);
+      next[r.inv.id] = toDecimalString(take);
       left = sub(left, take);
     }
     setCash(next);
+    setTouched(true);
+  };
+
+  /** Opened from an invoice: the amount received goes to that invoice (up to what it owes) unless the user says otherwise. */
+  const setAmount = (value: string) => {
+    setF({ ...f, amount: value });
+    const r = rows.find((x) => x.inv.id === defaultInvoiceId);
+    const a = safe(value, f.currency);
+    if (touched || !r || !a) return;
+    setCash({ ...cash, [r.inv.id]: a.amountMinor > 0n ? toDecimalString(min(a, r.left)) : '' });
   };
 
   const m = useMutation({
@@ -62,7 +73,7 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
         allocations: rows.filter((r) => (r.cash?.amountMinor ?? 0n) > 0n || (r.tds?.amountMinor ?? 0n) > 0n).map((r) => ({ invoiceId: r.inv.id, amount: cash[r.inv.id] || '0', withholding: tds[r.inv.id] || undefined })),
       },
     }),
-    onSuccess: (p) => { for (const k of ['invoices', 'invoice', 'payments', 'finance', 'dashboard']) void qc.invalidateQueries({ queryKey: [k] }); setCash({}); setTds({}); onDone?.(p); },
+    onSuccess: (p) => { for (const k of ['invoices', 'invoice', 'payments', 'finance', 'dashboard']) void qc.invalidateQueries({ queryKey: [k] }); setCash({}); setTds({}); setTouched(false); onDone?.(p); },
   });
   const err = m.error instanceof ApiError && m.error.code === 'VALIDATION_FAILED' ? new Error((m.error.details as string[]).join('. ')) : m.error;
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
@@ -73,7 +84,7 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
       <form id="record-payment" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         <Field label="Client">{(id) => <Select id={id} required value={clientId} onChange={(e) => { setF({ ...f, clientId: e.target.value }); setCash({}); setTds({}); }}><option value="" disabled>Select a client…</option>{clients.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>}</Field>
         <div className="grid grid-cols-[minmax(0,1fr)_110px_minmax(0,1fr)] gap-3">
-          <Field label="Amount received" hint="Cash that actually arrived.">{(id, d) => <Input id={id} aria-describedby={d} required inputMode="decimal" value={f.amount} onChange={set('amount')} placeholder="108000.00" />}</Field>
+          <Field label="Amount received" hint="Cash that actually arrived.">{(id, d) => <Input id={id} aria-describedby={d} required inputMode="decimal" value={f.amount} onChange={(e) => setAmount(e.target.value)} placeholder="108000.00" />}</Field>
           <Field label="Currency">{(id) => <Select id={id} value={f.currency} onChange={(e) => { setF({ ...f, currency: e.target.value }); setCash({}); setTds({}); }}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select>}</Field>
           <Field label="Received on">{(id) => <Input id={id} type="date" required max={todayLocal()} value={f.receivedAt} onChange={set('receivedAt')} />}</Field>
         </div>
@@ -93,7 +104,7 @@ export function RecordPaymentDialog({ open, onClose, defaultClientId, defaultInv
                     <tr key={r.inv.id} className="align-top">
                       <td className="py-1.5 pr-2"><div className="font-medium">{r.inv.number}</div><div className="text-[13px] text-muted">due {r.inv.dueDate ? fmtDate(r.inv.dueDate) : 'None'}</div></td>
                       <td className="py-1.5 text-right">{fmtMoney(r.inv.balance.outstanding)}</td>
-                      <td className="py-1.5 pl-3"><Input aria-label={`Cash applied to ${r.inv.number}`} inputMode="decimal" className="h-9 w-32" value={cash[r.inv.id] ?? ''} onChange={(e) => setCash({ ...cash, [r.inv.id]: e.target.value })} placeholder="0.00" /></td>
+                      <td className="py-1.5 pl-3"><Input aria-label={`Cash applied to ${r.inv.number}`} inputMode="decimal" className="h-9 w-32" value={cash[r.inv.id] ?? ''} onChange={(e) => { setTouched(true); setCash({ ...cash, [r.inv.id]: e.target.value }); }} placeholder="0.00" /></td>
                       <td className="py-1.5 pl-3"><Input aria-label={`TDS withheld on ${r.inv.number}`} inputMode="decimal" className="h-9 w-28" value={tds[r.inv.id] ?? ''} onChange={(e) => setTds({ ...tds, [r.inv.id]: e.target.value })} placeholder="0.00" />{e && <p role="alert" className="mt-1 max-w-[180px] text-xs text-danger">{e}</p>}</td>
                     </tr>); })}</tbody>
                 </table></div>

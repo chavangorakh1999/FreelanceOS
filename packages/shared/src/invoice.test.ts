@@ -158,3 +158,80 @@ describe('receivables ageing', () => {
     expect(bucket(91)).toBe('DAYS_90_PLUS');
   });
 });
+
+describe('finance arithmetic invariants', () => {
+  // Deterministic pseudo-random inputs, so a failure is reproducible.
+  let seed = 42;
+  const rnd = (n: number) => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return seed % n; };
+  const round = (num: bigint, den: bigint) => (2n * num + den) / (2n * den); // half up, non-negative inputs
+
+  it('every line and invoice total adds up exactly, with each rounding done once per line', () => {
+    for (let n = 0; n < 500; n++) {
+      const lines = Array.from({ length: 1 + rnd(6) }, () => ({
+        description: 'x',
+        quantity: `${rnd(200)}.${String(rnd(10000)).padStart(4, '0')}`,
+        unitRate: money(rnd(10_000_000), 'INR'),
+        discountBps: [0, 0, 500, 1000, 1250, 3333][rnd(6)],
+        taxBps: [0, 500, 1200, 1800, 2800][rnd(5)],
+      }));
+      const t = calculateInvoice('INR', lines);
+      lines.forEach((l, i) => {
+        const r = t.lines[i]!;
+        const qty = BigInt(l.quantity.replace('.', ''));                       // 4 decimal places
+        expect(r.gross.amountMinor).toBe(round(l.unitRate.amountMinor * qty, 10_000n));
+        expect(r.discount.amountMinor).toBe(round(r.gross.amountMinor * BigInt(l.discountBps!), 10_000n));
+        expect(r.net.amountMinor).toBe(r.gross.amountMinor - r.discount.amountMinor);
+        expect(r.tax.amountMinor).toBe(round(r.net.amountMinor * BigInt(l.taxBps!), 10_000n));
+        expect(r.total.amountMinor).toBe(r.net.amountMinor + r.tax.amountMinor);
+      });
+      const s = (k: 'net' | 'discount' | 'tax' | 'total') => t.lines.reduce((a, r) => a + r[k].amountMinor, 0n);
+      expect([t.subtotal.amountMinor, t.discountTotal.amountMinor, t.taxTotal.amountMinor, t.total.amountMinor]).toEqual([s('net'), s('discount'), s('tax'), s('total')]);
+      expect(t.total.amountMinor).toBe(t.subtotal.amountMinor + t.taxTotal.amountMinor);
+    }
+  });
+
+  it('rounds half a paisa up, and fractional quantities exactly', () => {
+    const one = (quantity: string, rate: string, taxBps = 0, discountBps = 0) =>
+      calculateInvoice('INR', [{ description: 'x', quantity, unitRate: inr(rate), taxBps, discountBps }]).lines[0]!;
+    expect(toDecimalString(one('1', '0.05', 1800).tax)).toBe('0.01');          // 0.009 -> 0.01
+    expect(toDecimalString(one('1', '0.02', 1800).tax)).toBe('0.00');          // 0.0036 -> 0.00
+    expect(toDecimalString(one('1', '0.25', 1800).tax)).toBe('0.05');          // 0.045 -> 0.05 (half up)
+    expect(toDecimalString(one('0.3333', '100').gross)).toBe('33.33');
+    expect(toDecimalString(one('2.5', '1999.99').gross)).toBe('4999.98');      // 4999.975 -> 4999.98
+    expect(toDecimalString(one('1', '999.99', 0, 3333).net)).toBe('666.69');   // discount 333.30
+  });
+
+  it('outstanding falls by exactly what is paid, withheld or credited, down to zero and never below', () => {
+    const inv: InvoiceBalanceInput = { invoiceId: 'A', total: inr('118000'), allocated: inr('0'), withheld: inr('0'), credited: inr('0') };
+    const steps: [keyof InvoiceBalanceInput, string, string][] = [
+      ['allocated', '50000', '68000.00'],
+      ['withheld', '10000', '58000.00'],
+      ['credited', '7999.99', '50000.01'],
+      ['allocated', '50000.01', '0.00'],
+    ];
+    let cur = inv;
+    for (const [k, amt, left] of steps) {
+      // Applying exactly what is outstanding is allowed; one paisa more is not.
+      const map = new Map([['A', cur]]);
+      const owed = outstanding(cur);
+      expect(() => validateAllocations(owed, inr('0'), [{ invoiceId: 'A', amount: owed }], map)).not.toThrow();
+      expect(() => validateAllocations(inr('999999'), inr('0'), [{ invoiceId: 'A', amount: money(owed.amountMinor + 1n, 'INR') }], map)).toThrow(/exceeds outstanding/);
+      cur = { ...cur, [k]: money((cur[k] as { amountMinor: bigint }).amountMinor + inr(amt).amountMinor, 'INR') };
+      expect(toDecimalString(outstanding(cur))).toBe(left);
+    }
+    expect(() => validateAllocations(inr('1'), inr('0'), [{ invoiceId: 'A', amount: inr('0.01') }], new Map([['A', cur]]))).toThrow(/exceeds outstanding/);
+  });
+
+  it('a payment can never be used twice: what is already allocated comes off what is left', () => {
+    const map = new Map<string, InvoiceBalanceInput>([['A', { invoiceId: 'A', total: inr('100000'), allocated: inr('0'), credited: inr('0') }]]);
+    expect(toDecimalString(validateAllocations(inr('100000'), inr('60000'), [{ invoiceId: 'A', amount: inr('40000') }], map))).toBe('0.00');
+    expect(() => validateAllocations(inr('100000'), inr('60000'), [{ invoiceId: 'A', amount: inr('40000.01') }], map)).toThrow(/exceed the payment/);
+  });
+
+  it('is not overdue on its due date, and is overdue the day after', () => {
+    const base = { issued: true, voided: false, total: inr('100'), allocated: inr('0'), credited: inr('0'), dueDate: new Date('2026-11-14T00:00:00Z') };
+    expect(deriveInvoiceStatus({ ...base, now: new Date('2026-11-14T00:00:00Z') })).toBe('ISSUED');
+    expect(deriveInvoiceStatus({ ...base, now: new Date('2026-11-15T00:00:00Z') })).toBe('OVERDUE');
+    expect(deriveInvoiceStatus({ ...base, allocated: inr('100'), now: new Date('2026-12-15T00:00:00Z') })).toBe('PAID');
+  });
+});

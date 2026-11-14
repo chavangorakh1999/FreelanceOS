@@ -66,7 +66,9 @@ export class PortalAdminService {
         body: `${ws.name} has invited you to a secure portal where you can review proposals and agreements, follow project progress and see invoices.\nThis invitation expires in ${INVITATION_TTL_DAYS} days.`,
       });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'portal.invited', targetType: 'client_contact', targetId: contact.id, ip: a.ip, metadata: { clientId, role: dto.role, projectCount: dto.projectIds?.length ?? 0 } });
-      return { id: inv.id, expiresAt };
+      // Development only: with the log email provider nothing is actually sent, so hand the link back to the person testing.
+      const devLink = this.env.emailProvider === 'log' && this.env.nodeEnv !== 'production' ? `${this.env.webOrigin.replace(/\/$/, '')}/portal/accept/${token}` : undefined;
+      return { id: inv.id, expiresAt, devLink };
     });
   }
 
