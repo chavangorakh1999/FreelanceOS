@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { PanelRight, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef } from 'react';
 
@@ -97,6 +97,41 @@ export function Dialog({ open, onClose, title, children, footer, wide }: { open:
         </div>
       )}
     </dialog>
+  );
+}
+
+/** A side panel for quick inspection from a list (PRD §11.2); the full page stays one click away. Native <dialog>, so focus and Escape are handled. */
+export function Drawer({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} aria-label={title} onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}
+      className="m-0 ml-auto h-dvh max-h-dvh w-[min(480px,100vw)] max-w-none border-0 border-l border-line bg-card p-0 text-ink shadow-[var(--cast-stock-lift)]">
+      {open && (
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
+            <h2 className="truncate text-lg font-semibold">{title}</h2>
+            <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-muted hover:bg-paper-3"><X aria-hidden="true" size={18} strokeWidth={2} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+          {footer && <div className="flex justify-end gap-2 border-t border-line px-6 py-4">{footer}</div>}
+        </div>
+      )}
+    </dialog>
+  );
+}
+
+/** The row's quick-look trigger: an icon button, so the row's own click (open the full page) is unaffected. */
+export function QuickLookButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={`Quick look: ${label}`} title="Quick look" className="flex size-8 items-center justify-center rounded-control text-muted hover:bg-paper-3 hover:text-ink">
+      <PanelRight size={16} strokeWidth={1.75} aria-hidden="true" />
+    </button>
   );
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { InvoiceQuickLook } from '@/components/quick-look';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -7,7 +8,7 @@ import { Suspense, useState } from 'react';
 import { NewInvoiceDialog } from '@/components/finance/new-invoice';
 import { RecordPaymentDialog } from '@/components/finance/record-payment';
 import { InvoiceBadge } from '@/components/status';
-import { Badge, Button, Card, EmptyState, ErrorNote, Field, PageHeader, Select, Spinner, Stat, Table, Td, Th, RowLink } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, PageHeader, Select, Spinner, Stat, Table, Td, Th, RowLink, QuickLookButton } from '@/components/ui';
 import { api, FinanceOverview, InvoiceSummary, Paged, PaymentSummary } from '@/lib/api';
 import { fmtDate, fmtMoney } from '@/lib/format';
 
@@ -84,6 +85,7 @@ function Overview() {
 function Invoices() {
   const [view, setView] = useState('');
   const [page, setPage] = useState(1);
+  const [peek, setPeek] = useState<string | null>(null);
   const list = useQuery({ queryKey: ['invoices', view, page], queryFn: () => api<Paged<InvoiceSummary>>('/invoices', { query: { view, page } }), placeholderData: (p) => p });
   const pages = list.data ? Math.max(1, Math.ceil(list.data.total / list.data.pageSize)) : 1;
   return (
@@ -95,7 +97,7 @@ function Invoices() {
       <ErrorNote error={list.error} />
       {list.isLoading ? <Spinner /> : list.data?.items.length === 0 ? <EmptyState title={view ? 'No invoices match' : 'No invoices yet'} body="Create an invoice from agreed work. It gets its number when you issue it." /> : (
         <Table minWidth={800}>
-          <thead><tr><Th>Invoice</Th><Th>Client</Th><Th>Status</Th><Th>Due</Th><Th right>Total</Th><Th right>Outstanding</Th></tr></thead>
+          <thead><tr><Th>Invoice</Th><Th>Client</Th><Th>Status</Th><Th>Due</Th><Th right>Total</Th><Th right>Outstanding</Th><Th><span className="sr-only">Quick look</span></Th></tr></thead>
           <tbody>{list.data?.items.map((i) => (
             <RowLink key={i.id} href={`/invoices/${i.id}`}>
               <Td><Link href={`/invoices/${i.id}`} className="font-medium hover:text-accent hover:underline">{i.number ?? 'Draft'}</Link><div className="text-[13px] text-muted">{i.issueDate ? `Issued ${fmtDate(i.issueDate)}` : 'Not issued'}</div></Td>
@@ -104,11 +106,13 @@ function Invoices() {
               <Td>{i.dueDate ? fmtDate(i.dueDate) : <span className="text-muted">None</span>}</Td>
               <Td right>{fmtMoney(i.total)}</Td>
               <Td right className="font-medium">{i.stored === 'ISSUED' ? fmtMoney(i.balance.outstanding) : <span className="font-normal text-muted">None</span>}</Td>
+              <Td className="w-12 pr-2"><QuickLookButton label={i.number ?? 'Draft invoice'} onClick={() => setPeek(i.id)} /></Td>
             </RowLink>))}
           </tbody>
         </Table>)}
       {list.data && list.data.total > list.data.pageSize && (
         <div className="flex items-center justify-between px-6 pt-5 text-muted"><span>Page {page} of {pages}</span><div className="flex gap-2"><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button><Button disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</Button></div></div>)}
+      <InvoiceQuickLook id={peek} onClose={() => setPeek(null)} />
     </Card>
   );
 }

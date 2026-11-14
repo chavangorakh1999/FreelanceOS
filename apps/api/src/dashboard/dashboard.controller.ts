@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
+import { OverviewQuery } from '../finance/payments.dto';
 import { Auth, AuthContext } from '../common/auth';
 import { money } from '@freelanceos/shared';
 import { moneyToJson } from '../common/money-dto';
@@ -15,7 +16,7 @@ export class DashboardController {
    * (PRD §7.2); pipeline value is an estimate and is never presented as revenue.
    */
   @Get()
-  async overview(@Auth() a: AuthContext) {
+  async overview(@Auth() a: AuthContext, @Query() range: OverviewQuery) {
     const w = a.workspaceId;
     const [clientCount, activeProjects, stages, openByStage, recent, finance] = await Promise.all([
       this.prisma.client.count({ where: { workspaceId: w, status: 'ACTIVE' } }),
@@ -28,7 +29,7 @@ export class DashboardController {
         _sum: { estimatedValueMinor: true },
       }),
       this.prisma.auditEvent.findMany({ where: { workspaceId: w }, orderBy: { createdAt: 'desc' }, take: 8 }),
-      this.finance.overview(a),
+      this.finance.overview(a, range),
     ]);
 
     const pipeline = stages.map((s) => {

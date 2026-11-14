@@ -76,4 +76,35 @@ describe('lifecycle links and the dashboard attention list', () => {
     expect(theirs.attention).toEqual({ overdueInvoices: [], proposalsAwaitingClient: [], changesToAssess: [], scopeInReview: [] });
     expect(theirs.upcoming).toEqual({ milestones: [], invoicesDue: [] });
   });
+
+  it('search finds clients by contact, and proposals, projects and invoices by number, only in the caller\'s workspace', async () => {
+    const client = (await post('/clients', { type: 'COMPANY', name: 'Northwind Labs', primaryContact: { firstName: 'Priya', lastName: 'Menon', email: 'priya@nw.test' } }).expect(201)).body;
+    const p = (await post('/proposals', { clientId: client.id, title: 'Billing portal' }).expect(201)).body;
+    const pr = (await post('/projects', { clientId: client.id, name: 'Portal rebuild' }).expect(201)).body;
+    const inv = (await post('/invoices', { clientId: client.id, currency: 'INR', lines: [{ description: 'x', quantity: '1', unitRate: '1000', taxBps: 0 }] }).expect(201)).body;
+    await post(`/invoices/${inv.id}/issue`).expect(200);
+    const s = async (q: string) => (await get(`/search?q=${encodeURIComponent(q)}`).expect(200)).body.hits as { type: string; id: string; href: string }[];
+
+    expect((await s('menon')).map((h) => [h.type, h.id])).toEqual([['client', client.id]]);
+    expect((await s(p.number)).map((h) => h.id)).toEqual([p.id]);
+    expect((await s('portal')).map((h) => h.type).sort()).toEqual(['project', 'proposal']);
+    expect((await s('INV/')).map((h) => [h.type, h.href])).toEqual([['invoice', `/invoices/${inv.id}`]]);
+    expect((await s('northwind')).map((h) => h.type)).toEqual(expect.arrayContaining(['client', 'invoice']));
+    await get('/search?q=a').expect(400);
+
+    const other = (await seedOtherWorkspace(h)).token;
+    expect((await h.http().get('/search?q=northwind').set(bearer(other)).expect(200)).body.hits).toEqual([]);
+    expect((await h.http().get(`/search?q=${pr.number}`).set(bearer(other)).expect(200)).body.hits).toEqual([]);
+  });
+
+  it('the dashboard money figures follow the chosen period', async () => {
+    const client = (await post('/clients', { type: 'COMPANY', name: 'Northwind' }).expect(201)).body;
+    const pay = (await post('/payments', { clientId: client.id, amount: '500.00', currency: 'INR', receivedAt: new Date().toISOString().slice(0, 10), method: 'UPI' }).expect(201)).body;
+    expect(pay.id).toBeTruthy();
+    const all = (await get('/dashboard').expect(200)).body.finance;
+    expect(all.currencies[0].cashReceived.decimal).toBe('500.00');
+    const before = (await get('/dashboard?from=2020-01-01&to=2020-12-31').expect(200)).body.finance;
+    expect(before.period).toEqual({ from: '2020-01-01', to: '2020-12-31' });
+    expect(before.currencies.find((c: { currency: string }) => c.currency === 'INR')?.cashReceived.decimal ?? '0.00').toBe('0.00');
+  });
 });

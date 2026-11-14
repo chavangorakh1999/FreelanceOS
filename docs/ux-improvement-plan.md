@@ -49,7 +49,7 @@ lists open on any click (keyboard: the name stays a real link); status colour ca
 5. **Dashboard to PRD §7.2** (P0): *Needs attention* (overdue invoices, proposals awaiting the client, change requests awaiting assessment, scope in review) and *Coming up* (milestones and invoices due in the next 14 days).
 6. **Status semantics** (V1 to V5): a quiet green for positive states, ink for progress, no duplicate status, the agreement as one document, no repeated progress.
 
-### Phase B (next)
+### Phase B (done)
 - Global search with a ⌘K palette across clients, projects, proposals, agreements, invoices (§7.2 P1, new `/search` endpoint, workspace-scoped).
 - Detail drawers for quick inspection from lists (§11.2).
 - Collapsible sidebar (§11.1).
@@ -63,6 +63,18 @@ All of N1 to N5, V1 to V5, F1 and F2 are done, plus the §7.2 dashboard attentio
 (links and attention list, including workspace isolation), the type check, 180 API and 12 web tests, the Hallmark floor, the end-to-end portal
 run, and a browser check that clicking anywhere in a row opens the record on every list, board cards open, the Create menu works,
 the client tabs load and breadcrumbs show the full path.
+
+## Status of Phase B
+- **Global search**: `GET /search?q=` (at least 2 characters), workspace-scoped from the session, a few hits per type across clients (by name,
+  email or contact), engagements, proposals, agreements, projects, change requests and invoices (by number or client). In the app: the header
+  search field or ⌘K / Ctrl+K anywhere; an ARIA combobox, arrow keys and Enter, with *Jump to* shortcuts when empty.
+- **Quick look**: a side panel from the invoices and clients lists (an icon button in the row, so the row's own click still opens the page);
+  Escape or the backdrop closes it; *Open invoice / Open client* goes to the full page.
+- **Collapsible sidebar**: an icon rail with labels kept for screen readers and as tooltips; remembered per browser.
+- **Dashboard period**: this financial year (default), this month, last 30 or 90 days, this calendar year; applies to invoiced and cash received;
+  outstanding and overdue are always as of today.
+
+Checked by API tests (search scope and isolation, period), and a browser run of every item above.
 
 ## Verification
 Type check, API and web tests, the Hallmark floor (`sloplint --scope app`), and the end-to-end browser run, plus a fresh screenshot pass of every screen.

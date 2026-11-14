@@ -1,10 +1,11 @@
 'use client';
 
+import { ClientQuickLook } from '@/components/quick-look';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
+import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink, QuickLookButton } from '@/components/ui';
 import { api, ApiError, Client, Paged } from '@/lib/api';
 
 export default function ClientsPage() {
@@ -24,6 +25,7 @@ function ClientsView() {
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [peek, setPeek] = useState<string | null>(null);
   const dq = useDebounced(q);
   const creating = params.get('new') === '1';
 
@@ -64,7 +66,7 @@ function ClientsView() {
             action={!filtered && <Button variant="primary" onClick={() => router.push('/clients?new=1')}>Add a client</Button>} />
         ) : (
           <Table minWidth={720}>
-            <thead><tr><Th>Client</Th><Th>Primary contact</Th><Th>Status</Th><Th right>Engagements</Th></tr></thead>
+            <thead><tr><Th>Client</Th><Th>Primary contact</Th><Th>Status</Th><Th right>Engagements</Th><Th><span className="sr-only">Quick look</span></Th></tr></thead>
             <tbody>
               {list.data?.items.map((c) => (
                 <RowLink key={c.id} href={`/clients/${c.id}`}>
@@ -75,6 +77,7 @@ function ClientsView() {
                   <Td>{c.primaryContact ? <><div>{[c.primaryContact.firstName, c.primaryContact.lastName].filter(Boolean).join(' ')}</div><div className="text-[13px] text-muted">{c.primaryContact.email ?? 'None'}</div></> : <span className="text-muted">None</span>}</Td>
                   <Td><Badge tone={c.status === 'ACTIVE' ? 'success' : 'neutral'}>{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</Badge></Td>
                   <Td right>{c.engagementCount}</Td>
+                  <Td className="w-12 pr-2"><QuickLookButton label={c.name} onClick={() => setPeek(c.id)} /></Td>
                 </RowLink>
               ))}
             </tbody>
@@ -89,6 +92,7 @@ function ClientsView() {
       </Card>
 
       <NewClientDialog open={creating} onClose={() => router.replace('/clients')} />
+      <ClientQuickLook id={peek} onClose={() => setPeek(null)} />
     </>
   );
 }

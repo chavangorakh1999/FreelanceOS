@@ -9,6 +9,7 @@ import { FinanceModule } from './finance/finance.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PortalModule } from './portal/portal.module';
 import { CommentsModule } from './comments/comments.module';
+import { SearchModule } from './search/search.controller';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -49,6 +50,7 @@ import { TemplatesModule } from './templates/templates.module';
     NotificationsModule,
     PortalModule,
     CommentsModule,
+    SearchModule,
   ],
   controllers: [HealthController, DashboardController],
   providers: [

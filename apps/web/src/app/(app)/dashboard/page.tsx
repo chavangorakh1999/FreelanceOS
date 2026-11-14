@@ -3,7 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { Badge, Card, EmptyState, ErrorNote, PageHeader, Spinner } from '@/components/ui';
+import { useState } from 'react';
+import { Badge, Card, EmptyState, ErrorNote, PageHeader, Select, Spinner } from '@/components/ui';
 import { api, Dashboard } from '@/lib/api';
 import { useMe } from '@/lib/auth';
 import { describeAction, fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
@@ -65,9 +66,23 @@ function Attention({ d }: { d: Dashboard }) {
   );
 }
 
+/** PRD §7.2 P1: date filters. Periods are calendar dates in the browser; the API applies them to invoiced and received only. */
+const PERIODS = { fy: 'This financial year', month: 'This month', d30: 'Last 30 days', d90: 'Last 90 days', year: 'This calendar year' } as const;
+type Period = keyof typeof PERIODS;
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function rangeOf(p: Period): { from?: string; to?: string } {
+  const now = new Date();
+  if (p === 'fy') return {}; // the workspace's own financial year, decided by the server
+  if (p === 'month') return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now) };
+  if (p === 'year') return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(now) };
+  const days = p === 'd30' ? 29 : 89;
+  return { from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - days)), to: iso(now) };
+}
+
 export default function DashboardPage() {
   const me = useMe();
-  const { data, error, isLoading } = useQuery({ queryKey: ['dashboard'], queryFn: () => api<Dashboard>('/dashboard') });
+  const [period, setPeriod] = useState<Period>('fy');
+  const { data, error, isLoading } = useQuery({ queryKey: ['dashboard', period], queryFn: () => api<Dashboard>('/dashboard', { query: rangeOf(period) }), placeholderData: (p) => p });
 
   const fin = data?.finance.currencies[0];
   const open = data?.pipeline.filter((p) => p.kind === 'OPEN' || p.kind === 'ON_HOLD') ?? [];
@@ -78,7 +93,9 @@ export default function DashboardPage() {
   return (
     <>
       <title>Overview, FreelanceOS</title>
-      <PageHeader title="Overview" subtitle={`Welcome back, ${me.user.name.split(' ')[0]}. Here’s where things stand.`} />
+      <PageHeader title="Overview" subtitle={`Welcome back, ${me.user.name.split(' ')[0]}. Here’s where things stand.`}
+        actions={<Select aria-label="Period for invoiced and cash received" className="w-52" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+          {(Object.keys(PERIODS) as Period[]).map((k) => <option key={k} value={k}>{PERIODS[k]}</option>)}</Select>} />
       <ErrorNote error={error} />
       {isLoading && <Spinner />}
       {data && fin && (
@@ -88,8 +105,8 @@ export default function DashboardPage() {
             <Ledger title="Money" rows={[
               { label: 'Overdue', note: fin.overdueInvoices ? `${fin.overdueInvoices} past due` : 'None', value: fmtMoney(fin.overdue), warn: fin.overdueInvoices > 0 },
               { label: 'Outstanding', note: fin.openInvoices ? `${fin.openInvoices} open` : 'Nothing owed', value: fmtMoney(fin.outstanding) },
-              { label: 'Invoiced', note: 'This financial year', value: fmtMoney(fin.invoiced) },
-              { label: 'Cash received', note: 'This financial year', value: fmtMoney(fin.cashReceived) },
+              { label: 'Invoiced', note: PERIODS[period], value: fmtMoney(fin.invoiced) },
+              { label: 'Cash received', note: PERIODS[period], value: fmtMoney(fin.cashReceived) },
             ]} />
             <Ledger title="Work" rows={[
               { label: 'Active clients', value: String(data.activeClients) },
