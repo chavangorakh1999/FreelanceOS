@@ -27,6 +27,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
 
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['milestones', projectId] }); void qc.invalidateQueries({ queryKey: ['tasks', projectId] }); onChanged(); };
   const moveTask = useMutation({ mutationFn: (v: { id: string; status: TaskStatus }) => api(`/tasks/${v.id}`, { method: 'PATCH', body: { status: v.status } }), onSuccess: refresh });
+  const showTask = useMutation({ mutationFn: (v: { id: string; visible: boolean }) => api(`/tasks/${v.id}`, { method: 'PATCH', body: { visibility: v.visible ? 'CLIENT_VISIBLE' : 'INTERNAL' } }), onSuccess: refresh });
   const moveMs = useMutation({ mutationFn: (v: { id: string; status: MilestoneStatus }) => api(`/milestones/${v.id}`, { method: 'PATCH', body: { status: v.status } }), onSuccess: refresh });
   const toggle = useMutation({ mutationFn: (v: { id: string; done: boolean }) => api(`/deliverables/${v.id}`, { method: 'PATCH', body: { done: v.done } }), onSuccess: refresh });
 
@@ -36,6 +37,9 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
   const shown = all.filter((t) => !filter || (filter === 'none' ? !t.milestoneId : t.milestoneId === filter));
   const msName = (id: string | null) => ms.find((m) => m.id === id)?.name ?? '—';
   const byId = new Map(all.map((t) => [t.id, t]));
+  const Visible = ({ t }: { t: Task }) => (
+    <label className="inline-flex items-center gap-1.5 text-[13px] text-muted"><input type="checkbox" className="size-4" disabled={closed} checked={t.visibility === 'CLIENT_VISIBLE'} onChange={(e) => showTask.mutate({ id: t.id, visible: e.target.checked })} />Show to client</label>
+  );
   const Status = ({ t }: { t: Task }) => (
     <Select aria-label={`Status of ${t.title}`} value={t.status} disabled={closed} className="h-9 w-36 text-[13px]" onChange={(e) => moveTask.mutate({ id: t.id, status: e.target.value as TaskStatus })}>
       {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
@@ -77,7 +81,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
                 <Td><div className={`font-medium ${t.status === 'CANCELLED' ? 'text-muted line-through' : ''}`}>{t.title}</div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-muted">
                     {t.blockedBy.length > 0 && t.status !== 'DONE' && <Badge tone="warn" icon={<Lock size={14} aria-hidden="true" />}>Blocked by {t.blockedBy.map((b) => byId.get(b)?.title ?? '').join(', ')}</Badge>}
-                    <button type="button" onClick={() => setDepsFor(t)} className="inline-flex items-center gap-1 hover:text-ink hover:underline"><Link2 size={13} aria-hidden="true" />{t.dependsOn.length ? `${t.dependsOn.length} ${t.dependsOn.length === 1 ? 'dependency' : 'dependencies'}` : 'Dependencies'}</button></div></Td>
+                    <button type="button" onClick={() => setDepsFor(t)} className="inline-flex items-center gap-1 hover:text-ink hover:underline"><Link2 size={13} aria-hidden="true" />{t.dependsOn.length ? `${t.dependsOn.length} ${t.dependsOn.length === 1 ? 'dependency' : 'dependencies'}` : 'Dependencies'}</button><Visible t={t} /></div></Td>
                 <Td>{msName(t.milestoneId)}</Td>
                 <Td><Badge tone={PRIORITY_TONE[t.priority]}>{label(t.priority)}</Badge></Td>
                 <Td>{t.dueDate ? fmtDate(t.dueDate) : <span className="text-muted">—</span>}</Td>
@@ -97,6 +101,7 @@ export function WorkTab({ projectId, closed, onChanged }: { projectId: string; c
                       <div className="flex flex-wrap items-center gap-1.5"><Badge tone={PRIORITY_TONE[t.priority]}>{label(t.priority)}</Badge>{t.blockedBy.length > 0 && t.status !== 'DONE' && <Badge tone="warn" icon={<Lock size={14} aria-hidden="true" />}>Blocked</Badge>}</div>
                       <div className="text-[13px] text-muted">{msName(t.milestoneId)}{t.dueDate ? ` · ${fmtDate(t.dueDate)}` : ''}</div>
                       <Status t={t} />
+                      <Visible t={t} />
                     </article>))}
                   {col.length === 0 && <p className="px-1 py-3 text-[13px] text-muted">Nothing here.</p>}
                 </section>);
@@ -145,9 +150,9 @@ function AddMilestoneDialog({ open, projectId, onClose, onDone }: { open: boolea
 }
 
 function AddTaskDialog({ open, projectId, milestones, onClose, onDone }: { open: boolean; projectId: string; milestones: Milestone[]; onClose: () => void; onDone: () => void }) {
-  const empty = { title: '', milestoneId: '', priority: 'MEDIUM', dueDate: '', description: '', internalNotes: '' };
+  const empty = { title: '', milestoneId: '', priority: 'MEDIUM', dueDate: '', description: '', internalNotes: '', visible: false };
   const [f, setF] = useState(empty);
-  const m = useMutation({ mutationFn: () => api(`/projects/${projectId}/tasks`, { body: { title: f.title, milestoneId: f.milestoneId || undefined, priority: f.priority, dueDate: f.dueDate || undefined, description: f.description || undefined, internalNotes: f.internalNotes || undefined } }), onSuccess: () => { setF(empty); onDone(); } });
+  const m = useMutation({ mutationFn: () => api(`/projects/${projectId}/tasks`, { body: { title: f.title, milestoneId: f.milestoneId || undefined, priority: f.priority, dueDate: f.dueDate || undefined, description: f.description || undefined, internalNotes: f.internalNotes || undefined, visibility: f.visible ? 'CLIENT_VISIBLE' : undefined } }), onSuccess: () => { setF(empty); onDone(); } });
   const err = m.error instanceof ApiError && m.error.code === 'VALIDATION_FAILED' ? new Error((m.error.details as string[]).join('. ')) : m.error;
   return (
     <Dialog open={open} onClose={onClose} title="Add task" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="add-task" disabled={m.isPending}>Add task</Button></>}>
@@ -159,6 +164,7 @@ function AddTaskDialog({ open, projectId, milestones, onClose, onDone }: { open:
         </div>
         <Field label="Due date (optional)">{(id) => <Input id={id} type="date" value={f.dueDate} onChange={(e) => setF({ ...f, dueDate: e.target.value })} />}</Field>
         <Field label="Description (optional)">{(id) => <Textarea id={id} rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />}</Field>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={f.visible} onChange={(e) => setF({ ...f, visible: e.target.checked })} />Show this task to the client</label>
         <Field label="Internal notes (optional)" hint="Never shown to the client.">{(id, d) => <Textarea id={id} aria-describedby={d} rows={2} value={f.internalNotes} onChange={(e) => setF({ ...f, internalNotes: e.target.value })} />}</Field>
         <ErrorNote error={err} />
       </form>

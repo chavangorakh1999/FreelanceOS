@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
+import { CommentsPanel } from '@/components/comments';
 import { ChangesTab } from '@/components/project/changes-tab';
 import { ScopeTab } from '@/components/project/scope-tab';
 import { WorkTab } from '@/components/project/work-tab';
@@ -11,6 +12,7 @@ import { ProjectBadge, ScopeBadge } from '@/components/status';
 import { Button, Card, Dialog, ErrorNote, PageHeader, ProgressBar, Select, Spinner, Stat } from '@/components/ui';
 import { api, ProjectDetail, ProjectStatus } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
+import type { CommentItem } from '@/lib/portal-api';
 
 const TABS = [['overview', 'Overview'], ['scope', 'Scope'], ['work', 'Work'], ['changes', 'Changes']] as const;
 type Tab = (typeof TABS)[number][0];
@@ -29,6 +31,7 @@ function ProjectView() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['project', id], queryFn: () => api<ProjectDetail>(`/projects/${id}`) });
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['project', id] }); void qc.invalidateQueries({ queryKey: ['projects'] }); void qc.invalidateQueries({ queryKey: ['dashboard'] }); };
+  const setVisibility = useMutation({ mutationFn: (visibility: string) => api(`/projects/${id}`, { method: 'PATCH', body: { visibility } }), onSuccess: refresh });
   const [moving, setMoving] = useState<ProjectStatus | null>(null);
   const move = useMutation({ mutationFn: (status: ProjectStatus) => api(`/projects/${id}`, { method: 'PATCH', body: { status } }), onSuccess: () => { setMoving(null); refresh(); } });
 
@@ -80,8 +83,17 @@ function ProjectView() {
                 <dt className="text-muted">Scope</dt><dd>{p.latestScopeVersion ? <span className="inline-flex items-center gap-2">v{p.latestScopeVersion.versionNumber} <ScopeBadge status={p.latestScopeVersion.status} /></span> : '—'}</dd>
               </dl>
             </Card>
+            <Card className="min-w-0 flex-[1_1_320px] p-6" aria-labelledby="vis-h">
+              <h2 id="vis-h" className="mb-1 text-lg font-semibold">Client portal</h2>
+              <p className="mb-3 text-[13px] text-muted">Clients only see this project if it is visible <em>and</em> you have granted them access from the client page. Task visibility is set per task.</p>
+              <Select aria-label="Project visibility" value={p.visibility === 'CLIENT_VISIBLE' ? 'CLIENT_VISIBLE' : 'INTERNAL'} disabled={setVisibility.isPending} onChange={(e) => setVisibility.mutate(e.target.value)}>
+                <option value="INTERNAL">Internal — hidden from clients</option><option value="CLIENT_VISIBLE">Visible to client</option></Select>
+              <div className="mt-3"><ErrorNote error={setVisibility.error} /></div>
+            </Card>
             {p.description && <Card className="min-w-0 flex-[1_1_320px] p-6"><h2 className="mb-2 text-lg font-semibold">Description</h2><p className="whitespace-pre-wrap text-ink-2">{p.description}</p></Card>}
           </div>
+          <CommentsPanel staff shared={p.visibility === 'CLIENT_VISIBLE'} queryKey={['staff-comments', 'project', id]}
+            load={() => api<CommentItem[]>(`/projects/${id}/comments`)} post={(body, visibility) => api(`/projects/${id}/comments`, { body: { body, visibility } })} />
         </div>
       )}
       {tab === 'scope' && <ScopeTab projectId={id} closed={closed} onChanged={refresh} goChanges={() => go('changes')} />}

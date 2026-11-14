@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th } from '@/components/ui';
+import { PortalAccessCard } from '@/components/portal-access';
 import { api, Client, Engagement, Paged } from '@/lib/api';
 import { fmtDateTime, fmtMoney } from '@/lib/format';
 
@@ -90,6 +91,7 @@ export default function ClientDetailPage() {
               </ul>
             )}
           </Card>
+          <PortalAccessCard clientId={id} archived={archived} />
           <Card className="p-6" aria-labelledby="det-h">
             <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
             <dl className="grid grid-cols-[100px_minmax(0,1fr)] gap-y-3">

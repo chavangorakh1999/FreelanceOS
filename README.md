@@ -46,8 +46,8 @@ database with `TEST_DATABASE_URL`; tests wipe it between cases.
 | 1 Client & sales | dashboard, clients + contacts, engagements + pipeline, activity | **done** (search/filter, board + list, stage history, interactions) |
 | 2 Commercial docs | proposals + immutable versions, decisions, agreements + signature trail, templates, PDF | **done** (see gaps below) |
 | 3 Delivery & scope | projects, scope versions/freeze, milestones, tasks + dependencies, change requests | **done** (see below) |
-| 4 Finance | invoices, payments + allocations, credit notes — *calculation core already in `packages/shared`* | |
-| 5 Portal & comms | client portal, comments, email | |
+| 4 Finance | invoices, payments + allocations, credit notes — *calculation core already in `packages/shared`* | **done** (see below) |
+| 5 Portal & comms | client portal, comments, email notifications | **done** (see below) |
 | 6 Hardening | security audit, performance, backup/restore | |
 
 ### Phase 2 — what is and isn't there
@@ -106,6 +106,26 @@ before treating them as compliant (PRD open #6). The PDF carries a note saying s
 Not yet: expenses, retainers and service periods, recurring invoices, cross-currency allocation (refused — it needs a stated
 exchange rate), refund records beyond reversal, payment-gateway collection, emailing invoices and receipts, a settings screen
 for numbering (the columns exist), and the client-side view of shared invoices (Phase 5).
+
+### Phase 5 — what is and isn't there
+
+- **Email**: an `EmailProvider` adapter (SMTP via `SMTP_URL`, or a log provider in dev/tests). Emails are queued in a database outbox
+  (`notification_deliveries`) with claim/lease, backoff (1m → 12h), a dead state the owner can see and retry in Settings. Emails are thin —
+  no amounts or document content — and link behind sign-in. Owners and clients can switch categories off (invitations are always sent).
+- **Client portal** (`/portal`): a separate identity from staff (own users, sessions, JWT audience and refresh cookie). Invitation links are
+  single-use, hashed at rest and expire after 7 days. Access is per person: `VIEWER` (read-only + comment) or `APPROVER`, plus per-project
+  grants. Removing access ends the person's session on their next request.
+- **What a client can see** is only what the owner deliberately shared: non-draft proposal versions, sent agreements, client-visible projects
+  they are granted, client-visible tasks only (never internal notes), scope versions put to them, shared change requests (without private
+  risk notes) and shared invoices. Everything else is a 404.
+- **Client actions** are recorded as the client's own act (`decidedByPortalUserId`, channel `PORTAL`, audit actor `CLIENT_CONTACT`): accept /
+  decline / request changes on a proposal, sign an agreement (typed name, time, IP, user agent; in signing order), approve scope, decide and
+  raise change requests.
+- **Comments** on proposals, projects and change requests, append-only, each `INTERNAL` or `CLIENT_VISIBLE`.
+- **Owner UI**: notifications centre with unread badge, "Client portal" card per client, share/visibility controls, comments, settings.
+
+Not yet: magic-link sign-in, secure-link sharing without an account, a document library/file storage, email-event webhooks (bounces),
+e-signature provider integration (portal signatures are typed-name evidence, not a qualified e-signature), calendar.
 
 ## Open product decisions
 Carried over from PRD §20 — notably e-signature provider, email provider, GST/TDS invoice rules and invoice

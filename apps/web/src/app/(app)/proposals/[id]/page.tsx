@@ -6,10 +6,12 @@ import { ChevronDown, ChevronUp, Download, FilePlus2, Plus, Trash2 } from 'lucid
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { CommentsPanel } from '@/components/comments';
 import { LockedBadge, ProposalBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th } from '@/components/ui';
 import { api, ApiError, downloadFile, ProposalDetail, ProposalVersion } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
+import type { CommentItem } from '@/lib/portal-api';
 
 const PRICING = ['FIXED', 'MILESTONE', 'HOURLY', 'DAILY', 'TIME_AND_MATERIALS', 'RETAINER', 'HYBRID'];
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'SGD'];
@@ -92,6 +94,8 @@ export default function ProposalPage() {
           )}
         </div>
       </div>
+      <CommentsPanel staff shared={p.versions.some((x) => x.status !== 'DRAFT')} queryKey={['staff-comments', 'proposal', id]}
+        load={() => api<CommentItem[]>(`/proposals/${id}/comments`)} post={(body, visibility) => api(`/proposals/${id}/comments`, { body: { body, visibility } })} />
       {v && <DecisionDialog open={deciding} onClose={() => setDeciding(false)} proposalId={id} version={v} onDone={() => { setDeciding(false); refresh(); }} />}
     </>
   );

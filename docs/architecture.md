@@ -45,10 +45,13 @@ docs/               PRD, design system, these notes
 | Concurrency-safe numbering (App. B #11) | number reserved inside the issuing transaction (gap-free on failure) + date-order check |
 | Payment idempotency (App. B #18) | `Idempotency-Key` unique per workspace; identical racing requests return one payment |
 | Original currency preserved (App. B #12) | amounts stay in their own currency; allocation across currencies is refused; reports never mix currencies |
+| Clients are a separate identity (§4.2) | `portal_users/memberships/sessions`; JWT signed with a derived secret + `aud: portal`; session and membership re-checked in the DB every request |
+| Clients see only what is shared (§4.2) | one visibility module (`portal/visibility.ts`); everything else is a 404; presenters pick fields explicitly (no `internalNotes`, `riskNotes`) |
+| A client's decision is theirs (§7.5–7.9) | decision rows carry `decidedByPortalUserId` XOR `recordedById` (CHECK); portal calls the same services as an actor |
+| Notifications never lost (§7.13) | transactional outbox, lease + backoff, dead-letter visible to the owner, thin emails |
 | Stable error codes (§13) | `{ error: { code, message, details? } }` for every failure |
 | Rate limiting (§10.1) | global throttler; stricter on `/auth/setup`, `/auth/login` |
 
 ## Deliberately not built yet
-Password reset by email, passwordless links and client invitations (need the email provider — open decision #3),
-optimistic-concurrency version checks on edits, the client portal, and everything from Phase 2 onward.
+Password reset by email, magic links, optimistic-concurrency version checks on edits, document library, e-signature provider.
 See the README roadmap.

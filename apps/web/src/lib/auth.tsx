@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // The client portal is a separate identity with its own session; the staff session is not touched there.
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/portal')) { setState({ status: 'anon' }); return; }
     (async () => {
       try {
         const { setupRequired } = await api<{ setupRequired: boolean }>('/auth/status');

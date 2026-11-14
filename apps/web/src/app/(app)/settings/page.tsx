@@ -3,7 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Spinner } from '@/components/ui';
-import { api, SessionInfo } from '@/lib/api';
+import { api, EmailDelivery, SessionInfo } from '@/lib/api';
+import type { PrefItem } from '@/lib/portal-api';
 import { useMe } from '@/lib/auth';
 import { fmtDateTime } from '@/lib/format';
 
@@ -20,6 +21,12 @@ export default function SettingsPage() {
     onSuccess: () => { setDone(true); setPw({ currentPassword: '', newPassword: '' }); void qc.invalidateQueries({ queryKey: ['sessions'] }); },
   });
 
+  const prefs = useQuery({ queryKey: ['prefs'], queryFn: () => api<PrefItem[]>('/notification-preferences') });
+  const setPref = useMutation({ mutationFn: (v: { category: string; emailEnabled: boolean }) => api('/notification-preferences', { method: 'PUT', body: v }), onSuccess: () => qc.invalidateQueries({ queryKey: ['prefs'] }) });
+  const failed = useQuery({ queryKey: ['deliveries'], queryFn: () => api<EmailDelivery[]>('/email-deliveries') });
+  const retry = useMutation({ mutationFn: (id: string) => api(`/email-deliveries/${id}/retry`, { method: 'POST' }), onSuccess: () => qc.invalidateQueries({ queryKey: ['deliveries'] }) });
+  const OWNER_CATEGORIES = ['PROPOSAL_DECIDED', 'AGREEMENT_SIGNED', 'SCOPE_DECIDED', 'CHANGE_UPDATE', 'INVOICE_REMINDER', 'COMMENT'];
+
   return (
     <>
       <title>Settings · FreelanceOS</title>
@@ -33,6 +40,36 @@ export default function SettingsPage() {
           <dt className="text-muted">Timezone</dt><dd>{me.workspace.timezone}</dd>
           <dt className="text-muted">Signed in as</dt><dd>{me.user.email} <Badge tone="info">{me.role.toLowerCase()}</Badge></dd>
         </dl>
+      </Card>
+
+      <Card className="p-6" aria-labelledby="np-h">
+        <h2 id="np-h" className="mb-1 text-lg font-semibold">Email notifications</h2>
+        <p className="mb-4 text-muted">Everything always appears in Notifications. Choose what also reaches your inbox.</p>
+        <ul className="divide-y divide-line">
+          {prefs.data?.filter((p) => OWNER_CATEGORIES.includes(p.category)).map((p) => (
+            <li key={p.category} className="flex items-center justify-between gap-4 py-3">
+              <label htmlFor={`np-${p.category}`}>{p.label}</label>
+              <input id={`np-${p.category}`} type="checkbox" className="size-5 shrink-0" checked={p.emailEnabled} disabled={setPref.isPending} onChange={(e) => setPref.mutate({ category: p.category, emailEnabled: e.target.checked })} />
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card className="p-6" aria-labelledby="ed-h">
+        <h2 id="ed-h" className="mb-1 text-lg font-semibold">Emails that didn’t go out</h2>
+        <p className="mb-4 text-muted">We retry automatically. Anything we gave up on is listed here so a client never silently misses an invitation or invoice.</p>
+        <ErrorNote error={failed.error ?? retry.error} />
+        {failed.data?.length === 0 ? <p className="text-muted">No failed emails. </p> : (
+          <ul className="flex flex-col divide-y divide-line">
+            {failed.data?.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="min-w-0"><div className="truncate font-medium">{d.subject} <Badge tone={d.status === 'DEAD' ? 'danger' : 'warn'}>{d.status === 'DEAD' ? 'Gave up' : 'Retrying'}</Badge></div>
+                  <div className="truncate text-[13px] text-muted">To {d.toEmail} · {d.attempts} {d.attempts === 1 ? 'attempt' : 'attempts'}{d.lastError ? ` · ${d.lastError}` : ''}</div></div>
+                <Button onClick={() => retry.mutate(d.id)} disabled={retry.isPending}>Try again</Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <Card className="p-6" aria-labelledby="sess-h">

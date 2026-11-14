@@ -170,7 +170,7 @@ export interface Milestone {
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 export interface Task {
   id: string; title: string; description: string | null; internalNotes: string | null; priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  status: TaskStatus; dueDate: string | null; milestoneId: string | null; dependsOn: string[]; blockedBy: string[];
+  status: TaskStatus; dueDate: string | null; milestoneId: string | null; dependsOn: string[]; blockedBy: string[]; visibility: 'INTERNAL' | 'CLIENT_VISIBLE' | 'SHARED_WITH_SELECTED_CONTACTS';
 }
 export type ChangeStatus = 'SUBMITTED' | 'NEEDS_CLARIFICATION' | 'ASSESSED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 export interface Assessment {
@@ -189,6 +189,7 @@ export interface ChangeDetail extends Omit<ChangeSummary, 'project'> {
   decisions: { id: string; party: 'FREELANCER' | 'CLIENT'; decision: 'APPROVED' | 'REJECTED' | 'CLARIFICATION_REQUESTED'; channel: string; decidedAt: string; note: string | null }[];
   delta: { added: ScopeItem[]; removed: ScopeItem[]; changed: { before: ScopeItem; after: ScopeItem }[]; unchangedCount: number } | null;
   readiness: { readyToStart: boolean; blockers: string[] };
+  visibility: 'INTERNAL' | 'CLIENT_VISIBLE'; sharedAt: string | null;
 }
 
 // ───────── Phase 4 types ─────────
@@ -223,3 +224,13 @@ export interface CurrencyOverview {
   openInvoices: number; overdueInvoices: number; ageing: { bucket: 'NOT_DUE' | 'DAYS_1_30' | 'DAYS_31_60' | 'DAYS_61_90' | 'DAYS_90_PLUS'; amount: MoneyJson }[];
 }
 export interface FinanceOverview { period: { from: string; to: string }; asOf: string; currencies: CurrencyOverview[] }
+
+// ───────── Phase 5 types ─────────
+
+export interface PortalContactRow {
+  contactId: string; name: string; email: string | null; isPrimary: boolean; projectIds: string[];
+  membership: { id: string; role: 'VIEWER' | 'APPROVER'; status: 'ACTIVE' | 'REVOKED'; lastActive: string | null; accountEmail: string } | null;
+  invitation: { id: string; status: 'PENDING' | 'EXPIRED'; expiresAt: string; role: 'VIEWER' | 'APPROVER' } | null;
+}
+export interface PortalOverview { client: { id: string; name: string }; projects: { id: string; name: string; number: string; visibility: string }[]; contacts: PortalContactRow[] }
+export interface EmailDelivery { id: string; toEmail: string; category: string; subject: string; status: 'PENDING' | 'SENT' | 'FAILED' | 'DEAD'; attempts: number; nextAttemptAt: string | null; lastError: string | null; sentAt: string | null; createdAt: string }

@@ -5,12 +5,14 @@ import { CheckCircle2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { CommentsPanel } from '@/components/comments';
 import { DiffCard } from '@/components/project/scope-tab';
 import { ChangeBadge, ScopeBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui';
 import { api, ApiError, Assessment, ChangeDetail } from '@/lib/api';
 import { useMe } from '@/lib/auth';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
+import type { CommentItem } from '@/lib/portal-api';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 const RISK = { LOW: 'success', MEDIUM: 'warn', HIGH: 'danger' } as const;
@@ -22,6 +24,7 @@ export default function ChangeRequestPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['change-request', id], queryFn: () => api<ChangeDetail>(`/change-requests/${id}`) });
+  const share = useMutation({ mutationFn: () => api(`/change-requests/${id}/share`, { method: 'POST' }), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['change-request', id] }); } });
   const [dialog, setDialog] = useState<null | 'assess' | 'decide' | 'withdraw' | 'addendum'>(null);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['change-request', id] }); void qc.invalidateQueries({ queryKey: ['changes'] }); void qc.invalidateQueries({ queryKey: ['scope'] }); void qc.invalidateQueries({ queryKey: ['project'] }); setDialog(null); };
 
@@ -36,7 +39,9 @@ export default function ChangeRequestPage() {
       <title>{`${c.number} · FreelanceOS`}</title>
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/changes" className="hover:underline">Scope &amp; Changes</Link> / <Link href={`/projects/${c.project.id}?tab=changes`} className="hover:underline">{c.project.name}</Link></nav>
       <PageHeader title={`${c.number} · ${c.title}`} subtitle={`Raised ${fmtDate(c.requestedAt)} by ${c.requestedBy === 'CLIENT' ? (c.requesterName ? `${c.requesterName} (client)` : 'the client') : 'you'} · based on scope v${c.baseScopeVersion.versionNumber}`}
-        actions={<ChangeBadge status={c.status} />} />
+        actions={<div className="flex flex-wrap items-center gap-2"><ChangeBadge status={c.status} />
+          {c.visibility === 'CLIENT_VISIBLE' ? <Badge tone="info">Visible to client</Badge> : <Button onClick={() => share.mutate()} disabled={share.isPending}>Share with client</Button>}</div>} />
+      <ErrorNote error={share.error} />
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_540px] flex-col gap-6">
@@ -104,6 +109,8 @@ export default function ChangeRequestPage() {
         </div>
       </div>
 
+      <CommentsPanel staff shared={c.visibility === 'CLIENT_VISIBLE'} queryKey={['staff-comments', 'change', id]}
+        load={() => api<CommentItem[]>(`/change-requests/${id}/comments`)} post={(body, visibility) => api(`/change-requests/${id}/comments`, { body: { body, visibility } })} />
       <AssessDialog open={dialog === 'assess'} id={id} onClose={() => setDialog(null)} onDone={refresh} />
       <DecideDialog open={dialog === 'decide'} id={id} hasAssessment={!!a} onClose={() => setDialog(null)} onDone={refresh} />
       <WithdrawDialog open={dialog === 'withdraw'} id={id} onClose={() => setDialog(null)} onDone={refresh} />

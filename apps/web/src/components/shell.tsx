@@ -1,17 +1,19 @@
 'use client';
 
 import {
-  Activity, BadgeCheck, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
+  Activity, BadgeCheck, Bell, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
   Plus, Receipt, Settings, Users, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 import { useAuth, useMe } from '@/lib/auth';
 
 interface Item { label: string; href?: string; icon: LucideIcon }
 const GROUPS: { title?: string; items: Item[] }[] = [
-  { items: [{ label: 'Overview', href: '/dashboard', icon: Home }] },
+  { items: [{ label: 'Overview', href: '/dashboard', icon: Home }, { label: 'Notifications', href: '/notifications', icon: Bell }] },
   { title: 'Sales', items: [
     { label: 'Clients', href: '/clients', icon: Users },
     { label: 'Engagements', href: '/engagements', icon: Funnel },
@@ -48,6 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [path]);
+  const unread = useQuery({ queryKey: ['notifications-unread'], queryFn: () => api<{ count: number }>('/notifications/unread-count'), refetchInterval: 60_000 });
   const initials = me.user.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
   return (
@@ -91,6 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link key={label} href={href} aria-current={active ? 'page' : undefined}
                   className={`${cls} ${active ? 'border border-line-strong bg-card font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'border border-transparent text-ink-2 hover:bg-black/5'}`}>
                   <Icon {...ICON} />{label}
+                  {href === '/notifications' && (unread.data?.count ?? 0) > 0 && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-white"><span className="sr-only">{unread.data!.count} unread</span><span aria-hidden="true">{unread.data!.count > 99 ? '99+' : unread.data!.count}</span></span>}
                 </Link>
               );
             })}
