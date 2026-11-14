@@ -29,4 +29,21 @@ export class NumberSequenceService {
     const fy = indianFinancialYear(new Date(), ws.timezone);
     return formatDocumentNumber(prefix, fy, await this.next(db, workspaceId, key, fy));
   }
+
+  /**
+   * Numbering that follows the workspace policy (PRD open decision #7): continuous, or restarting each Indian financial
+   * year. The year is taken from the document's own date, not from today, so a backdated invoice lands in its own year.
+   * e.g. INV/26-27/0042 or, for a continuous policy, INV/0042.
+   */
+  async nextByPolicy(db: Db, workspaceId: string, key: string, prefix: string, docDate: Date): Promise<string> {
+    const [ws, settings] = await Promise.all([
+      db.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { timezone: true } }),
+      db.workspaceSettings.findUnique({ where: { workspaceId } }),
+    ]);
+    const pad = settings?.invoicePadding ?? 4;
+    const byYear = (settings?.invoiceNumbering ?? 'FINANCIAL_YEAR') === 'FINANCIAL_YEAR';
+    const fy = indianFinancialYear(new Date(docDate.toISOString().slice(0, 10) + 'T12:00:00Z'), ws.timezone);
+    const n = await this.next(db, workspaceId, key, byYear ? fy : '');
+    return byYear ? formatDocumentNumber(prefix, fy, n, pad) : `${prefix}/${String(n).padStart(pad, '0')}`;
+  }
 }

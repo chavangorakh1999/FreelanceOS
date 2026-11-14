@@ -5,6 +5,7 @@ import { AgreementsModule } from './agreements/agreements.module';
 import { ChangeRequestsModule } from './change-requests/change-requests.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ScopeModule } from './scope/scope.module';
+import { FinanceModule } from './finance/finance.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -41,6 +42,7 @@ import { TemplatesModule } from './templates/templates.module';
     ProjectsModule,
     ScopeModule,
     ChangeRequestsModule,
+    FinanceModule,
   ],
   controllers: [HealthController, DashboardController],
   providers: [

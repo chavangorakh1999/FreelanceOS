@@ -1,4 +1,4 @@
-import { Money, add, sub, sum, percentOf, divRound, compare, isZero } from './money';
+import { Money, add, sub, sum, zero, percentOf, divRound, compare, isZero } from './money';
 
 /** Quantities are stored as decimal strings ("40", "2.5") and scaled by 10^4 internally. */
 const QTY_SCALE = 4;
@@ -64,23 +64,34 @@ export function calculateInvoice(currency: string, lines: readonly LineInput[]):
 
 export interface AllocationRequest {
   invoiceId: string;
+  /** Cash taken from the payment and applied to the invoice. */
   amount: Money;
+  /**
+   * Tax the payer withheld and remitted to the tax authority themselves (e.g. TDS). It settles part of the invoice
+   * but is NOT cash from this payment, so it never reduces the payment's unallocated balance.
+   */
+  withholding?: Money;
 }
 
 export interface InvoiceBalanceInput {
   invoiceId: string;
   total: Money;
-  /** Sum of non-reversed allocations already applied. */
+  /** Cash already applied by non-reversed payments. */
   allocated: Money;
-  /** Sum of credit notes applied against the invoice. */
+  /** Withholding already recorded by non-reversed payments. */
+  withheld?: Money;
+  /** Credit notes issued against the invoice. */
   credited: Money;
 }
 
-export const outstanding = (i: InvoiceBalanceInput): Money => sub(sub(i.total, i.allocated), i.credited);
+export const settled = (i: Pick<InvoiceBalanceInput, 'allocated' | 'withheld'>): Money =>
+  i.withheld ? add(i.allocated, i.withheld) : i.allocated;
+
+export const outstanding = (i: InvoiceBalanceInput): Money => sub(sub(i.total, settled(i)), i.credited);
 
 /**
  * Validate a proposed split of one payment across invoices.
- * Returns the unallocated remainder, or throws with an actionable message.
+ * Returns the payment's unallocated cash remainder, or throws with an actionable message.
  */
 export function validateAllocations(
   paymentAmount: Money,
@@ -95,11 +106,14 @@ export function validateAllocations(
     seen.add(r.invoiceId);
     const inv = invoices.get(r.invoiceId);
     if (!inv) throw new Error(`Unknown invoice ${r.invoiceId}`);
-    if (r.amount.currency !== paymentAmount.currency || inv.total.currency !== paymentAmount.currency) {
+    const wh = r.withholding ?? zero(paymentAmount.currency);
+    if ([r.amount, wh, inv.total].some((m) => m.currency !== paymentAmount.currency)) {
       throw new Error('Cross-currency allocation requires an explicit exchange rate');
     }
-    if (r.amount.amountMinor <= 0n) throw new Error('Allocation amounts must be positive');
-    if (compare(r.amount, outstanding(inv)) > 0) {
+    if (r.amount.amountMinor < 0n || wh.amountMinor < 0n) throw new Error('Allocation amounts cannot be negative');
+    const both = add(r.amount, wh);
+    if (both.amountMinor <= 0n) throw new Error('Allocation amounts must be positive');
+    if (compare(both, outstanding(inv)) > 0) {
       throw new Error(`Allocation exceeds outstanding balance on invoice ${r.invoiceId}`);
     }
     remaining = sub(remaining, r.amount);
@@ -117,17 +131,20 @@ export function deriveInvoiceStatus(input: {
   voided: boolean;
   total: Money;
   allocated: Money;
+  /** Withholding recorded by payers; settles the invoice like cash does. */
+  withheld?: Money;
   credited: Money;
   dueDate: Date;
   now: Date;
 }): InvoiceStatus {
   if (input.voided) return 'VOID';
   if (!input.issued) return 'DRAFT';
-  const due = sub(sub(input.total, input.allocated), input.credited);
-  if (!isZero(input.credited) && due.amountMinor <= 0n && isZero(input.allocated)) return 'CREDITED';
+  const paid = input.withheld ? add(input.allocated, input.withheld) : input.allocated;
+  const due = sub(sub(input.total, paid), input.credited);
+  if (!isZero(input.credited) && due.amountMinor <= 0n && isZero(paid)) return 'CREDITED';
   if (due.amountMinor <= 0n) return 'PAID';
   if (input.now.getTime() > input.dueDate.getTime()) return 'OVERDUE';
-  return input.allocated.amountMinor > 0n ? 'PARTIALLY_PAID' : 'ISSUED';
+  return paid.amountMinor > 0n ? 'PARTIALLY_PAID' : 'ISSUED';
 }
 
 // ---------- Invoice numbering ----------
@@ -146,3 +163,25 @@ export function formatDocumentNumber(prefix: string, scope: string, sequence: nu
 }
 
 export const formatInvoiceNumber = formatDocumentNumber;
+
+// ---------- Receivables ageing ----------
+
+export type AgeingBucket = 'NOT_DUE' | 'DAYS_1_30' | 'DAYS_31_60' | 'DAYS_61_90' | 'DAYS_90_PLUS';
+export const AGEING_BUCKETS: readonly AgeingBucket[] = ['NOT_DUE', 'DAYS_1_30', 'DAYS_31_60', 'DAYS_61_90', 'DAYS_90_PLUS'];
+
+const DAY = 86_400_000;
+/** Whole calendar days between two dates (UTC dates, time ignored). Positive when `today` is after `dueDate`. */
+export function daysPastDue(dueDate: Date, today: Date): number {
+  const d = Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate());
+  const t = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return Math.round((t - d) / DAY);
+}
+
+export function ageingBucket(dueDate: Date, today: Date): AgeingBucket {
+  const days = daysPastDue(dueDate, today);
+  if (days <= 0) return 'NOT_DUE'; // due today is not yet late
+  if (days <= 30) return 'DAYS_1_30';
+  if (days <= 60) return 'DAYS_31_60';
+  if (days <= 90) return 'DAYS_61_90';
+  return 'DAYS_90_PLUS';
+}

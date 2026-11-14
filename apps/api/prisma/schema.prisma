@@ -69,6 +69,8 @@ model Workspace {
   proposals       Proposal[]
   agreements      Agreement[]
   projects        Project[]
+  invoices        Invoice[]
+  payments        Payment[]
 
   @@map("workspaces")
 }
@@ -200,6 +202,8 @@ model Client {
   proposals    Proposal[]
   agreements   Agreement[]
   projects     Project[]
+  invoices     Invoice[]
+  payments     Payment[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, name])
@@ -828,6 +832,7 @@ model Project {
   milestones     Milestone[]
   tasks          Task[]
   changeRequests ChangeRequest[]
+  invoices       Invoice[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId])
@@ -952,6 +957,7 @@ model Milestone {
   project      Project                @relation(fields: [projectId], references: [id], onDelete: Restrict)
   deliverables MilestoneDeliverable[]
   tasks        Task[]
+  invoices     Invoice[]
 
   @@index([workspaceId, projectId, position])
   @@map("milestones")
@@ -1099,6 +1105,7 @@ model ChangeRequest {
   resultingVersion ScopeVersion?             @relation("ResultingScopeVersion", fields: [resultingScopeVersionId], references: [id], onDelete: Restrict)
   assessments      ChangeRequestAssessment[]
   decisions        ChangeRequestDecision[]
+  invoices         Invoice[]
 
   @@unique([projectId, number])
   @@index([workspaceId, projectId, status])
@@ -1145,4 +1152,165 @@ model ChangeRequestDecision {
 
   @@index([changeRequestId, createdAt])
   @@map("change_request_decisions")
+}
+
+// ───────────────────────── Phase 4: finance ─────────────────────────
+//
+// Money is BigInt minor units + a currency code. Balances are never stored: they are derived from allocations and
+// credit notes, so a number on screen can always be traced to the records behind it (PRD §7.3, §9.14).
+
+/// Stored lifecycle only. PARTIALLY_PAID / PAID / OVERDUE / CREDITED are derived from allocations and credit notes.
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  VOID
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  CARD
+  CASH
+  CHEQUE
+  OTHER
+}
+
+/// A draft has no number: the number is reserved at issue, inside the same transaction, so numbering stays gap-free.
+model Invoice {
+  id               String        @id @default(uuid()) @db.Uuid
+  workspaceId      String        @db.Uuid
+  clientId         String        @db.Uuid
+  projectId        String?       @db.Uuid
+  milestoneId      String?       @db.Uuid
+  changeRequestId  String?       @db.Uuid
+  number           String?
+  status           InvoiceStatus @default(DRAFT)
+  currency         String        @db.Char(3)
+  issueDate        DateTime?     @db.Date
+  dueDate          DateTime?     @db.Date
+  paymentTermsDays Int           @default(30)
+  notes            String?
+  /// Parties as they were at issue. Later edits to the client or business profile never rewrite an issued invoice.
+  supplierName     String?
+  supplierTaxId    String?
+  supplierAddress  String?
+  billToName       String?
+  billToTaxId      String?
+  billToAddress    String?
+  subtotalMinor    BigInt        @default(0)
+  discountMinor    BigInt        @default(0)
+  taxMinor         BigInt        @default(0)
+  totalMinor       BigInt        @default(0)
+  issuedAt         DateTime?     @db.Timestamptz
+  issuedById       String?       @db.Uuid
+  voidedAt         DateTime?     @db.Timestamptz
+  voidReason       String?
+  visibility       Visibility    @default(INTERNAL)
+  sharedAt         DateTime?     @db.Timestamptz
+  createdById      String        @db.Uuid
+  createdAt        DateTime      @default(now()) @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @db.Timestamptz
+
+  workspace     Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  client        Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  project       Project?            @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  milestone     Milestone?          @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
+  changeRequest ChangeRequest?      @relation(fields: [changeRequestId], references: [id], onDelete: Restrict)
+  lines         InvoiceLine[]
+  allocations   PaymentAllocation[]
+  creditNotes   CreditNote[]
+
+  @@unique([workspaceId, number])
+  @@index([workspaceId, clientId, status])
+  @@index([workspaceId, status, dueDate])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id            String  @id @default(uuid()) @db.Uuid
+  workspaceId   String  @db.Uuid
+  invoiceId     String  @db.Uuid
+  position      Int
+  description   String
+  quantity      Decimal @db.Decimal(18, 4)
+  unitLabel     String  @default("unit")
+  unitRateMinor BigInt
+  discountBps   Int     @default(0)
+  taxBps        Int     @default(0)
+  netMinor      BigInt
+  taxMinor      BigInt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId, position])
+  @@map("invoice_lines")
+}
+
+/// Money received. Never edited or deleted: a mistake is corrected by reversing it (PRD §7.10).
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  workspaceId    String        @db.Uuid
+  clientId       String        @db.Uuid
+  amountMinor    BigInt
+  currency       String        @db.Char(3)
+  receivedAt     DateTime      @db.Date
+  method         PaymentMethod @default(BANK_TRANSFER)
+  reference      String?
+  note           String?
+  /// Makes a retried request return the original payment instead of recording it twice.
+  idempotencyKey String?
+  reversedAt     DateTime?     @db.Timestamptz
+  reversedById   String?       @db.Uuid
+  reversalReason String?
+  createdById    String        @db.Uuid
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  client      Client              @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  allocations PaymentAllocation[]
+
+  @@unique([workspaceId, idempotencyKey])
+  @@index([workspaceId, clientId, receivedAt])
+  @@map("payments")
+}
+
+/// Append-only. One payment may be split across many invoices; one invoice may receive many partial payments.
+model PaymentAllocation {
+  id               String   @id @default(uuid()) @db.Uuid
+  workspaceId      String   @db.Uuid
+  paymentId        String   @db.Uuid
+  invoiceId        String   @db.Uuid
+  /// Cash taken from the payment.
+  amountMinor      BigInt
+  /// Tax the payer withheld (e.g. TDS). Settles the invoice but is not cash from this payment.
+  withholdingMinor BigInt   @default(0)
+  createdById      String   @db.Uuid
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([paymentId])
+  @@map("payment_allocations")
+}
+
+/// The correction path for an issued invoice (PRD §7.10): append-only, numbered, reduces the outstanding balance.
+model CreditNote {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  invoiceId   String   @db.Uuid
+  number      String
+  amountMinor BigInt
+  currency    String   @db.Char(3)
+  reason      String
+  issuedAt    DateTime @db.Date
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, number])
+  @@index([invoiceId])
+  @@map("credit_notes")
 }

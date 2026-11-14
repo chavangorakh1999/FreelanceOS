@@ -1,19 +1,20 @@
 import { Controller, Get } from '@nestjs/common';
 import { Auth, AuthContext } from '../common/auth';
+import { FinanceService } from '../finance/finance.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly finance: FinanceService) {}
 
   /**
-   * Phase 1 overview. Only figures that exist today are returned; revenue, receivables and
-   * cash-received arrive with the Finance module (PRD §7.2 — never imply a proposal is revenue).
+   * Business overview. Cash received, invoiced and outstanding are separate, defined figures from the Finance module
+   * (PRD §7.2); pipeline value is an estimate and is never presented as revenue.
    */
   @Get()
   async overview(@Auth() a: AuthContext) {
     const w = a.workspaceId;
-    const [clientCount, activeProjects, stages, openByStage, recent] = await Promise.all([
+    const [clientCount, activeProjects, stages, openByStage, recent, finance] = await Promise.all([
       this.prisma.client.count({ where: { workspaceId: w, status: 'ACTIVE' } }),
       this.prisma.project.count({ where: { workspaceId: w, status: 'ACTIVE', archivedAt: null } }),
       this.prisma.pipelineStage.findMany({ where: { workspaceId: w, archivedAt: null }, orderBy: { position: 'asc' } }),
@@ -24,6 +25,7 @@ export class DashboardController {
         _sum: { estimatedValueMinor: true },
       }),
       this.prisma.auditEvent.findMany({ where: { workspaceId: w }, orderBy: { createdAt: 'desc' }, take: 8 }),
+      this.finance.overview(a),
     ]);
 
     const pipeline = stages.map((s) => {
@@ -41,6 +43,7 @@ export class DashboardController {
       openEngagements: pipeline.filter((p) => p.kind === 'OPEN' || p.kind === 'ON_HOLD').reduce((n, p) => n + p.count, 0),
       pipeline,
       recentActivity: recent,
+      finance,
     };
   }
 }

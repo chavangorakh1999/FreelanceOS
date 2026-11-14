@@ -42,6 +42,10 @@ export class ErrorEnvelopeFilter implements ExceptionFilter {
           status === 401 ? 'UNAUTHENTICATED' : status === 403 ? 'FORBIDDEN' : status === 404 ? 'NOT_FOUND' : status === 429 ? 'RATE_LIMITED' : 'HTTP_ERROR';
         body = { code, message };
       }
+    } else if (isIntegrityViolation(exception)) {
+      // A database rule (immutability, over-allocation, …) caught something the service pre-checks missed, e.g. a race.
+      status = HttpStatus.CONFLICT;
+      body = { code: 'INTEGRITY_RULE', message: integrityMessage(exception) };
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       if (exception.code === 'P2002') {
         status = HttpStatus.CONFLICT;
@@ -59,3 +63,8 @@ export class ErrorEnvelopeFilter implements ExceptionFilter {
     res.status(status).json({ error: body });
   }
 }
+
+const raised = (e: unknown): string => (e instanceof Error ? e.message : '');
+const isIntegrityViolation = (e: unknown): boolean =>
+  (e instanceof Prisma.PrismaClientKnownRequestError || e instanceof Prisma.PrismaClientUnknownRequestError) && /restrict_violation|23001/.test(raised(e));
+const integrityMessage = (e: unknown): string => /ERROR: ([^\n`]+)/.exec(raised(e))?.[1]?.trim() ?? 'That change would break a financial integrity rule';
