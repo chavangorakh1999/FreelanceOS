@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AgreementsModule } from './agreements/agreements.module';
+import { ChangeRequestsModule } from './change-requests/change-requests.module';
+import { ProjectsModule } from './projects/projects.module';
+import { ScopeModule } from './scope/scope.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -35,6 +38,9 @@ import { TemplatesModule } from './templates/templates.module';
     DocumentsModule,
     ProposalsModule,
     AgreementsModule,
+    ProjectsModule,
+    ScopeModule,
+    ChangeRequestsModule,
   ],
   controllers: [HealthController, DashboardController],
   providers: [

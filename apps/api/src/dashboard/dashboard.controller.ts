@@ -13,8 +13,9 @@ export class DashboardController {
   @Get()
   async overview(@Auth() a: AuthContext) {
     const w = a.workspaceId;
-    const [clientCount, stages, openByStage, recent] = await Promise.all([
+    const [clientCount, activeProjects, stages, openByStage, recent] = await Promise.all([
       this.prisma.client.count({ where: { workspaceId: w, status: 'ACTIVE' } }),
+      this.prisma.project.count({ where: { workspaceId: w, status: 'ACTIVE', archivedAt: null } }),
       this.prisma.pipelineStage.findMany({ where: { workspaceId: w, archivedAt: null }, orderBy: { position: 'asc' } }),
       this.prisma.engagement.groupBy({
         by: ['stageId', 'currency'],
@@ -36,6 +37,7 @@ export class DashboardController {
     });
     return {
       activeClients: clientCount,
+      activeProjects,
       openEngagements: pipeline.filter((p) => p.kind === 'OPEN' || p.kind === 'ON_HOLD').reduce((n, p) => n + p.count, 0),
       pipeline,
       recentActivity: recent,
