@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "packageManager": "pnpm@10.28.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:api": "pnpm --filter @freelanceos/api start:dev",
     "dev:web": "pnpm --filter @freelanceos/web dev",
@@ -12,5 +14,10 @@
     "test": "pnpm -r test",
     "db:generate": "pnpm --filter @freelanceos/api prisma:generate",
     "db:migrate": "pnpm --filter @freelanceos/api prisma:migrate"
+  },
+  "pnpm": {
+    "overrides": {
+      "deepmerge-ts": "^8.0.0"
+    }
   }
 }

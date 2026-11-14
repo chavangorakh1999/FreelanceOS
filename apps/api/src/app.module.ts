@@ -12,6 +12,7 @@ import { CommentsModule } from './comments/comments.module';
 import { SearchModule } from './search/search.controller';
 import { LibraryModule } from './library/library.module';
 import { CalendarModule } from './calendar/calendar.controller';
+import { PrivacyModule } from './privacy/privacy.controller';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -55,6 +56,7 @@ import { TemplatesModule } from './templates/templates.module';
     SearchModule,
     LibraryModule,
     CalendarModule,
+    PrivacyModule,
   ],
   controllers: [HealthController, DashboardController],
   providers: [

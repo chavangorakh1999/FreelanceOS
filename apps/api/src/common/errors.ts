@@ -60,7 +60,9 @@ export class ErrorEnvelopeFilter implements ExceptionFilter {
       this.log.error(exception);
     }
 
-    res.status(status).json({ error: body });
+    const requestId = (host.switchToHttp().getRequest<{ id?: string }>()).id;
+    if (status >= 500) this.log.error(JSON.stringify({ msg: 'unhandled', id: requestId, error: exception instanceof Error ? exception.message : String(exception) }));
+    res.status(status).json({ error: { ...body, ...(status >= 500 && requestId ? { requestId } : {}) } });
   }
 }
 

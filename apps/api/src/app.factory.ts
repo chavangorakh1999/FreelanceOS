@@ -1,9 +1,11 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { requestContext } from './observability/request-context';
 
 /** Shared by main.ts and the e2e tests so they exercise identical middleware. */
 export function configureApp(app: INestApplication, webOrigin: string): void {
+  app.use(requestContext({ log: process.env.NODE_ENV !== 'test' && process.env.LOG_REQUESTS !== 'off' }));
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({ origin: webOrigin, credentials: true });
