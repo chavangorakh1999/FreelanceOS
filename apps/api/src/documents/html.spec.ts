@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { esc, renderAgreementHtml, renderProposalHtml } from './html';
+import { esc, InvoiceDoc, renderAgreementHtml, renderInvoiceHtml, renderProposalHtml } from './html';
 
 describe('document HTML', () => {
   it('escapes every special character', () => {
@@ -41,5 +41,38 @@ describe('document HTML', () => {
     expect(html).toContain('<p>Line one</p><p>Line two</p>');
     expect(html).toContain('abc123');
     expect(html).toContain('Signed 2026-11-12');
+  });
+});
+
+describe('invoice HTML', () => {
+  const base: InvoiceDoc = {
+    number: 'INV/26-27/0001', status: 'ISSUED', currency: 'INR', locale: 'en-IN', issueDate: '2026-11-14', dueDate: '2026-12-14',
+    supplier: { name: 'Gorakh Studio', taxId: null, address: null }, billTo: { name: 'Northwind', taxId: null, address: null }, notes: null,
+    lines: [{ description: 'Build', quantity: '1', unitLabel: 'unit', unitRateMinor: 10_000_000n, netMinor: 10_000_000n, taxBps: 1800 }],
+    subtotalMinor: 10_000_000n, discountMinor: 0n, taxMinor: 1_800_000n, totalMinor: 11_800_000n, paidMinor: 10_000_000n, creditedMinor: 0n, outstandingMinor: 1_800_000n,
+  };
+
+  it('shows what is still owed on an issued invoice that has been partly settled', () => {
+    const html = renderInvoiceHtml(base);
+    expect(html).toContain('Balance due');
+    expect(html).toContain('₹18,000.00');
+    expect(html).toContain('₹1,18,000.00');
+    expect(html).toContain('Settled');
+  });
+
+  it('omits settlement lines on a fresh invoice, marks drafts and voids, and never invents a balance for a draft', () => {
+    const fresh = renderInvoiceHtml({ ...base, paidMinor: 0n, outstandingMinor: 11_800_000n });
+    expect(fresh).not.toContain('Settled');
+    expect(fresh).toContain('Balance due');
+    expect(renderInvoiceHtml({ ...base, status: 'DRAFT', number: null })).not.toContain('Balance due');
+    expect(renderInvoiceHtml({ ...base, status: 'DRAFT', number: null })).toContain('DRAFT');
+    expect(renderInvoiceHtml({ ...base, status: 'VOID' })).toContain('VOID');
+  });
+
+  it('escapes hostile text in every user-supplied field', () => {
+    const evil = '<script>alert(1)</script>';
+    const html = renderInvoiceHtml({ ...base, notes: evil, supplier: { name: evil, taxId: evil, address: evil }, billTo: { name: evil, taxId: evil, address: evil }, lines: [{ ...base.lines[0]!, description: evil, unitLabel: evil }] });
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
   });
 });

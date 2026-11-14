@@ -53,6 +53,16 @@ const LABELS: Record<string, (m: Record<string, unknown> | null) => string> = {
   'change_request.assessed': () => 'Change impact assessed',
   'change_request.withdrawn': () => 'Change request withdrawn',
   'change_request.addendum_completed': () => 'Agreement addendum recorded',
+  'invoice.draft_created': () => 'Invoice drafted',
+  'invoice.draft_saved': () => 'Invoice draft saved',
+  'invoice.draft_deleted': () => 'Invoice draft deleted',
+  'invoice.issued': (m) => `Invoice ${m?.number ? String(m.number) + ' ' : ''}issued`,
+  'invoice.voided': (m) => `Invoice ${m?.number ? String(m.number) + ' ' : ''}voided`,
+  'invoice.shared': () => 'Invoice shared with the client',
+  'credit_note.issued': (m) => `Credit note ${m?.number ? String(m.number) : ''} issued`,
+  'payment.recorded': () => 'Payment recorded',
+  'payment.allocated': () => 'Payment applied to invoices',
+  'payment.reversed': () => 'Payment reversed',
 };
 
 export const describeAction = (action: string, meta: Record<string, unknown> | null) => LABELS[action]?.(meta) ?? action;

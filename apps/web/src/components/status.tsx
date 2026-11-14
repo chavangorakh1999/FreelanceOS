@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleDashed, Clock, FileEdit, Lock, MessageSquareWarning, Send, XCircle, Ban, Eye, PenLine, TimerOff, History } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Clock, FileEdit, Lock, MessageSquareWarning, Send, XCircle, Ban, Eye, PenLine, TimerOff, History, AlertTriangle, Receipt, Undo2 } from 'lucide-react';
 import { Badge } from './ui';
 
 type Tone = 'neutral' | 'success' | 'warn' | 'info' | 'danger';
@@ -66,3 +66,14 @@ export const ProjectBadge = mk(PROJECT);
 export const ScopeBadge = mk(SCOPE);
 export const ChangeBadge = mk(CHANGE);
 export const MilestoneBadge = mk(MILESTONE);
+
+const INVOICE: Record<string, { label: string; tone: Tone; icon: React.ReactNode }> = {
+  DRAFT: { label: 'Draft', tone: 'neutral', icon: <FileEdit {...I} /> },
+  ISSUED: { label: 'Issued', tone: 'info', icon: <Receipt {...I} /> },
+  PARTIALLY_PAID: { label: 'Partially paid', tone: 'warn', icon: <Clock {...I} /> },
+  PAID: { label: 'Paid', tone: 'success', icon: <CheckCircle2 {...I} /> },
+  OVERDUE: { label: 'Overdue', tone: 'danger', icon: <AlertTriangle {...I} /> },
+  CREDITED: { label: 'Credited', tone: 'neutral', icon: <Undo2 {...I} /> },
+  VOID: { label: 'Void', tone: 'neutral', icon: <Ban {...I} /> },
+};
+export const InvoiceBadge = mk(INVOICE);

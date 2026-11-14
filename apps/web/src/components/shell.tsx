@@ -24,7 +24,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
     { label: 'Calendar', icon: CalendarDays },
   ] },
   { title: 'Business', items: [
-    { label: 'Finance', icon: Receipt },
+    { label: 'Finance', href: '/finance', icon: Receipt },
     { label: 'Documents', icon: BadgeCheck },
     { label: 'Activity', href: '/activity', icon: Activity },
     { label: 'Settings', href: '/settings', icon: Settings },

@@ -36,6 +36,15 @@ docs/               PRD, design system, these notes
 | Rejected change leaves baseline untouched (§7.9) | rejection writes only a decision row; tested that no scope version is created |
 | Original scope preserved, delta shown (§7.9) | items keep a stable `itemKey` across versions; the delta is computed, never stored |
 | One progress method (App. B #19) | `progressOf()` in the shared package; milestones excluded from the percentage |
+| Issued invoices aren't silently overwritten (§7.10) | DB trigger freezes the invoice and its lines once issued; only void/visibility fields change; corrections are credit notes |
+| Invoices and payments are separate (App. B #9) | separate tables; a payment never edits an invoice |
+| Payments split / partial (App. B #10) | `payment_allocations`: many-to-many, append-only, with an optional withholding amount |
+| Financial events are never deleted (App. B #15) | payments and credit notes are immutable; a payment is undone only by a one-way *reversal*; DB blocks DELETE and edits |
+| Balances aren't stored (§7.3) | derived from allocations (excluding reversed payments) and credit notes on every read |
+| Over-allocation is impossible (§9.14) | service pre-checks with the shared money lib **and** a DB trigger that re-checks under row locks, so even a direct insert or a race fails |
+| Concurrency-safe numbering (App. B #11) | number reserved inside the issuing transaction (gap-free on failure) + date-order check |
+| Payment idempotency (App. B #18) | `Idempotency-Key` unique per workspace; identical racing requests return one payment |
+| Original currency preserved (App. B #12) | amounts stay in their own currency; allocation across currencies is refused; reports never mix currencies |
 | Stable error codes (§13) | `{ error: { code, message, details? } }` for every failure |
 | Rate limiting (§10.1) | global throttler; stricter on `/auth/setup`, `/auth/login` |
 

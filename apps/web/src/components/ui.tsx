@@ -67,7 +67,7 @@ export function Badge({ tone = 'neutral', icon, children }: { tone?: Tone; icon?
 }
 
 /** Native <dialog>: focus trap, Escape to close, and inert background come from the browser. */
-export function Dialog({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode }) {
+export function Dialog({ open, onClose, title, children, footer, wide }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -77,7 +77,7 @@ export function Dialog({ open, onClose, title, children, footer }: { open: boole
   }, [open]);
   return (
     <dialog ref={ref} onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}
-      className="m-auto w-[min(520px,calc(100vw-32px))] rounded-card border border-line bg-card p-0 text-ink shadow-2xl">
+      className={`m-auto ${wide ? 'w-[min(760px,calc(100vw-32px))]' : 'w-[min(520px,calc(100vw-32px))]'} rounded-card border border-line bg-card p-0 text-ink shadow-2xl`}>
       {open && (
         <div className="flex max-h-[85vh] flex-col">
           <div className="flex items-center justify-between border-b border-line px-6 py-4">

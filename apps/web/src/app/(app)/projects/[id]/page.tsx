@@ -44,6 +44,7 @@ function ProjectView() {
       <nav aria-label="Breadcrumb" className="-mb-3 text-[13px] text-muted"><Link href="/projects" className="hover:underline">Projects</Link></nav>
       <PageHeader title={p.name} subtitle={<>{p.number} · <Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></>}
         actions={<div className="flex flex-wrap items-center gap-2"><ProjectBadge status={p.status} />
+          <Link href={`/finance?tab=invoices&new=1&clientId=${p.client.id}&projectId=${p.id}`} className="inline-flex h-10 items-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">Create invoice</Link>
           {NEXT[p.status].length > 0 && <Select aria-label="Change project status" value="" className="w-44" onChange={(e) => e.target.value && setMoving(e.target.value as ProjectStatus)}>
             <option value="">Change status…</option>{NEXT[p.status].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select>}</div>} />
       {closed && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">This project is {p.status.toLowerCase()}. Everything is preserved and read-only.</p>}

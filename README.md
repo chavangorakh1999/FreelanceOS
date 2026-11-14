@@ -79,6 +79,34 @@ Not yet: comments on tasks and scope (Phase 5, with the portal), client-side app
 what the client told you, with channel and evidence), the calendar, generated scope/change-proposal documents, amendment
 documents (the addendum is attested, not authored), milestone acceptance records, and task assignment to other people.
 
+### Phase 4 — what is and isn't there
+Built: invoices (server-priced drafts, number reserved at issue, frozen once issued, void-if-untouched, credit notes,
+explicit share-with-client, PDF); payments recorded idempotently and *reversed, never edited or deleted*; allocations
+(one payment across many invoices, many payments on one invoice, same client + currency only); tax withheld by the payer
+(TDS) as part of an allocation; balances and statuses always derived from the records; finance overview with receivables
+ageing, per currency.
+
+**Decisions made:**
+- *Numbering* (PRD open #7): the number is reserved **at issue**, in the same transaction, so a failed issue never burns
+  one. Default is a financial-year series (`INV/26-27/0042`, restarting each April); `workspace_settings` can switch to one
+  continuous series, and change the prefix and padding. Numbers must run **in date order** (an invoice can't be dated
+  before the latest one already issued in its series), as chronological numbering is commonly expected for tax invoices.
+- *TDS* (PRD open #6): modelled as **withholding on an allocation**. It settles part of the invoice but is not cash from
+  the payment, so a client paying ₹1,08,000 + ₹10,000 TDS clears a ₹1,18,000 invoice and the payment shows no leftover.
+- *Reporting definitions* (PRD open #10) are fixed in `finance.service.ts`: **cash received** = payments in the period not
+  reversed (not invoice value); **invoiced** = issued, non-void invoices in the period; **outstanding** = total − cash −
+  withholding − credit notes, right now; **overdue** = the part of outstanding past its due date. Currencies are never
+  added together.
+- A reversed payment stops counting immediately; its record, and the history on every invoice it touched, stays.
+
+**Not tax advice / not yet compliant:** line-level GST rates are supported, but the CGST/SGST/IGST split, SAC/HSN codes,
+place of supply, e-invoicing/IRN, and TDS certificates are **not** implemented. Have invoices reviewed by a tax professional
+before treating them as compliant (PRD open #6). The PDF carries a note saying so.
+
+Not yet: expenses, retainers and service periods, recurring invoices, cross-currency allocation (refused — it needs a stated
+exchange rate), refund records beyond reversal, payment-gateway collection, emailing invoices and receipts, a settings screen
+for numbering (the columns exist), and the client-side view of shared invoices (Phase 5).
+
 ## Open product decisions
 Carried over from PRD §20 — notably e-signature provider, email provider, GST/TDS invoice rules and invoice
 numbering scope (financial-year numbering is the current default, configurable in `workspace_settings`).

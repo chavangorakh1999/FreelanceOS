@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const me = useMe();
   const { data, error, isLoading } = useQuery({ queryKey: ['dashboard'], queryFn: () => api<Dashboard>('/dashboard') });
 
+  const fin = data?.finance.currencies[0];
   const open = data?.pipeline.filter((p) => p.kind === 'OPEN' || p.kind === 'ON_HOLD') ?? [];
   // Pipeline value is shown per currency: no cross-currency total without a stated FX rule.
   const valueByCurrency = new Map<string, bigint>();
@@ -22,16 +23,23 @@ export default function DashboardPage() {
       <PageHeader title="Overview" subtitle={`Welcome back, ${me.user.name.split(' ')[0]}. Here’s where things stand.`} />
       <ErrorNote error={error} />
       {isLoading && <Spinner />}
-      {data && (
+      {data && fin && (
         <>
-          <section aria-label="Summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
+          <section aria-label="Money" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
+            <Stat label="Cash received" value={fmtMoney(fin.cashReceived)} note="This financial year" tone="good" />
+            <Stat label="Invoiced" value={fmtMoney(fin.invoiced)} note="This financial year" />
+            <Stat label="Outstanding" value={fmtMoney(fin.outstanding)} note={fin.openInvoices ? `${fin.openInvoices} open` : 'Nothing owed'} />
+            <Stat label="Overdue" value={fmtMoney(fin.overdue)} note={fin.overdueInvoices ? `${fin.overdueInvoices} past due` : 'None'} tone={fin.overdueInvoices ? 'warn' : undefined} />
+          </section>
+          {data.finance.currencies.length > 1 && <p className="-mt-3 text-[13px] text-muted">Showing {fin.currency}. Other currencies are reported separately on the Finance page and never added together.</p>}
+          <section aria-label="Work" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
             <Stat label="Active clients" value={data.activeClients} />
-            <Stat label="Open engagements" value={data.openEngagements} />
             <Stat label="Active projects" value={data.activeProjects} />
+            <Stat label="Open engagements" value={data.openEngagements} />
             <Stat
               label="Open pipeline value"
               value={valueByCurrency.size === 0 ? fmtMoney({ amountMinor: '0', currency: me.workspace.defaultCurrency }) : [...valueByCurrency].map(([c, v]) => fmtMoney({ amountMinor: v.toString(), currency: c })).join(' · ')}
-              note="Estimated, not revenue"
+              note="Estimate, not revenue"
             />
           </section>
           <div aria-hidden="true" className="border-t border-dashed border-[#d0d0d0]" />

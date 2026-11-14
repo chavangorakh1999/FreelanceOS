@@ -38,7 +38,7 @@ export default function ClientDetailPage() {
         subtitle={[c.type === 'COMPANY' ? 'Company' : 'Individual', c.email, c.phone].filter(Boolean).join(' · ')}
         actions={archived
           ? <Button onClick={() => archive.mutate(false)} disabled={archive.isPending}>Restore client</Button>
-          : <><Button variant="danger" onClick={() => setConfirmArchive(true)}>Archive</Button><Link href={`/engagements?new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control bg-accent px-4 text-sm font-medium text-white shadow-[0_6px_14px_rgba(4,120,87,0.28)] hover:bg-accent-hover">New engagement</Link></>} />
+          : <><Button variant="danger" onClick={() => setConfirmArchive(true)}>Archive</Button><Link href={`/finance?tab=invoices&new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control border border-line-strong bg-card px-4 text-sm font-medium hover:bg-stat">New invoice</Link><Link href={`/engagements?new=1&clientId=${c.id}`} className="inline-flex h-10 items-center rounded-control bg-accent px-4 text-sm font-medium text-white shadow-[0_6px_14px_rgba(4,120,87,0.28)] hover:bg-accent-hover">New engagement</Link></>} />
       {archived && <Badge tone="warn">Archived — restore to edit or create engagements. History is preserved.</Badge>}
       <ErrorNote error={archive.error ?? primary.error ?? archiveContact.error} />
 

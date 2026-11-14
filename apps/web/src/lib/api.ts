@@ -70,7 +70,7 @@ export interface Engagement {
 export interface Paged<T> { items: T[]; page: number; pageSize: number; total: number }
 export interface AuditEvent { id: string; action: string; targetType: string; targetId: string; metadata: Record<string, unknown> | null; createdAt: string }
 export interface Dashboard {
-  activeClients: number; activeProjects: number; openEngagements: number; recentActivity: AuditEvent[];
+  activeClients: number; activeProjects: number; openEngagements: number; recentActivity: AuditEvent[]; finance: FinanceOverview;
   pipeline: { stageId: string; name: string; kind: Stage['kind']; count: number; valueByCurrency: { currency: string; amountMinor: string }[] }[];
 }
 export interface SessionInfo { id: string; userAgent: string | null; ipAddress: string | null; createdAt: string; lastUsedAt: string; current: boolean }
@@ -190,3 +190,36 @@ export interface ChangeDetail extends Omit<ChangeSummary, 'project'> {
   delta: { added: ScopeItem[]; removed: ScopeItem[]; changed: { before: ScopeItem; after: ScopeItem }[]; unchangedCount: number } | null;
   readiness: { readyToStart: boolean; blockers: string[] };
 }
+
+// ───────── Phase 4 types ─────────
+
+export type InvoiceState = 'DRAFT' | 'ISSUED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'VOID' | 'CREDITED';
+export interface InvoiceBalance { total: MoneyJson; cashReceived: MoneyJson; withheld: MoneyJson; credited: MoneyJson; outstanding: MoneyJson }
+export interface InvoiceSummary {
+  id: string; number: string | null; stored: 'DRAFT' | 'ISSUED' | 'VOID'; status: InvoiceState; currency: string; issueDate: string | null; dueDate: string | null;
+  total: MoneyJson; balance: InvoiceBalance; client: { id: string; name: string };
+}
+export interface InvoiceLine { id: string; description: string; quantity: string; unitLabel: string; unitRate: MoneyJson; discountBps: number; taxBps: number; net: MoneyJson; tax: MoneyJson }
+export interface InvoiceDetail extends Omit<InvoiceSummary, 'client'> {
+  client: { id: string; name: string }; project: { id: string; name: string; number: string } | null; milestone: { id: string; name: string } | null;
+  changeRequest: { id: string; number: string; title: string } | null;
+  supplier: { name: string | null; taxId: string | null; address: string | null }; billTo: { name: string | null; taxId: string | null; address: string | null };
+  notes: string | null; paymentTermsDays: number; voidReason: string | null; visibility: 'INTERNAL' | 'CLIENT_VISIBLE' | 'SHARED_WITH_SELECTED_CONTACTS'; sharedAt: string | null; issuedAt: string | null;
+  totals: { subtotal: MoneyJson; discount: MoneyJson; tax: MoneyJson; total: MoneyJson };
+  lines: InvoiceLine[];
+  allocations: { id: string; createdAt: string; cash: MoneyJson; withholding: MoneyJson; payment: { id: string; receivedAt: string; method: string; reference: string | null; reversed: boolean } }[];
+  creditNotes: { id: string; number: string; reason: string; issuedAt: string; amount: MoneyJson }[];
+}
+export interface PaymentSummary {
+  id: string; clientId: string; receivedAt: string; method: string; reference: string | null; currency: string; amount: MoneyJson; allocated: MoneyJson; withheld: MoneyJson;
+  unallocated: MoneyJson; reversed: boolean; reversedAt: string | null; reversalReason: string | null; client: { id: string; name: string };
+}
+export interface PaymentDetail extends PaymentSummary {
+  note: string | null;
+  allocations: { id: string; createdAt: string; invoice: { id: string; number: string | null }; cash: MoneyJson; withholding: MoneyJson }[];
+}
+export interface CurrencyOverview {
+  currency: string; invoiced: MoneyJson; cashReceived: MoneyJson; withheld: MoneyJson; credited: MoneyJson; outstanding: MoneyJson; overdue: MoneyJson; unallocatedCash: MoneyJson;
+  openInvoices: number; overdueInvoices: number; ageing: { bucket: 'NOT_DUE' | 'DAYS_1_30' | 'DAYS_31_60' | 'DAYS_61_90' | 'DAYS_90_PLUS'; amount: MoneyJson }[];
+}
+export interface FinanceOverview { period: { from: string; to: string }; asOf: string; currencies: CurrencyOverview[] }

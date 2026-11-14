@@ -260,7 +260,7 @@ export class InvoicesService {
     const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: a.workspaceId }, select: { locale: true, name: true } });
     const c = inv.currency;
     const html = renderInvoiceHtml({
-      number: inv.number, status: inv.status, currency: c, locale: ws.locale, issueDate: inv.issueDate ? ymd(inv.issueDate) : null, dueDate: inv.dueDate ? ymd(inv.dueDate) : null,
+      number: inv.number, status: inv.stored, currency: c, locale: ws.locale, issueDate: inv.issueDate ? ymd(inv.issueDate) : null, dueDate: inv.dueDate ? ymd(inv.dueDate) : null,
       supplier: { name: inv.supplier.name ?? ws.name, taxId: inv.supplier.taxId, address: inv.supplier.address }, billTo: { name: inv.billTo.name ?? inv.client.name, taxId: inv.billTo.taxId, address: inv.billTo.address },
       notes: inv.notes, lines: inv.lines.map((l) => ({ description: l.description, quantity: l.quantity, unitLabel: l.unitLabel, unitRateMinor: BigInt(l.unitRate.amountMinor), netMinor: BigInt(l.net.amountMinor), taxBps: l.taxBps })),
       subtotalMinor: BigInt(inv.totals.subtotal.amountMinor), discountMinor: BigInt(inv.totals.discount.amountMinor), taxMinor: BigInt(inv.totals.tax.amountMinor), totalMinor: BigInt(inv.totals.total.amountMinor),
