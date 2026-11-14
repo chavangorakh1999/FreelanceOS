@@ -21,6 +21,7 @@ export class ProjectsController {
   @Post('milestones/:mid/deliverables') addDeliverable(@Auth() a: AuthContext, @Param('mid', uuid) mid: string, @Body() dto: CreateDeliverableDto) { return this.work.addDeliverable(a, mid, dto); }
   @Patch('deliverables/:did') updateDeliverable(@Auth() a: AuthContext, @Param('did', uuid) did: string, @Body() dto: UpdateDeliverableDto) { return this.work.updateDeliverable(a, did, dto); }
 
+  @Get('projects/:id/people') people(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.work.people(a, id); }
   @Get('projects/:id/tasks') tasks(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Query() q: ListTasksQuery) { return this.work.listTasks(a, id, q); }
   @Post('projects/:id/tasks') addTask(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: CreateTaskDto) { return this.work.createTask(a, id, dto); }
   @Patch('tasks/:tid') updateTask(@Auth() a: AuthContext, @Param('tid', uuid) tid: string, @Body() dto: UpdateTaskDto) { return this.work.updateTask(a, tid, dto); }

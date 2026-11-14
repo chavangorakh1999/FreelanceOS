@@ -1,6 +1,6 @@
 import { MilestoneStatus, ProjectStatus, TaskPriority, TaskStatus, Visibility } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsDate, IsEnum, IsOptional, IsString, IsUUID, IsIn, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import { PageQuery } from '../common/pagination';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
@@ -65,6 +65,10 @@ export class CreateTaskDto {
   @IsOptional() @Type(() => Date) @IsDate() dueDate?: Date;
   @IsOptional() @IsUUID() milestoneId?: string;
   @IsOptional() @IsEnum(Visibility) visibility?: Visibility;
+  /** Quick add into a board column. */
+  @IsOptional() @IsEnum(TaskStatus) status?: TaskStatus;
+  @IsOptional() @IsUUID() assigneeUserId?: string;
+  @IsOptional() @IsUUID() assigneeContactId?: string;
 }
 
 export class UpdateTaskDto {
@@ -73,14 +77,18 @@ export class UpdateTaskDto {
   @IsOptional() @IsString() @MaxLength(5000) internalNotes?: string;
   @IsOptional() @IsEnum(TaskPriority) priority?: TaskPriority;
   @IsOptional() @IsEnum(TaskStatus) status?: TaskStatus;
-  @IsOptional() @Type(() => Date) @IsDate() dueDate?: Date;
   /** Pass null to detach from its milestone. */
   @IsOptional() @IsUUID() milestoneId?: string | null;
   @IsOptional() @IsEnum(Visibility) visibility?: Visibility;
+  /** Pass null to unassign. Setting one kind of assignee clears the other. */
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsUUID() assigneeUserId?: string | null;
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsUUID() assigneeContactId?: string | null;
+  @IsOptional() @ValidateIf((_, v) => v !== null) @Type(() => Date) @IsDate() dueDate?: Date | null;
 }
 
 export class ListTasksQuery {
   @IsOptional() @IsUUID() milestoneId?: string;
+  @IsOptional() @IsIn(['me', 'client', 'none']) assignee?: 'me' | 'client' | 'none';
   @IsOptional() @IsEnum(TaskStatus) status?: TaskStatus;
 }
 

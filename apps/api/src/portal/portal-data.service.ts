@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { AuthContext } from '../common/auth';
 import { DomainError, notFound } from '../common/errors';
 import { moneyToJson } from '../common/money-dto';
+import { SignatureInput } from '../agreements/agreements.dto';
 import { AgreementsService } from '../agreements/agreements.service';
 import { ChangeRequestsService } from '../change-requests/change-requests.service';
 import { InvoicesService } from '../finance/invoices.service';
@@ -117,6 +118,7 @@ export class PortalDataService {
     if (!ag) throw notFound('Agreement');
     const v = ag.versions[0]!;
     const mine = this.signerFor(p, v.signers);
+    const imageSigners = new Set((await this.prisma.signatureEvent.findMany({ where: { versionId: v.id, type: 'SIGNED', signatureStorageKey: { not: null } }, select: { signerId: true } })).map((e) => e.signerId));
     const expired = !!ag.expiresAt && ag.expiresAt < todayUtc() && ['SENT', 'VIEWED', 'PARTIALLY_SIGNED'].includes(ag.status);
     const blocking = mine ? v.signers.find((s) => s.signingOrder < mine.signingOrder && s.status !== 'SIGNED') : undefined;
     const open = v.status === 'SENT' && !expired;
@@ -124,7 +126,7 @@ export class PortalDataService {
       id: ag.id, number: ag.number, title: ag.title, status: expired ? 'EXPIRED' : ag.status, versionNumber: v.versionNumber, versionStatus: v.status, sentAt: v.sentAt, signedAt: v.signedAt, expiresAt: ag.expiresAt,
       contentHash: v.contentHash, businessName: ag.workspace.name,
       clauses: v.clauses.map((c) => ({ id: c.id, position: c.position, heading: c.heading, body: c.body })),
-      signers: v.signers.map((s) => ({ id: s.id, role: s.role, name: s.name, status: s.status, signedAt: s.signedAt, isYou: s.id === mine?.id })),
+      signers: v.signers.map((s) => ({ id: s.id, role: s.role, name: s.name, status: s.status, signedAt: s.signedAt, isYou: s.id === mine?.id, hasSignatureImage: imageSigners.has(s.id) })),
       you: mine ? { signerId: mine.id, name: mine.name, status: mine.status } : null,
       canSign: p.role === 'APPROVER' && !!mine && mine.status === 'PENDING' && open && !blocking,
       waitingFor: blocking ? blocking.name : null,
@@ -141,17 +143,28 @@ export class PortalDataService {
     await this.agreements.recordEvent(actorOf(p), id, ag.versionNumber, { type: 'VIEWED', signerId: ag.you.signerId, method: 'PORTAL', evidence: 'Opened in the client portal' });
   }
 
-  async signAgreement(p: PortalContext, id: string, typedName: string) {
+  async signAgreement(p: PortalContext, id: string, typedName: string, signature: SignatureInput = { kind: 'TYPED' }) {
     const ag = await this.getAgreement(p, id);
     if (!ag.you) throw new DomainError('NOT_A_SIGNER', 'You are not a signer on this agreement.', 403);
     const signer = await this.prisma.agreementSigner.findUniqueOrThrow({ where: { id: ag.you.signerId } });
     if (![norm(signer.name), norm(p.name)].includes(norm(typedName))) throw new DomainError('NAME_MISMATCH', `Type your full name exactly as it appears: “${signer.name}”.`, 422);
+    if (signer.status !== 'PENDING') return this.getAgreement(p, id); // a retry changes nothing and stores nothing
+    const stored = await this.agreements.storeSignature(p.workspaceId, signature);
+    const how = stored.kind === 'TYPED' ? 'typing' : stored.kind === 'DRAWN' ? 'drawing their signature and typing' : 'uploading their signature and typing';
     await this.agreements.recordEvent(
       actorOf(p), id, ag.versionNumber,
-      { type: 'SIGNED', signerId: signer.id, method: 'PORTAL', evidence: `Signed in the client portal by typing “${typedName.trim()}”, agreeing to the terms (content ${ag.contentHash?.slice(0, 12) ?? 'n/a'}…).` },
-      `portal:sign:${signer.id}`,
+      { type: 'SIGNED', signerId: signer.id, method: 'PORTAL', evidence: `Signed in the client portal by ${how} “${typedName.trim()}”, agreeing to the terms (content ${ag.contentHash?.slice(0, 12) ?? 'n/a'}…).` },
+      `portal:sign:${signer.id}`, stored,
     );
     return this.getAgreement(p, id);
+  }
+
+  /** A signature image on an agreement the person can see (their own or the other party's). */
+  async signatureImage(p: PortalContext, id: string, signerId: string) {
+    const ag = await this.getAgreement(p, id);
+    const e = await this.prisma.signatureEvent.findFirst({ where: { signerId, type: 'SIGNED', signatureStorageKey: { not: null }, version: { agreementId: ag.id, versionNumber: ag.versionNumber } }, select: { id: true } });
+    if (!e) throw notFound('Signature');
+    return this.agreements.signatureImage(actorOf(p), id, e.id);
   }
 
   async declineAgreement(p: PortalContext, id: string, reason: string) {
@@ -184,7 +197,7 @@ export class PortalDataService {
       where: { id, ...projectWhere(p) },
       include: {
         milestones: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }], include: { deliverables: { orderBy: { position: 'asc' } }, tasks: { where: this.visibleTaskWhere, select: { status: true } } } },
-        tasks: { where: this.visibleTaskWhere, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
+        tasks: { where: this.visibleTaskWhere, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }], include: { assigneeUser: { select: { name: true } }, assigneeContact: { select: { id: true, firstName: true, lastName: true } } } },
       },
     });
     if (!r) throw notFound('Project');
@@ -195,8 +208,37 @@ export class PortalDataService {
         deliverables: m.deliverables.map((d) => ({ id: d.id, title: d.title, done: d.done })),
       })),
       // Deliberately a short list of fields: no internal notes, priority, assignee or cost.
-      tasks: r.tasks.map((t) => ({ id: t.id, title: t.title, description: t.description, status: t.status, dueDate: t.dueDate, milestoneId: t.milestoneId, completedAt: t.completedAt })),
+      tasks: r.tasks.map((t) => ({
+        id: t.id, key: `T-${t.number}`, title: t.title, description: t.description, status: t.status, dueDate: t.dueDate, milestoneId: t.milestoneId, completedAt: t.completedAt,
+        // Who is responsible, as the client should see it: a team member's name, or a colleague at their own organisation.
+        assignee: t.assigneeUser ? { name: t.assigneeUser.name, side: 'TEAM' as const } : t.assigneeContact ? { name: [t.assigneeContact.firstName, t.assigneeContact.lastName].filter(Boolean).join(' '), side: 'CLIENT' as const } : null,
+        assignedToYou: t.assigneeContactId === p.contactId, canComplete: t.assigneeContactId === p.contactId && t.status !== 'DONE' && t.status !== 'CANCELLED',
+      })),
     };
+  }
+
+  /** Tasks the team has handed to this person, across every project they can see. */
+  async waitingOnYou(p: PortalContext) {
+    const rows = await this.prisma.task.findMany({
+      where: { workspaceId: p.workspaceId, assigneeContactId: p.contactId, visibility: 'CLIENT_VISIBLE', status: { in: ['TODO', 'IN_PROGRESS'] }, project: projectWhere(p) },
+      orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }], take: 50, select: { id: true, number: true, title: true, dueDate: true, project: { select: { id: true, name: true } } },
+    });
+    return rows.map((t) => ({ id: t.id, key: `T-${t.number}`, title: t.title, dueDate: t.dueDate, project: t.project }));
+  }
+
+  /** The client marks done what was asked of them; the team hears about it. Only their own, visible tasks. */
+  async completeTask(p: PortalContext, id: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const t = await tx.task.findFirst({ where: { id, workspaceId: p.workspaceId, assigneeContactId: p.contactId, visibility: 'CLIENT_VISIBLE', project: projectWhere(p) }, include: { project: { select: { id: true, name: true } } } });
+      if (!t) throw notFound('Task');
+      if (t.status === 'DONE') return;
+      if (t.status === 'CANCELLED') throw new DomainError('TASK_CANCELLED', 'This task was cancelled', 409);
+      const deps = await tx.taskDependency.count({ where: { taskId: id, dependsOn: { status: { notIn: ['DONE', 'CANCELLED'] } } } });
+      if (deps > 0) throw new DomainError('BLOCKED_BY_DEPENDENCY', 'Something else has to be finished first. The team will let you know.', 409);
+      await tx.task.update({ where: { id }, data: { status: 'DONE', completedAt: new Date() } });
+      await tx.auditEvent.create({ data: { workspaceId: p.workspaceId, actorId: p.portalUserId, actorType: 'CLIENT_CONTACT', action: 'task.completed_by_client', targetType: 'task', targetId: id, ipAddress: p.ip, metadata: { key: `T-${t.number}`, projectId: t.projectId } } });
+      await this.notify.emit(tx, { workspaceId: p.workspaceId, category: 'TASK_ASSIGNED', title: `${p.name} finished T-${t.number} ${t.title}`, body: t.project.name, linkPath: `/projects/${t.projectId}?tab=work&task=${id}`, dedupeKey: `task-done:${id}`, to: await this.notify.staff(tx, p.workspaceId) });
+    });
   }
 
   // ═════════ scope ═════════
@@ -304,10 +346,11 @@ export class PortalDataService {
 
   /** What needs this person's attention, and nothing else. */
   async dashboard(p: PortalContext) {
-    const [proposals, agreements, projects, changes, invoices, unread, org] = await Promise.all([
+    const [proposals, agreements, projects, changes, invoices, unread, org, tasks] = await Promise.all([
       this.listProposals(p), this.listAgreements(p), this.listProjects(p), this.listChanges(p), this.listInvoices(p),
       this.notify.unreadCount({ portalUserId: p.portalUserId }),
       this.prisma.client.findUniqueOrThrow({ where: { id: p.clientId }, select: { name: true, workspace: { select: { name: true } } } }),
+      this.waitingOnYou(p),
     ]);
     const scopeReviews = (
       await Promise.all(projects.map(async (pr) => ({ pr, scope: await this.getScope(p, pr.id) })))
@@ -320,6 +363,7 @@ export class PortalDataService {
         scopeReviews,
         changes: changes.filter((c) => c.canDecide),
         invoices: invoices.filter((i) => i.status === 'DUE' || i.status === 'OVERDUE'),
+        tasks,
       },
       counts: { proposals: proposals.length, agreements: agreements.length, projects: projects.length, invoices: invoices.length },
     };

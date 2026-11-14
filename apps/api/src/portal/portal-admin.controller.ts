@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { PortalRole } from '@prisma/client';
-import { ArrayMaxSize, IsArray, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEnum, IsIn, IsOptional, IsUUID, ValidateNested } from 'class-validator';
 import { Auth, AuthContext } from '../common/auth';
 import { PortalAdminService } from './portal-admin.service';
 
@@ -25,4 +26,21 @@ export class PortalAdminController {
   @HttpCode(204) @Post('invitations/:iid/revoke') revokeInvite(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Param('iid', uuid) iid: string) { return this.svc.revokeInvitation(a, id, iid); }
   @HttpCode(204) @Post('memberships/:mid/revoke') revoke(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Param('mid', uuid) mid: string) { return this.svc.revokeMembership(a, id, mid); }
   @HttpCode(204) @Put('contacts/:cid/access') access(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Param('cid', uuid) cid: string, @Body() dto: AccessDto) { return this.svc.setAccess(a, id, cid, dto); }
+}
+
+class ProjectPersonDto {
+  @IsUUID() contactId: string;
+  @IsBoolean() canSee: boolean;
+  @IsOptional() @IsIn(['VIEWER', 'APPROVER']) role?: 'VIEWER' | 'APPROVER';
+}
+class ProjectAccessDto {
+  @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => ProjectPersonDto) people: ProjectPersonDto[];
+}
+
+/** Who at the client can see one project: read and set from the project itself. */
+@Controller('projects/:id/client-access')
+export class ProjectAccessController {
+  constructor(private readonly svc: PortalAdminService) {}
+  @Get() get(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.svc.projectAccess(a, id); }
+  @Put() set(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: ProjectAccessDto) { return this.svc.setProjectAccess(a, id, dto.people); }
 }

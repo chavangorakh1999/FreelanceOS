@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { formatMoney, hasPlaceholder, money } from '@freelanceos/shared';
-import { AgreementStatus, Prisma } from '@prisma/client';
-import { createHash } from 'node:crypto';
+import { AgreementStatus, Prisma, SignatureKind } from '@prisma/client';
+import { createHash, randomUUID } from 'node:crypto';
+import { Inject } from '@nestjs/common';
+import { FILE_STORAGE, FileStorage } from '../library/storage';
+import { sniff } from '../library/file-type';
 import { AuditService } from '../audit/audit.service';
 import { AuthContext } from '../common/auth';
 import { DomainError, notFound } from '../common/errors';
@@ -12,10 +15,10 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
-import { CreateAgreementDto, ListAgreementsQuery, RecordEventDto, SaveAgreementVersionDto, VoidDto } from './agreements.dto';
+import { CreateAgreementDto, ListAgreementsQuery, RecordEventDto, SaveAgreementVersionDto, SignatureInput, SignInAppDto, VoidDto } from './agreements.dto';
 
 type Tx = Prisma.TransactionClient;
-const FULL = { clauses: { orderBy: { position: 'asc' } }, signers: { orderBy: [{ signingOrder: 'asc' }, { name: 'asc' }] }, events: { orderBy: { occurredAt: 'asc' } } } satisfies Prisma.AgreementVersionInclude;
+const FULL = { clauses: { orderBy: { position: 'asc' } }, signers: { orderBy: [{ signingOrder: 'asc' }, { name: 'asc' }] }, events: { orderBy: { occurredAt: 'asc' }, omit: { signatureStorageKey: true } } } satisfies Prisma.AgreementVersionInclude;
 type FullVersion = Prisma.AgreementVersionGetPayload<{ include: typeof FULL }>;
 
 const todayUtc = () => new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
@@ -42,6 +45,7 @@ export class AgreementsService {
     private readonly templates: TemplatesService,
     private readonly pdf: PdfService,
     private readonly notify: NotificationsService,
+    @Inject(FILE_STORAGE) private readonly storage: FileStorage,
   ) {}
 
   // ───────── reads ─────────
@@ -74,7 +78,7 @@ export class AgreementsService {
   }
 
   async getVersion(a: AuthContext, id: string, n: number) {
-    return this.loadVersion(this.prisma, a, id, n);
+    return this.loadVersion(this.prisma, a, id, n); // storage keys are omitted at the query, never returned
   }
 
   // ───────── create / edit ─────────
@@ -182,7 +186,7 @@ export class AgreementsService {
    * Record a signing event. Retries are safe: the same Idempotency-Key returns the first result and changes nothing.
    * The version row is locked first so two simultaneous signatures cannot both think they were last.
    */
-  recordEvent(a: AuthContext, id: string, n: number, dto: RecordEventDto, idempotencyKey?: string) {
+  recordEvent(a: AuthContext, id: string, n: number, dto: RecordEventDto, idempotencyKey?: string, sig?: { kind: SignatureKind; storageKey?: string; sha256?: string }) {
     return this.prisma.$transaction(async (tx) => {
       const v0 = await this.loadVersion(tx, a, id, n);
       await tx.$queryRaw`SELECT "id" FROM "agreement_versions" WHERE "id" = ${v0.id}::uuid FOR UPDATE`;
@@ -220,7 +224,7 @@ export class AgreementsService {
           if (blocking) throw new DomainError('OUT_OF_ORDER', `${blocking.name} must sign before ${signer.name}`, 409);
 
           await tx.agreementSigner.update({ where: { id: signer.id }, data: { status: 'SIGNED', signedAt: occurredAt } });
-          await tx.signatureEvent.create({ data: { ...base, type: 'SIGNED', signerId: signer.id, evidence: dto.evidence } });
+          await tx.signatureEvent.create({ data: { ...base, type: 'SIGNED', signerId: signer.id, evidence: dto.evidence, ...(sig ? { signatureKind: sig.kind, signatureStorageKey: sig.storageKey ?? null, signatureSha256: sig.sha256 ?? null } : {}) } });
           const allSigned = v.signers.every((s) => s.id === signer.id || s.status === 'SIGNED');
           if (allSigned) {
             await tx.agreementVersion.update({ where: { id: v.id }, data: { status: 'SIGNED', signedAt: occurredAt } });
@@ -247,6 +251,63 @@ export class AgreementsService {
     });
   }
 
+  // ───────── signatures made by their own signer ─────────
+
+  /**
+   * Check and keep a drawn or uploaded signature image. Only PNG or JPEG, decided from the bytes; small; stored privately
+   * under a random key with its SHA-256, so the image on file can be proven to be the one given at signing.
+   */
+  async storeSignature(workspaceId: string, sig: SignatureInput): Promise<{ kind: SignatureKind; storageKey?: string; sha256?: string }> {
+    if (sig.kind === 'TYPED') return { kind: 'TYPED' };
+    const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(sig.image ?? '');
+    if (!m) throw new DomainError('SIGNATURE_IMAGE_REQUIRED', sig.kind === 'DRAWN' ? 'Draw your signature first' : 'Choose an image of your signature (PNG or JPEG)', 422);
+    const bytes = Buffer.from(m[2]!, 'base64');
+    if (bytes.length < 100) throw new DomainError('SIGNATURE_EMPTY', 'The signature is empty. Draw or upload it again.', 422);
+    if (bytes.length > 500_000) throw new DomainError('SIGNATURE_TOO_LARGE', 'Use a signature image under 500 KB', 413);
+    const kind = sniff(bytes, `signature.${m[1] === 'png' ? 'png' : 'jpg'}`);
+    if (!kind || (kind.mimeType !== 'image/png' && kind.mimeType !== 'image/jpeg')) throw new DomainError('SIGNATURE_IMAGE_INVALID', 'The signature must be a PNG or JPEG image', 415);
+    const storageKey = `${workspaceId}/signatures/${randomUUID()}`;
+    await this.storage.put(storageKey, bytes);
+    return { kind: sig.kind, storageKey, sha256: createHash('sha256').update(bytes).digest('hex') };
+  }
+
+  /** The owner signs as themselves, inside the app: only for a freelancer signer whose email is their own. */
+  async signInApp(a: AuthContext, id: string, n: number, dto: SignInAppDto) {
+    const v = await this.loadVersion(this.prisma, a, id, n);
+    const signer = v.signers.find((s) => s.id === dto.signerId);
+    if (!signer) throw new DomainError('SIGNER_REQUIRED', 'Choose which signer this is for', 422);
+    const me = await this.prisma.user.findUniqueOrThrow({ where: { id: a.userId }, select: { email: true } });
+    if (signer.role !== 'FREELANCER' || signer.email.toLowerCase() !== me.email.toLowerCase()) throw new DomainError('NOT_YOUR_SIGNATURE', 'You can sign only as yourself. Record other people’s signatures as evidence instead.', 403);
+    const norm = (x: string) => x.trim().replace(/\s+/g, ' ').toLowerCase();
+    if (norm(dto.typedName) !== norm(signer.name)) throw new DomainError('NAME_MISMATCH', `Type your full name exactly as it appears: “${signer.name}”.`, 422);
+    const stored = await this.storeSignature(a.workspaceId, dto.signature);
+    return this.recordEvent(a, id, n, { type: 'SIGNED', signerId: signer.id, method: 'IN_APP', evidence: `Signed in the app (${stored.kind.toLowerCase()}) as “${dto.typedName.trim()}”, agreeing to the terms (content ${v.contentHash?.slice(0, 12) ?? 'n/a'}…).` }, `in-app:sign:${signer.id}`, stored);
+  }
+
+  /** The image of one signature, for the agreement page and PDF. Never served from a public path. */
+  async signatureImage(a: AuthContext, id: string, eventId: string) {
+    const e = await this.prisma.signatureEvent.findFirst({ where: { id: eventId, workspaceId: a.workspaceId, version: { agreementId: id }, signatureStorageKey: { not: null } } });
+    if (!e) throw notFound('Signature');
+    const bytes = await this.storage.get(e.signatureStorageKey!);
+    return { bytes, fileName: bytes[0] === 0x89 ? 'signature.png' : 'signature.jpg', mimeType: bytes[0] === 0x89 ? 'image/png' : 'image/jpeg' };
+  }
+
+  /** Signers with how they signed, ready for a PDF: drawn or uploaded images inline as data URLs, typed names as text. */
+  async signatureMarks(versionId: string) {
+    const events = await this.prisma.signatureEvent.findMany({ where: { versionId, type: 'SIGNED' }, select: { signerId: true, signatureKind: true, signatureStorageKey: true, evidence: true } });
+    const out = new Map<string, { image?: string; typed?: string }>();
+    for (const e of events) {
+      if (!e.signerId) continue;
+      if (e.signatureStorageKey) {
+        const b = await this.storage.get(e.signatureStorageKey);
+        out.set(e.signerId, { image: `data:${b[0] === 0x89 ? 'image/png' : 'image/jpeg'};base64,${b.toString('base64')}` });
+      } else if (e.signatureKind === 'TYPED') {
+        out.set(e.signerId, { typed: /“([^”]+)”/.exec(e.evidence ?? '')?.[1] });
+      }
+    }
+    return out;
+  }
+
   /** A signed agreement cannot be voided here: it is changed only by an amendment (PRD §7.6). */
   void(a: AuthContext, id: string, dto: VoidDto) {
     return this.prisma.$transaction(async (tx) => {
@@ -268,10 +329,11 @@ export class AgreementsService {
     const ag = await this.prisma.agreement.findFirst({ where: { id, workspaceId: a.workspaceId }, include: { client: { select: { name: true } }, workspace: { select: { name: true } } } });
     if (!ag) throw notFound('Agreement');
     const v = await this.loadVersion(this.prisma, a, id, n);
+    const marks = await this.signatureMarks(v.id);
     const html = renderAgreementHtml({
       number: ag.number, title: ag.title, versionNumber: v.versionNumber, status: v.status, workspaceName: ag.workspace.name, clientName: ag.client.name,
       contentHash: v.contentHash, sentAt: v.sentAt?.toISOString() ?? null, clauses: v.clauses,
-      signers: v.signers.map((s) => ({ role: s.role, name: s.name, email: s.email, status: s.status, signedAt: s.signedAt?.toISOString().slice(0, 10) ?? null })),
+      signers: v.signers.map((s) => ({ role: s.role, name: s.name, email: s.email, status: s.status, signedAt: s.signedAt?.toISOString().slice(0, 10) ?? null, signatureImage: marks.get(s.id)?.image ?? null, typedSignature: marks.get(s.id)?.typed ?? null })),
     });
     return { filename: `${ag.number.replaceAll('/', '-')}-v${n}.pdf`, buffer: await this.pdf.render(html) };
   }

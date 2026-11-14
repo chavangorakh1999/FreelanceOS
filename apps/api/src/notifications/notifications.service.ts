@@ -30,6 +30,7 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   INVOICE_REMINDER: 'Invoice due and overdue reminders',
   COMMENT: 'New comments',
   DOCUMENT_SHARED: 'A document is shared with you',
+  TASK_ASSIGNED: 'A task is assigned to you',
 };
 /** Security-relevant: always sent, cannot be switched off. */
 const ALWAYS_EMAIL: NotificationCategory[] = ['INVITATION'];

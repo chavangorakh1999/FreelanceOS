@@ -38,7 +38,8 @@ export class SaveAgreementVersionDto {
 export class RecordEventDto {
   @IsIn(['VIEWED', 'SIGNED', 'DECLINED']) type: 'VIEWED' | 'SIGNED' | 'DECLINED';
   @IsOptional() @IsUUID() signerId?: string;
-  @IsOptional() @IsEnum(SignatureMethod) method?: SignatureMethod;
+  /** Staff record signatures obtained elsewhere; a portal or in-app signature can only be made by its signer, never recorded on their behalf. */
+  @IsOptional() @IsIn(['MANUAL_RECORDED', 'PROVIDER']) method?: SignatureMethod;
   /** Required for a manually recorded signature: where the proof came from. */
   @IsOptional() @Transform(trim) @IsString() @MaxLength(2000) evidence?: string;
   @IsOptional() @Type(() => Date) @IsDate() occurredAt?: Date;
@@ -52,4 +53,17 @@ export class ListAgreementsQuery extends PageQuery {
   @IsOptional() @IsUUID() clientId?: string;
   @IsOptional() @IsEnum(AgreementStatus) status?: AgreementStatus;
   @IsOptional() @Transform(trim) @IsString() @MaxLength(100) q?: string;
+}
+
+/** A signature made by its own signer: typed, drawn on screen, or an uploaded image of a handwritten one. */
+export class SignatureInput {
+  @IsIn(['TYPED', 'DRAWN', 'UPLOADED']) kind: 'TYPED' | 'DRAWN' | 'UPLOADED';
+  /** data:image/png;base64,… (drawn) or PNG/JPEG (uploaded). Not used for a typed signature. */
+  @IsOptional() @IsString() @MaxLength(700_000) image?: string;
+}
+export class SignInAppDto {
+  @IsUUID() signerId: string;
+  @Transform(trim) @IsString() @MinLength(2) @MaxLength(200) typedName: string;
+  @IsIn([true], { message: 'Confirm you agree to the terms' }) agree: boolean;
+  @ValidateNested() @Type(() => SignatureInput) signature: SignatureInput;
 }

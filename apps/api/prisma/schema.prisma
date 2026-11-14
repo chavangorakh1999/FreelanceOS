@@ -25,13 +25,14 @@ enum WorkspaceRole {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique // stored lower-cased by the application
-  passwordHash String
-  name         String
-  disabledAt   DateTime? @db.Timestamptz
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  id            String    @id @default(uuid()) @db.Uuid
+  assignedTasks Task[]    @relation("TaskAssignee")
+  email         String    @unique // stored lower-cased by the application
+  passwordHash  String
+  name          String
+  disabledAt    DateTime? @db.Timestamptz
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
 
   memberships             WorkspaceMembership[]
   sessions                UserSession[]
@@ -217,19 +218,20 @@ model Client {
 }
 
 model ClientContact {
-  id          String    @id @default(uuid()) @db.Uuid
-  workspaceId String    @db.Uuid
-  clientId    String    @db.Uuid
-  firstName   String
-  lastName    String?
-  email       String?
-  phone       String?
-  jobTitle    String?
-  isPrimary   Boolean   @default(false) // at most one per client: partial unique index in migration
-  notes       String?
-  archivedAt  DateTime? @db.Timestamptz
-  createdAt   DateTime  @default(now()) @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @db.Timestamptz
+  id            String    @id @default(uuid()) @db.Uuid
+  assignedTasks Task[]    @relation("TaskContactAssignee")
+  workspaceId   String    @db.Uuid
+  clientId      String    @db.Uuid
+  firstName     String
+  lastName      String?
+  email         String?
+  phone         String?
+  jobTitle      String?
+  isPrimary     Boolean   @default(false) // at most one per client: partial unique index in migration
+  notes         String?
+  archivedAt    DateTime? @db.Timestamptz
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
 
   client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
   portalMembership    PortalMembership?
@@ -690,6 +692,14 @@ enum SignatureMethod {
   PROVIDER
   /// Signed by the client themselves in the portal (typed name + time + IP). Not an e-signature provider.
   PORTAL
+  /// Signed by the owner inside the app.
+  IN_APP
+}
+
+enum SignatureKind {
+  TYPED
+  DRAWN
+  UPLOADED
 }
 
 model Agreement {
@@ -785,21 +795,25 @@ model AgreementSigner {
 }
 
 model SignatureEvent {
-  id             String             @id @default(uuid()) @db.Uuid
-  workspaceId    String             @db.Uuid
-  versionId      String             @db.Uuid
-  signerId       String?            @db.Uuid
-  type           SignatureEventType
-  method         SignatureMethod    @default(MANUAL_RECORDED)
-  occurredAt     DateTime           @db.Timestamptz
-  recordedById   String?            @db.Uuid
-  evidence       String?
+  id                  String             @id @default(uuid()) @db.Uuid
+  workspaceId         String             @db.Uuid
+  versionId           String             @db.Uuid
+  signerId            String?            @db.Uuid
+  type                SignatureEventType
+  method              SignatureMethod    @default(MANUAL_RECORDED)
+  occurredAt          DateTime           @db.Timestamptz
+  recordedById        String?            @db.Uuid
+  evidence            String?
   /// Makes retries and provider webhook redeliveries safe (PRD §7.6, App. B #18).
-  idempotencyKey String?
-  portalUserId   String?            @db.Uuid
-  ipAddress      String?
-  userAgent      String?
-  createdAt      DateTime           @default(now()) @db.Timestamptz
+  idempotencyKey      String?
+  portalUserId        String?            @db.Uuid
+  ipAddress           String?
+  userAgent           String?
+  /// How the signature was made; an image (drawn or uploaded) is kept privately with its fingerprint.
+  signatureKind       SignatureKind?
+  signatureStorageKey String?
+  signatureSha256     String?
+  createdAt           DateTime           @default(now()) @db.Timestamptz
 
   version    AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
   signer     AgreementSigner? @relation(fields: [signerId], references: [id], onDelete: Restrict)
@@ -1025,29 +1039,40 @@ enum TaskPriority {
 }
 
 model Task {
-  id            String       @id @default(uuid()) @db.Uuid
-  workspaceId   String       @db.Uuid
-  projectId     String       @db.Uuid
-  milestoneId   String?      @db.Uuid
-  title         String
-  description   String?
+  id                String       @id @default(uuid()) @db.Uuid
+  workspaceId       String       @db.Uuid
+  projectId         String       @db.Uuid
+  milestoneId       String?      @db.Uuid
+  title             String
+  description       String?
   /// Never returned by any client-facing endpoint (PRD §7.8).
-  internalNotes String?
-  priority      TaskPriority @default(MEDIUM)
-  status        TaskStatus   @default(TODO)
-  dueDate       DateTime?    @db.Date
-  position      Int          @default(0)
-  visibility    Visibility   @default(INTERNAL)
-  completedAt   DateTime?    @db.Timestamptz
-  createdById   String       @db.Uuid
-  createdAt     DateTime     @default(now()) @db.Timestamptz
-  updatedAt     DateTime     @updatedAt @db.Timestamptz
+  internalNotes     String?
+  /// Per-project key shown as T-12. Assigned under a lock on the project row.
+  number            Int
+  /// Who is responsible: a team member or someone at the client (never both).
+  assigneeUserId    String?      @db.Uuid
+  assigneeContactId String?      @db.Uuid
+  priority          TaskPriority @default(MEDIUM)
+  status            TaskStatus   @default(TODO)
+  dueDate           DateTime?    @db.Date
+  position          Int          @default(0)
+  visibility        Visibility   @default(INTERNAL)
+  completedAt       DateTime?    @db.Timestamptz
+  createdById       String       @db.Uuid
+  createdAt         DateTime     @default(now()) @db.Timestamptz
+  updatedAt         DateTime     @updatedAt @db.Timestamptz
 
   project      Project          @relation(fields: [projectId], references: [id], onDelete: Restrict)
   milestone    Milestone?       @relation(fields: [milestoneId], references: [id], onDelete: Restrict)
   dependsOn    TaskDependency[] @relation("Dependent")
   dependedOnBy TaskDependency[] @relation("Dependency")
 
+  assigneeUser    User?          @relation("TaskAssignee", fields: [assigneeUserId], references: [id], onDelete: Restrict)
+  assigneeContact ClientContact? @relation("TaskContactAssignee", fields: [assigneeContactId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, number])
+  @@index([workspaceId, assigneeUserId])
+  @@index([assigneeContactId])
   @@index([workspaceId, projectId, status])
   @@index([projectId, milestoneId, position])
   @@index([workspaceId, dueDate])
@@ -1386,6 +1411,7 @@ enum NotificationCategory {
   INVOICE_REMINDER
   COMMENT
   DOCUMENT_SHARED
+  TASK_ASSIGNED
 }
 
 enum DeliveryStatus {

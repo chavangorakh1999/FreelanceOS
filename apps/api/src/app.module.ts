@@ -11,6 +11,7 @@ import { PortalModule } from './portal/portal.module';
 import { CommentsModule } from './comments/comments.module';
 import { SearchModule } from './search/search.controller';
 import { LibraryModule } from './library/library.module';
+import { StorageModule } from './library/storage.module';
 import { CalendarModule } from './calendar/calendar.controller';
 import { PrivacyModule } from './privacy/privacy.controller';
 import { AuditModule } from './audit/audit.module';
@@ -54,6 +55,7 @@ import { TemplatesModule } from './templates/templates.module';
     PortalModule,
     CommentsModule,
     SearchModule,
+    StorageModule,
     LibraryModule,
     CalendarModule,
     PrivacyModule,

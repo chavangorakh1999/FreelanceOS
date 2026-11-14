@@ -4,6 +4,7 @@ import { MilestoneStatus, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AuthContext } from '../common/auth';
 import { DomainError, notFound } from '../common/errors';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { loadProject } from './access';
 import { CreateDeliverableDto, CreateMilestoneDto, CreateTaskDto, ListTasksQuery, UpdateDeliverableDto, UpdateMilestoneDto, UpdateTaskDto } from './projects.dto';
@@ -19,7 +20,7 @@ const MILESTONE_MOVES: Record<MilestoneStatus, MilestoneStatus[]> = {
 
 @Injectable()
 export class WorkService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly notify: NotificationsService) {}
 
   // ───────── milestones ─────────
 
@@ -83,24 +84,66 @@ export class WorkService {
   async listTasks(a: AuthContext, projectId: string, q: ListTasksQuery) {
     await loadProject(this.prisma, a.workspaceId, projectId);
     const all = await this.prisma.task.findMany({
-      where: { projectId, workspaceId: a.workspaceId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      include: { dependsOn: { select: { id: true, dependsOnTaskId: true } } },
+      where: { projectId, workspaceId: a.workspaceId, ...(q.assignee === 'me' ? { assigneeUserId: a.userId } : q.assignee === 'client' ? { assigneeContactId: { not: null } } : q.assignee === 'none' ? { assigneeUserId: null, assigneeContactId: null } : {}) },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      include: { dependsOn: { select: { id: true, dependsOnTaskId: true } }, assigneeUser: { select: { id: true, name: true } }, assigneeContact: { select: { id: true, firstName: true, lastName: true } } },
     });
     const status = new Map(all.map((t) => [t.id, t.status]));
     const edges = all.flatMap((t) => t.dependsOn.map((d) => ({ taskId: t.id, dependsOnTaskId: d.dependsOnTaskId })));
     return all
       .filter((t) => (!q.milestoneId || t.milestoneId === q.milestoneId) && (!q.status || t.status === q.status))
-      .map(({ dependsOn, ...t }) => ({ ...t, dependsOn: dependsOn.map((d) => d.dependsOnTaskId), blockedBy: unmetDependencies(t.id, edges, (id) => status.get(id)) }));
+      .map(({ dependsOn, assigneeUser, assigneeContact, ...t }) => ({
+        ...t, key: `T-${t.number}`, dependsOn: dependsOn.map((d) => d.dependsOnTaskId), blockedBy: unmetDependencies(t.id, edges, (id) => status.get(id)),
+        assignee: assigneeUser ? { kind: 'TEAM' as const, id: assigneeUser.id, name: assigneeUser.name } : assigneeContact ? { kind: 'CLIENT' as const, id: assigneeContact.id, name: [assigneeContact.firstName, assigneeContact.lastName].filter(Boolean).join(' ') } : null,
+      }));
+  }
+
+  /** Who can be made responsible for work on this project: the team, and the people at the project's client. */
+  async people(a: AuthContext, projectId: string) {
+    const p = await loadProject(this.prisma, a.workspaceId, projectId);
+    const [team, contacts] = await Promise.all([
+      this.prisma.workspaceMembership.findMany({ where: { workspaceId: a.workspaceId, user: { disabledAt: null } }, select: { user: { select: { id: true, name: true } } } }),
+      this.prisma.clientContact.findMany({
+        where: { clientId: p.clientId, workspaceId: a.workspaceId, archivedAt: null }, orderBy: [{ isPrimary: 'desc' }, { firstName: 'asc' }],
+        select: { id: true, firstName: true, lastName: true, email: true, portalMembership: { select: { status: true } }, portalProjectGrants: { where: { projectId, revokedAt: null }, select: { id: true } } },
+      }),
+    ]);
+    return {
+      team: team.map((m) => ({ id: m.user.id, name: m.user.name, isYou: m.user.id === a.userId })),
+      client: contacts.map((c) => ({ id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' '), email: c.email, portalAccess: c.portalMembership?.status === 'ACTIVE', canSeeProject: c.portalMembership?.status === 'ACTIVE' && c.portalProjectGrants.length > 0 })),
+    };
+  }
+
+  /** Friendly checks before the database trigger; also says who should hear about it. */
+  private async resolveAssignee(tx: Tx, a: AuthContext, project: { id: string; clientId: string }, dto: { assigneeUserId?: string | null; assigneeContactId?: string | null }) {
+    if (dto.assigneeUserId && dto.assigneeContactId) throw new DomainError('ONE_ASSIGNEE', 'A task has one person responsible', 422);
+    if (dto.assigneeUserId) {
+      const m = await tx.workspaceMembership.findFirst({ where: { workspaceId: a.workspaceId, userId: dto.assigneeUserId } });
+      if (!m) throw new DomainError('INVALID_ASSIGNEE', 'That person is not on your team', 422);
+    }
+    if (dto.assigneeContactId) {
+      const c = await tx.clientContact.findFirst({ where: { id: dto.assigneeContactId, clientId: project.clientId, workspaceId: a.workspaceId, archivedAt: null } });
+      if (!c) throw new DomainError('INVALID_ASSIGNEE', 'Only people at this project’s client can be assigned', 422);
+    }
   }
 
   createTask(a: AuthContext, projectId: string, dto: CreateTaskDto) {
     return this.prisma.$transaction(async (tx) => {
       await this.openProject(tx, a, projectId);
       if (dto.milestoneId) await this.assertMilestoneOpen(tx, a, projectId, dto.milestoneId);
-      const position = await tx.task.count({ where: { projectId } });
-      const t = await tx.task.create({ data: { workspaceId: a.workspaceId, projectId, createdById: a.userId, position, ...dto } });
-      await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'task.created', targetType: 'task', targetId: t.id, ip: a.ip, metadata: { projectId } });
-      return t;
+      const project = await tx.project.findUniqueOrThrow({ where: { id: projectId } });
+      await this.resolveAssignee(tx, a, project, dto);
+      await tx.$queryRaw`SELECT "id" FROM "projects" WHERE "id" = ${projectId}::uuid FOR UPDATE`; // keys never collide
+      const last = await tx.task.aggregate({ where: { projectId }, _max: { number: true, position: true } });
+      // In a project shared with the client, new work is visible to them unless said otherwise; a task given to
+      // someone at the client must be visible, or they could not act on it.
+      const visibility = dto.assigneeContactId ? 'CLIENT_VISIBLE' : dto.visibility ?? (project.visibility === 'CLIENT_VISIBLE' ? 'CLIENT_VISIBLE' : 'INTERNAL');
+      const t = await tx.task.create({
+        data: { workspaceId: a.workspaceId, projectId, createdById: a.userId, ...dto, visibility, number: (last._max.number ?? 0) + 1, position: (last._max.position ?? -1) + 1, ...(dto.status === 'DONE' ? { completedAt: new Date() } : {}) },
+      });
+      await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'task.created', targetType: 'task', targetId: t.id, ip: a.ip, metadata: { projectId, key: `T-${t.number}` } });
+      await this.tellAssignee(tx, a, t, project);
+      return { ...t, key: `T-${t.number}` };
     });
   }
 
@@ -118,15 +161,38 @@ export class WorkService {
           throw new DomainError('BLOCKED_BY_DEPENDENCY', `Finish these first: ${deps.filter((d) => unmet.includes(d.dependsOnTaskId)).map((d) => d.dependsOn.title).join(', ')}`, 409, unmet);
         }
       }
+      const project = await tx.project.findUniqueOrThrow({ where: { id: t.projectId } });
+      await this.resolveAssignee(tx, a, project, dto);
+      // Setting one kind of assignee replaces the other.
+      const who = dto.assigneeUserId !== undefined && dto.assigneeUserId !== null ? { assigneeUserId: dto.assigneeUserId, assigneeContactId: null }
+        : dto.assigneeContactId !== undefined && dto.assigneeContactId !== null ? { assigneeContactId: dto.assigneeContactId, assigneeUserId: null }
+        : { ...(dto.assigneeUserId === null ? { assigneeUserId: null } : {}), ...(dto.assigneeContactId === null ? { assigneeContactId: null } : {}) };
+      const clientAssigned = (who.assigneeContactId ?? (('assigneeContactId' in who) ? null : t.assigneeContactId)) !== null;
+      if (clientAssigned && dto.visibility === 'INTERNAL') throw new DomainError('ASSIGNED_TO_CLIENT', 'This task is assigned to someone at the client. Assign it to your team before hiding it.', 409);
       const updated = await tx.task.update({
         where: { id },
-        data: { ...dto, ...(dto.status ? { completedAt: dto.status === 'DONE' ? new Date() : null } : {}) },
+        data: { ...dto, ...who, ...(clientAssigned ? { visibility: 'CLIENT_VISIBLE' } : {}), ...(dto.status ? { completedAt: dto.status === 'DONE' ? new Date() : null } : {}) },
       });
+      if (('assigneeUserId' in who && who.assigneeUserId !== t.assigneeUserId) || ('assigneeContactId' in who && who.assigneeContactId !== t.assigneeContactId)) {
+        await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'task.assigned', targetType: 'task', targetId: id, ip: a.ip, metadata: { projectId: t.projectId, key: `T-${t.number}`, assigneeUserId: updated.assigneeUserId, assigneeContactId: updated.assigneeContactId } });
+        await this.tellAssignee(tx, a, updated, project);
+      }
       if (dto.status && dto.status !== t.status) {
         await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'task.status_changed', targetType: 'task', targetId: id, ip: a.ip, metadata: { projectId: t.projectId, from: t.status, to: dto.status } });
       }
       return updated;
     });
+  }
+
+  /** The new person responsible hears about it, unless they assigned it to themselves. */
+  private async tellAssignee(tx: Tx, a: AuthContext, t: { id: string; number: number; title: string; assigneeUserId: string | null; assigneeContactId: string | null; projectId: string }, project: { id: string; name: string; clientId: string; visibility: string }) {
+    if (t.assigneeUserId && t.assigneeUserId !== a.userId) {
+      await this.notify.emit(tx, { workspaceId: a.workspaceId, category: 'TASK_ASSIGNED', title: `T-${t.number} ${t.title} is assigned to you`, body: project.name, linkPath: `/projects/${project.id}?tab=work&task=${t.id}`, dedupeKey: `task-assigned:${t.id}:${t.assigneeUserId}:${Date.now()}`, to: [{ userId: t.assigneeUserId }] });
+    }
+    if (t.assigneeContactId) {
+      const m = await tx.portalMembership.findFirst({ where: { contactId: t.assigneeContactId, status: 'ACTIVE' }, select: { portalUserId: true } });
+      if (m) await this.notify.emit(tx, { workspaceId: a.workspaceId, category: 'TASK_ASSIGNED', title: `Waiting on you: ${t.title}`, body: project.name, linkPath: `/portal/projects/${project.id}`, dedupeKey: `task-assigned:${t.id}:${t.assigneeContactId}:${Date.now()}`, to: [{ portalUserId: m.portalUserId }] });
+    }
   }
 
   addDependency(a: AuthContext, taskId: string, dependsOnTaskId: string) {

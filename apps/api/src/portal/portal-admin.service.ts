@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PortalRole } from '@prisma/client';
+import { PortalRole, Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import { AuthContext } from '../common/auth';
@@ -43,7 +43,11 @@ export class PortalAdminService {
 
   /** Send (or re-send) an invitation. Any earlier unused invitation for the contact stops working. */
   async invite(a: AuthContext, clientId: string, dto: { contactId: string; role: PortalRole; projectIds?: string[] }) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction((tx) => this.inviteTx(tx, a, clientId, dto));
+  }
+
+  private async inviteTx(tx: Prisma.TransactionClient, a: AuthContext, clientId: string, dto: { contactId: string; role: PortalRole; projectIds?: string[] }) {
+    {
       const client = await tx.client.findFirst({ where: { id: clientId, workspaceId: a.workspaceId } });
       if (!client) throw notFound('Client');
       if (client.status === 'ARCHIVED') throw new DomainError('CLIENT_ARCHIVED', 'Restore this client before inviting people', 409);
@@ -67,6 +71,59 @@ export class PortalAdminService {
       });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'portal.invited', targetType: 'client_contact', targetId: contact.id, ip: a.ip, metadata: { clientId, role: dto.role, projectCount: dto.projectIds?.length ?? 0 } });
       return { id: inv.id, expiresAt };
+    }
+  }
+
+  // ───────── one project, everyone at its client ─────────
+
+  /** Who at the project's client can see it, and who could (PRD §4.2). One list instead of three settings in three places. */
+  async projectAccess(a: AuthContext, projectId: string) {
+    const p = await this.prisma.project.findFirst({ where: { id: projectId, workspaceId: a.workspaceId }, select: { id: true, clientId: true, visibility: true, client: { select: { name: true } } } });
+    if (!p) throw notFound('Project');
+    const contacts = await this.prisma.clientContact.findMany({
+      where: { clientId: p.clientId, workspaceId: a.workspaceId, archivedAt: null }, orderBy: [{ isPrimary: 'desc' }, { firstName: 'asc' }],
+      include: { portalMembership: true, portalInvitations: { where: { usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }, take: 1 }, portalProjectGrants: { where: { projectId, revokedAt: null } } },
+    });
+    return {
+      clientName: p.client.name, shared: p.visibility === 'CLIENT_VISIBLE',
+      people: contacts.map((c) => ({
+        contactId: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' '), email: c.email, isPrimary: c.isPrimary,
+        status: c.portalMembership?.status === 'ACTIVE' ? 'ACTIVE' as const : c.portalInvitations[0] ? 'INVITED' as const : c.email ? 'NONE' as const : 'NO_EMAIL' as const,
+        role: c.portalMembership?.status === 'ACTIVE' ? c.portalMembership.role : c.portalInvitations[0]?.role ?? null,
+        canSee: c.portalProjectGrants.length > 0,
+      })),
+    };
+  }
+
+  /**
+   * Set, in one step, who at the client can see this project: grants and revokes, invites anyone who is not in the portal
+   * yet (with this project already granted), and keeps the project's visibility in step: shared exactly when someone can see it.
+   */
+  async setProjectAccess(a: AuthContext, projectId: string, people: { contactId: string; canSee: boolean; role?: PortalRole }[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const p = await tx.project.findFirst({ where: { id: projectId, workspaceId: a.workspaceId } });
+      if (!p) throw notFound('Project');
+      const invited: string[] = [];
+      for (const x of people) {
+        const c = await tx.clientContact.findFirst({ where: { id: x.contactId, clientId: p.clientId, workspaceId: a.workspaceId, archivedAt: null }, include: { portalMembership: true, portalInvitations: { where: { usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }, take: 1 } } });
+        if (!c) throw notFound('Contact');
+        const active = c.portalMembership?.status === 'ACTIVE';
+        if (x.canSee) {
+          await tx.portalProjectGrant.upsert({ where: { contactId_projectId: { contactId: c.id, projectId } }, create: { workspaceId: a.workspaceId, contactId: c.id, projectId, grantedById: a.userId }, update: { revokedAt: null } });
+          if (active && x.role && x.role !== c.portalMembership!.role) await tx.portalMembership.update({ where: { id: c.portalMembership!.id }, data: { role: x.role } });
+          if (!active && !c.portalInvitations[0]) {
+            const grants = await tx.portalProjectGrant.findMany({ where: { contactId: c.id, revokedAt: null }, select: { projectId: true } });
+            await this.inviteTx(tx, a, p.clientId, { contactId: c.id, role: x.role ?? 'APPROVER', projectIds: grants.map((g) => g.projectId) });
+            invited.push(c.id);
+          }
+        } else {
+          await tx.portalProjectGrant.updateMany({ where: { contactId: c.id, projectId, revokedAt: null }, data: { revokedAt: new Date() } });
+        }
+      }
+      const anyone = await tx.portalProjectGrant.count({ where: { projectId, revokedAt: null } });
+      await tx.project.update({ where: { id: projectId }, data: { visibility: anyone > 0 ? 'CLIENT_VISIBLE' : 'INTERNAL' } });
+      await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'project.client_access_updated', targetType: 'project', targetId: projectId, ip: a.ip, metadata: { canSee: people.filter((x) => x.canSee).map((x) => x.contactId), invited } });
+      return { invited: invited.length, shared: anyone > 0 };
     });
   }
 

@@ -81,7 +81,7 @@ describe('client portal: what a client can see and do', () => {
     await k.pget(t, `/portal/invoices/${inv.id}`).expect(404);
     await k.pget(t, `/portal/invoices/${inv.id}/pdf`).expect(404);
     const dash = (await k.pget(t, '/portal/dashboard').expect(200)).body;
-    expect(dash.attention).toEqual({ proposals: [], agreements: [], scopeReviews: [], changes: [], invoices: [] });
+    expect(dash.attention).toEqual({ proposals: [], agreements: [], scopeReviews: [], changes: [], invoices: [], tasks: [] });
     expect(dash).toMatchObject({ organizationName: 'Northwind Labs', businessName: 'Gorakh Studio', role: 'APPROVER' });
   });
 
@@ -209,7 +209,7 @@ describe('client portal: what a client can see and do', () => {
     const m = (await post(`/projects/${shown.id}/milestones`, { name: 'Design' }).expect(201)).body;
     const task = async (title: string, extra: object = {}) => (await post(`/projects/${shown.id}/tasks`, { title, milestoneId: m.id, ...extra }).expect(201)).body.id as string;
     const t1 = await task('Wireframes', { visibility: 'CLIENT_VISIBLE', internalNotes: 'client keeps changing their mind' });
-    await task('Fix our own CI', { internalNotes: 'budget overrun' });
+    await task('Fix our own CI', { internalNotes: 'budget overrun', visibility: 'INTERNAL' }); // shared project: internal must be asked for
     await patch(`/tasks/${t1}`, { status: 'DONE' }).expect(200);
 
     const detail = (await k.pget(o.approver.token, `/portal/projects/${shown.id}`).expect(200)).body;

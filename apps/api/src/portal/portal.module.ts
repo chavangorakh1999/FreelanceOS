@@ -5,7 +5,7 @@ import { ChangeRequestsModule } from '../change-requests/change-requests.module'
 import { CommentsModule } from '../comments/comments.module';
 import { ProposalsModule } from '../proposals/proposals.module';
 import { ScopeModule } from '../scope/scope.module';
-import { PortalAdminController } from './portal-admin.controller';
+import { PortalAdminController, ProjectAccessController } from './portal-admin.controller';
 import { PortalAdminService } from './portal-admin.service';
 import { PortalDataController } from './portal-data.controller';
 import { PortalDataService } from './portal-data.service';
@@ -15,7 +15,7 @@ import { PortalGuard } from './portal.guard';
 
 @Module({
   imports: [AuthModule, AgreementsModule, ChangeRequestsModule, CommentsModule, ProposalsModule, ScopeModule],
-  controllers: [PortalAuthController, PortalAdminController, PortalDataController],
+  controllers: [PortalAuthController, PortalAdminController, PortalDataController, ProjectAccessController],
   providers: [PortalAuthService, PortalAdminService, PortalDataService, PortalGuard],
   exports: [PortalGuard, PortalAuthService],
 })

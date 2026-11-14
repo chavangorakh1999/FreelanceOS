@@ -1,11 +1,13 @@
 import { Body, Controller, Get, Header, HttpCode, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength, Min, ValidateNested } from 'class-validator';
 import { NotificationCategory } from '@prisma/client';
 import type { Response } from 'express';
 import { Public } from '../common/auth';
 import { DomainError } from '../common/errors';
+import { SignatureInput } from '../agreements/agreements.dto';
 import { CommentsService } from '../comments/comments.service';
+import { sendFile } from '../library/library.controller';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PortalDataService } from './portal-data.service';
 import { Portal, PortalContext, PortalGuard, RequireApprover } from './portal.guard';
@@ -21,6 +23,8 @@ class ProposalDecisionDto {
 class SignDto {
   @Transform(trim) @IsString() @MinLength(2) @MaxLength(200) typedName: string;
   @IsBoolean() agree: boolean;
+  /** Optional: drawn or uploaded. Without it, the typed name is the signature. */
+  @IsOptional() @ValidateNested() @Type(() => SignatureInput) signature?: SignatureInput;
 }
 class DeclineDto { @Transform(trim) @IsString() @MinLength(3) @MaxLength(1000) reason: string }
 class ScopeDecisionDto {
@@ -74,8 +78,9 @@ export class PortalDataController {
   @RequireApprover() @HttpCode(200) @Post('agreements/:id/sign')
   sign(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Body() d: SignDto) {
     if (!d.agree) throw new DomainError('AGREEMENT_REQUIRED', 'Confirm that you have read and agree to the terms', 422);
-    return this.data.signAgreement(p, id, d.typedName);
+    return this.data.signAgreement(p, id, d.typedName, d.signature);
   }
+  @Get('agreements/:id/signatures/:signerId/image') async sigImage(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Param('signerId', uuid) signerId: string, @Res() res: Response) { sendFile(res, await this.data.signatureImage(p, id, signerId)); }
   @RequireApprover() @HttpCode(200) @Post('agreements/:id/decline') decline(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Body() d: DeclineDto) { return this.data.declineAgreement(p, id, d.reason); }
 
   // projects
@@ -91,6 +96,9 @@ export class PortalDataController {
   @RequireApprover() @Post('projects/:id/changes') raise(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Body() d: RaiseChangeDto) { return this.data.raiseChange(p, id, d); }
   @Get('projects/:id/comments') projectComments(@Portal() p: PortalContext, @Param('id', uuid) id: string) { return this.comments.portalList(p, 'project', id); }
   @Post('projects/:id/comments') projectComment(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Body() d: CommentDto) { return this.comments.portalAdd(p, 'project', id, d.body); }
+
+  // tasks handed to the client
+  @HttpCode(204) @Post('tasks/:id/complete') completeTask(@Portal() p: PortalContext, @Param('id', uuid) id: string) { return this.data.completeTask(p, id); }
 
   // change requests
   @Get('changes') changes(@Portal() p: PortalContext) { return this.data.listChanges(p); }
