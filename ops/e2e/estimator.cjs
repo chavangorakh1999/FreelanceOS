@@ -38,7 +38,7 @@ const out = require('path').join(process.env.E2E_OUT ?? '/tmp/e2e-run', 'estimat
   await p.locator('aside').screenshot({ path: `${out}/05a-payment-terms-milestones.png` });
   console.log(`✓ milestone schedule: ${schedule.length} payments`);
   await p.getByRole('button', { name: 'Create proposal' }).click();
-  const d = p.locator('dialog[open]'); await d.getByLabel('Client').selectOption({ index: 1 }); await d.getByLabel('Proposal title').fill('Delivery app');
+  const d = p.locator('dialog[open]'); await d.getByLabel('Project').selectOption({ index: 1 }); await d.getByLabel('Proposal title').fill('Delivery app');
   await p.screenshot({ path: `${out}/05-create-proposal.png` });
   await d.getByRole('button', { name: 'Create draft' }).click(); await p.waitForURL(/\/proposals\/[0-9a-f-]{36}/); await p.waitForLoadState('networkidle'); await p.waitForTimeout(600);
   await p.screenshot({ path: `${out}/06-proposal-draft-from-estimate.png`, fullPage: true });

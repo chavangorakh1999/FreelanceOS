@@ -13,12 +13,24 @@ const ids = require(process.argv[2] + '/ids.json');
     await p.locator('tbody tr td').filter({ hasText: cellText }).first().click();
     await p.waitForURL(expect); ok(`row click on ${list} opens the record`);
   }
-  // board card opens the engagement; its stage control does not navigate
-  await p.goto(WEB + '/engagements'); await p.getByText('Blue Fern Studio').first().click({ force: true }); await p.waitForURL(/\/engagements\/[0-9a-f-]{36}$/); ok('board card opens the engagement');
-  await p.getByRole('link', { name: 'Create proposal' }).waitFor(); ok('engagement offers Create proposal as the next step');
+  // board card opens the lead; the lead becomes a project, and the proposal is written inside it without picking a client
+  await p.goto(WEB + '/engagements'); await p.getByText('Blue Fern Studio').first().click({ force: true }); await p.waitForURL(/\/engagements\/[0-9a-f-]{36}$/); ok('board card opens the lead');
+  const leadTitle = (await p.getByRole('heading', { level: 1 }).innerText()).trim();
+  await p.getByRole('button', { name: 'Start project' }).click(); await p.waitForURL(/\/projects\/[0-9a-f-]{36}\?tab=proposals/);
+  await p.getByRole('tab', { name: 'Proposals', selected: true }).waitFor(); ok('Start project opens the new project at its Proposals tab');
+  await p.getByRole('button', { name: 'New proposal' }).first().click();
+  const d = p.locator('dialog[open]'); if (await d.getByLabel('Title').inputValue() !== leadTitle) throw new Error('title should default to the project name');
+  await d.getByRole('button', { name: 'Create proposal' }).click(); await p.waitForURL(/\/proposals\/[0-9a-f-]{36}$/);
+  await p.getByRole('navigation', { name: 'Breadcrumb' }).getByText(leadTitle).waitFor();
+  const pc = await p.getByRole('navigation', { name: 'Breadcrumb' }).innerText(); if (!pc.includes('Projects') || !pc.includes(leadTitle)) throw new Error('proposal crumbs: ' + pc);
+  ok('the proposal is created inside the project (no client or project to pick) and its breadcrumb shows the project');
+  if (await p.locator('nav[aria-label="Workspace"] >> text=Proposals').count()) throw new Error('Proposals should not be in the sidebar');
+  ok('the sidebar keeps only leads, projects and clients for work');
   // Create menu
-  await p.goto(WEB + '/dashboard'); await p.getByRole('button', { name: 'Create', exact: true }).click(); await p.getByRole('menuitem', { name: /Invoice/ }).click();
-  await p.waitForURL(/finance\?tab=invoices&new=1/); await p.locator('dialog[open]').waitFor(); ok('Create menu opens the new-invoice dialog');
+  await p.goto(WEB + '/dashboard'); await p.getByRole('button', { name: 'Create', exact: true }).click();
+  const items = await p.getByRole('menuitem').allInnerTexts(); if (items.map((t) => t.split('\n')[0].trim()).join(',') !== 'Lead,Project,Client') throw new Error('Create menu: ' + items.join(' | '));
+  await p.getByRole('menuitem', { name: /Project/ }).click();
+  await p.waitForURL(/projects\?new=1/); await p.locator('dialog[open]').waitFor(); ok('Create menu offers Lead, Project and Client; Project opens the new-project dialog');
   // client hub tabs
   await p.goto(`${WEB}/clients/${ids.client}?tab=deals`); await p.getByRole('heading', { name: 'Proposals' }).waitFor(); await p.getByText('PROP/').first().waitFor();
   await p.getByRole('tab', { name: 'Projects' }).click(); await p.getByText('Billing portal rebuild').first().waitFor();

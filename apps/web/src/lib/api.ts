@@ -126,13 +126,14 @@ export async function downloadFile(path: string, fallbackName: string): Promise<
 
 export type ProposalStatus = 'DRAFT' | 'SHARED' | 'ACCEPTED' | 'REJECTED' | 'CHANGES_REQUESTED';
 export type VersionStatus = ProposalStatus | 'SUPERSEDED';
+export interface ProjectRef { id: string; name: string; number: string; status?: ProjectStatus }
 export interface ProposalSummary {
-  id: string; number: string; title: string; status: ProposalStatus; client: { id: string; name: string };
+  id: string; number: string; title: string; status: ProposalStatus; client: { id: string; name: string }; project?: ProjectRef | null;
   latestVersion: { versionNumber: number; status: VersionStatus; validUntil: string | null; total: MoneyJson };
 }
 export interface ProposalDetail {
   id: string; number: string; title: string; status: ProposalStatus; acceptedVersionId: string | null;
-  client: { id: string; name: string }; engagement: { id: string; title: string } | null;
+  client: { id: string; name: string }; engagement: { id: string; title: string } | null; project: ProjectRef | null;
   versions: { id: string; versionNumber: number; status: VersionStatus; sharedAt: string | null; validUntil: string | null; totals: { total: MoneyJson } }[];
   decisions: { id: string; versionId: string; decision: 'ACCEPTED' | 'REJECTED' | 'CHANGES_REQUESTED'; channel: string; decidedAt: string; note: string | null }[];
   agreements: { id: string; number: string; title: string; status: AgreementStatus }[];
@@ -152,7 +153,7 @@ export interface AgreementSummary {
   client: { id: string; name: string }; proposal: { id: string; number: string } | null;
 }
 export interface AgreementDetail extends AgreementSummary {
-  voidReason: string | null; proposal: { id: string; number: string; title: string } | null;
+  voidReason: string | null; proposal: { id: string; number: string; title: string } | null; project: ProjectRef | null;
   versions: { id: string; versionNumber: number; status: string; sentAt: string | null; signedAt: string | null; contentHash: string | null }[];
 }
 export interface Signer { id: string; role: 'FREELANCER' | 'CLIENT' | 'WITNESS'; name: string; email: string; signingOrder: number; status: 'PENDING' | 'SIGNED' | 'DECLINED'; signedAt: string | null; declineReason: string | null }

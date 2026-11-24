@@ -40,7 +40,7 @@ export default function InvoicePage() {
   return (
     <>
       <title>{`${inv.number ?? 'Draft invoice'}, FreelanceOS`}</title>
-      <Crumbs items={[{ label: 'Finance', href: '/finance' }, { label: 'Invoices', href: '/finance?tab=invoices' }, { label: inv.number ?? 'Draft invoice' }]} />
+      <Crumbs items={inv.project ? [{ label: 'Projects', href: '/projects' }, { label: inv.project.name, href: `/projects/${inv.project.id}?tab=invoices` }, { label: inv.number ?? 'Draft invoice' }] : [{ label: 'Finance', href: '/finance' }, { label: 'Invoices', href: '/finance?tab=invoices' }, { label: inv.number ?? 'Draft invoice' }]} />
       <PageHeader title={inv.number ?? 'Draft invoice'}
         subtitle={<>{inv.client.name}{inv.project && <>, <Link href={`/projects/${inv.project.id}`} className="hover:underline">{inv.project.name}</Link></>}{inv.milestone && <>, {inv.milestone.name}</>}{inv.changeRequest && <>, <Link href={`/change-requests/${inv.changeRequest.id}`} className="hover:underline">{inv.changeRequest.number}</Link></>}</>}
         actions={<div className="flex flex-wrap items-center gap-2">

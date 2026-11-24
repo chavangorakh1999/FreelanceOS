@@ -12,6 +12,7 @@ import { skipTake } from '../common/pagination';
 import { renderAgreementHtml } from '../documents/html';
 import { PdfService } from '../documents/pdf.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { projectForNewRecord } from '../projects/records';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
@@ -54,6 +55,7 @@ export class AgreementsService {
     const where: Prisma.AgreementWhereInput = {
       workspaceId: a.workspaceId, archivedAt: null,
       ...(q.clientId ? { clientId: q.clientId } : {}),
+      ...(q.projectId ? { projectId: q.projectId } : {}),
       ...(q.status ? { status: q.status } : {}),
       ...(q.q ? { OR: [{ title: { contains: q.q, mode: 'insensitive' } }, { number: { contains: q.q, mode: 'insensitive' } }, { client: { name: { contains: q.q, mode: 'insensitive' } } }] } : {}),
     };
@@ -70,6 +72,7 @@ export class AgreementsService {
       include: {
         client: { select: { id: true, name: true } },
         proposal: { select: { id: true, number: true, title: true } },
+        project: { select: { id: true, name: true, number: true, status: true } },
         versions: { orderBy: { versionNumber: 'desc' }, select: { id: true, versionNumber: true, status: true, sentAt: true, signedAt: true, contentHash: true } },
       },
     });
@@ -85,7 +88,13 @@ export class AgreementsService {
 
   create(a: AuthContext, dto: CreateAgreementDto) {
     return this.prisma.$transaction(async (tx) => {
-      const client = await tx.client.findFirst({ where: { id: dto.clientId, workspaceId: a.workspaceId }, include: { contacts: { where: { isPrimary: true, archivedAt: null }, take: 1 } } });
+      const fromProposal = dto.proposalId ? await tx.proposal.findFirst({ where: { id: dto.proposalId, workspaceId: a.workspaceId }, select: { clientId: true, projectId: true } }) : null;
+      if (dto.proposalId && !fromProposal) throw notFound('Proposal');
+      const projectId = dto.projectId ?? fromProposal?.projectId ?? undefined;
+      const project = projectId ? await projectForNewRecord(tx, a.workspaceId, projectId, dto.clientId ?? fromProposal?.clientId) : null;
+      const clientId = project?.clientId ?? dto.clientId ?? fromProposal?.clientId;
+      if (!clientId) throw new DomainError('CLIENT_REQUIRED', 'Choose a client or create the agreement inside a project', 422);
+      const client = await tx.client.findFirst({ where: { id: clientId, workspaceId: a.workspaceId }, include: { contacts: { where: { isPrimary: true, archivedAt: null }, take: 1 } } });
       if (!client) throw notFound('Client');
       if (client.status === 'ARCHIVED') throw new DomainError('CLIENT_ARCHIVED', 'Restore this client before creating an agreement', 409);
 
@@ -112,7 +121,7 @@ export class AgreementsService {
       const contact = client.contacts[0];
       const agreement = await tx.agreement.create({
         data: {
-          workspaceId: a.workspaceId, clientId: client.id, engagementId: dto.engagementId ?? proposal?.engagementId ?? null,
+          workspaceId: a.workspaceId, clientId: client.id, projectId: project?.id, engagementId: dto.engagementId ?? proposal?.engagementId ?? project?.engagementId ?? null,
           proposalId: proposal?.id, proposalVersionId: proposal?.acceptedVersionId, templateId: tpl?.id, number,
           title: dto.title ?? (proposal ? `Services agreement: ${proposal.title}` : `Services agreement: ${client.name}`),
           expiresAt: dto.expiresAt, createdById: a.userId,
@@ -228,7 +237,9 @@ export class AgreementsService {
           const allSigned = v.signers.every((s) => s.id === signer.id || s.status === 'SIGNED');
           if (allSigned) {
             await tx.agreementVersion.update({ where: { id: v.id }, data: { status: 'SIGNED', signedAt: occurredAt } });
-            await tx.agreement.update({ where: { id }, data: { status: 'SIGNED' } });
+            const signed = await tx.agreement.update({ where: { id }, data: { status: 'SIGNED' } });
+            // The project it was written in takes it as its signed agreement.
+            if (signed.projectId) await tx.project.updateMany({ where: { id: signed.projectId, agreementId: null }, data: { agreementId: id } });
           } else {
             await tx.agreement.update({ where: { id }, data: { status: 'PARTIALLY_SIGNED' } });
           }

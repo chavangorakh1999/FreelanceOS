@@ -10,7 +10,7 @@ import {
 } from '@freelanceos/shared';
 import { Crumbs } from '@/components/crumbs';
 import { Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select } from '@/components/ui';
-import { api, Client, Paged } from '@/lib/api';
+import { api, Paged, ProjectDetail, ProjectSummary } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
 
 const CURRENCIES = ['USD', 'INR', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'SGD', 'JPY', 'KWD'];
@@ -47,6 +47,9 @@ export default function EstimatorPage() {
   useEffect(() => { if (loaded) try { localStorage.setItem(STORE, JSON.stringify(s)); } catch { /* unavailable */ } }, [s, loaded]);
   const set = (p: Partial<State>) => setS((x) => ({ ...x, ...p }));
   const [proposing, setProposing] = useState(false);
+  const [projectId, setProjectIdParam] = useState<string | null>(null);
+  useEffect(() => { setProjectIdParam(new URLSearchParams(window.location.search).get('projectId')); }, []);
+  const fromProject = useQuery({ queryKey: ['project', projectId], queryFn: () => api<ProjectDetail>(`/projects/${projectId}`), enabled: !!projectId });
 
   const input: EstimateInput | null = useMemo(() => {
     if (!decimal(s.rate)) return null;
@@ -76,7 +79,7 @@ export default function EstimatorPage() {
   return (
     <>
       <title>Price calculator, FreelanceOS</title>
-      <Crumbs items={[{ label: 'Proposals', href: '/proposals' }, { label: 'Price calculator' }]} />
+      <Crumbs items={fromProject.data ? [{ label: 'Projects', href: '/projects' }, { label: fromProject.data.name, href: `/projects/${fromProject.data.id}?tab=proposals` }, { label: 'Price calculator' }] : [{ label: 'Projects', href: '/projects' }, { label: 'Price calculator' }]} />
       <PageHeader title="Price calculator" subtitle="Pick what the project needs. Hours come from published estimates; your rate and discount set the price."
         actions={<><Button onClick={() => setS({ ...fresh(s.currency), rate: s.rate })}><RotateCcw size={16} aria-hidden="true" />Start over</Button>
           <Button variant="primary" disabled={!r || r.totalHours === 0} onClick={() => setProposing(true)}>Create proposal</Button></>} />
@@ -219,7 +222,7 @@ export default function EstimatorPage() {
         <a href="#sum-h" className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-card border border-line bg-card/95 px-4 py-3 shadow-[var(--cast-stock-lift)] backdrop-blur lg:hidden">
           <span className="text-sm text-ink-2">{hrs(r.totalHours)} × {fm(r.billedRate)}</span><span className="text-lg font-semibold tabular-nums">{fm(r.total)}</span>
         </a>)}
-      {proposing && input && r && payments && <ProposalDialog input={input} result={r} payments={payments} onClose={() => setProposing(false)} />}
+      {proposing && input && r && payments && <ProposalDialog input={input} result={r} payments={payments} projectId={projectId} onClose={() => setProposing(false)} />}
     </>
   );
 }
@@ -244,14 +247,18 @@ function Pct({ label, value, onChange }: { label: string; value: string; onChang
 }
 
 /** Turns the estimate into a draft proposal: one hourly line per item, the method in Assumptions, a 50/50 payment split. */
-function ProposalDialog({ input, result, payments, onClose }: { input: EstimateInput; result: ReturnType<typeof calculateEstimate>; payments: ReturnType<typeof planPayments>; onClose: () => void }) {
+function ProposalDialog({ input, result, payments, projectId: fixed, onClose }: { input: EstimateInput; result: ReturnType<typeof calculateEstimate>; payments: ReturnType<typeof planPayments>; projectId: string | null; onClose: () => void }) {
   const router = useRouter();
-  const clients = useQuery({ queryKey: ['clients', 'picker'], queryFn: () => api<Paged<Client>>('/clients', { query: { pageSize: 100, status: 'ACTIVE' } }) });
-  const [clientId, setClientId] = useState('');
+  // A proposal is filed under a project: the one you came from, or one you pick (its client comes with it).
+  const projects = useQuery({ queryKey: ['projects', 'picker'], queryFn: () => api<Paged<ProjectSummary>>('/projects', { query: { pageSize: 100 } }) });
+  const open = (projects.data?.items ?? []).filter((p) => p.status !== 'COMPLETED' && p.status !== 'CANCELLED');
+  const [projectId, setProjectId] = useState(fixed ?? '');
+  const chosen = open.find((p) => p.id === projectId);
   const [title, setTitle] = useState('');
+  useEffect(() => { if (chosen && !title) setTitle(chosen.name); }, [chosen, title]);
   const create = useMutation({
     mutationFn: async () => {
-      const p = await api<{ id: string }>('/proposals', { body: { clientId, title: title.trim(), currency: input.currency } });
+      const p = await api<{ id: string }>('/proposals', { body: { projectId, title: title.trim(), currency: input.currency } });
       const basis = input.basis === 'low' ? 'the low end of' : input.basis === 'high' ? 'the high end of' : 'a weighted average of';
       await api(`/proposals/${p.id}/versions/1`, { method: 'PUT', body: {
         pricingModel: payments.pricingModel, currency: input.currency,
@@ -269,9 +276,10 @@ function ProposalDialog({ input, result, payments, onClose }: { input: EstimateI
   });
   return (
     <Dialog open onClose={onClose} title="Create a proposal from this estimate"
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="est-prop" disabled={!clientId || !title.trim() || create.isPending}>{create.isPending ? 'Creating…' : 'Create draft'}</Button></>}>
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="est-prop" disabled={!projectId || !title.trim() || create.isPending}>{create.isPending ? 'Creating…' : 'Create draft'}</Button></>}>
       <form id="est-prop" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
-        <Field label="Client">{(id) => <Select id={id} value={clientId} onChange={(e) => setClientId(e.target.value)}><option value="">Choose a client…</option>{clients.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>}</Field>
+        {fixed && chosen ? <p className="text-ink-2">For <strong>{chosen.name}</strong>, {chosen.client.name}.</p>
+          : <Field label="Project" hint="Start a project from its lead first if it is not listed.">{(id, d) => <Select id={id} aria-describedby={d} value={projectId} onChange={(e) => { setProjectId(e.target.value); setTitle(''); }}><option value="">Choose a project…</option>{open.map((p) => <option key={p.id} value={p.id}>{p.name}, {p.client.name}</option>)}</Select>}</Field>}
         <Field label="Proposal title">{(id) => <Input id={id} value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Website rebuild" />}</Field>
         <p className="text-[13px] text-muted">{estimateToProposalLines(input, result).length} hourly lines totalling {fm(result.total)}. {payments.description} It opens as a draft you can edit before sharing.</p>
         <ErrorNote error={create.error} />

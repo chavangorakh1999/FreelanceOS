@@ -111,7 +111,7 @@ export default function DashboardPage() {
             <Ledger title="Work" rows={[
               { label: 'Active clients', value: String(data.activeClients) },
               { label: 'Active projects', value: String(data.activeProjects) },
-              { label: 'Open engagements', value: String(data.openEngagements) },
+              { label: 'Open leads', value: String(data.openEngagements) },
               { label: 'Open pipeline value', note: 'Estimate, not revenue', value: valueByCurrency.size === 0 ? fmtMoney({ amountMinor: '0', currency: me.workspace.defaultCurrency }) : [...valueByCurrency].map(([c, v]) => fmtMoney({ amountMinor: v.toString(), currency: c })).join(' + ') },
             ]} />
           </div>

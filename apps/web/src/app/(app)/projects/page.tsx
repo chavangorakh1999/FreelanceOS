@@ -74,11 +74,11 @@ function NewProjectDialog({ open, onClose, defaultClientId, defaultEngagementId,
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="new-project" disabled={m.isPending || !clientId}>{m.isPending ? 'Creating…' : 'Create project'}</Button></>}>
       <form id="new-project" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         <Field label="Client">{(id) => <Select id={id} required value={clientId} onChange={(e) => setF({ ...f, clientId: e.target.value, engagementId: '', proposalId: '' })}><option value="" disabled>Select a client…</option>{clients.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>}</Field>
-        <Field label="Engagement (optional)">{(id) => <Select id={id} value={f.engagementId} onChange={(e) => setF({ ...f, engagementId: e.target.value })} disabled={!clientId}><option value="">None</option>{engagements.data?.items.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}</Select>}</Field>
+        <Field label="Lead (optional)">{(id) => <Select id={id} value={f.engagementId} onChange={(e) => setF({ ...f, engagementId: e.target.value })} disabled={!clientId}><option value="">None</option>{engagements.data?.items.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}</Select>}</Field>
         <Field label="Accepted proposal (optional)" hint={picked ? 'The first scope draft is built from this proposal’s scope, deliverables, assumptions and exclusions.' : clientId && proposals.data?.items.length === 0 ? 'This client has no accepted proposals yet.' : undefined}>
           {(id, d) => <Select id={id} aria-describedby={d} value={f.proposalId} onChange={(e) => setF({ ...f, proposalId: e.target.value })} disabled={!clientId}><option value="">None</option>{proposals.data?.items.map((p) => <option key={p.id} value={p.id}>{p.number}, {p.title}</option>)}</Select>}
         </Field>
-        <Field label="Project name" hint="Defaults to the proposal or engagement title.">{(id, d) => <Input id={id} aria-describedby={d} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />}</Field>
+        <Field label="Project name" hint="Defaults to the lead or proposal title.">{(id, d) => <Input id={id} aria-describedby={d} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />}</Field>
         <ErrorNote error={err} />
       </form>
     </Dialog>

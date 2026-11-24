@@ -511,6 +511,8 @@ model Proposal {
   workspaceId       String         @db.Uuid
   clientId          String         @db.Uuid
   engagementId      String?        @db.Uuid
+  /** The project this proposal was written in. Optional for proposals made before projects held their proposals. */
+  projectId         String?        @db.Uuid
   number            String
   title             String
   status            ProposalStatus @default(DRAFT)
@@ -527,12 +529,14 @@ model Proposal {
   acceptedVersion ProposalVersion?   @relation("AcceptedVersion", fields: [acceptedVersionId], references: [id], onDelete: Restrict)
   decisions       ProposalDecision[]
   agreements      Agreement[]
-  projects        Project[]
+  projects        Project[]          @relation("ProjectSourceProposal")
+  project         Project?           @relation("ProjectProposals", fields: [projectId], references: [id], onDelete: Restrict)
   comments        Comment[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId])
   @@index([workspaceId, status])
+  @@index([projectId])
   @@map("proposals")
 }
 
@@ -708,6 +712,7 @@ model Agreement {
   workspaceId       String          @db.Uuid
   clientId          String          @db.Uuid
   engagementId      String?         @db.Uuid
+  projectId         String?         @db.Uuid
   proposalId        String?         @db.Uuid
   proposalVersionId String?         @db.Uuid
   templateId        String?         @db.Uuid
@@ -727,12 +732,14 @@ model Agreement {
   proposal        Proposal?          @relation(fields: [proposalId], references: [id], onDelete: Restrict)
   proposalVersion ProposalVersion?   @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
   versions        AgreementVersion[]
-  projects        Project[]
+  projects        Project[]          @relation("ProjectSourceAgreement")
+  project         Project?           @relation("ProjectAgreements", fields: [projectId], references: [id], onDelete: Restrict)
 
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId])
   @@index([workspaceId, status])
   @@index([workspaceId, expiresAt])
+  @@index([projectId])
   @@map("agreements")
 }
 
@@ -865,8 +872,10 @@ model Project {
   workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
   engagement          Engagement?          @relation(fields: [engagementId], references: [id], onDelete: Restrict)
-  proposal            Proposal?            @relation(fields: [proposalId], references: [id], onDelete: Restrict)
-  agreement           Agreement?           @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  proposal            Proposal?            @relation("ProjectSourceProposal", fields: [proposalId], references: [id], onDelete: Restrict)
+  proposals           Proposal[]           @relation("ProjectProposals")
+  agreement           Agreement?           @relation("ProjectSourceAgreement", fields: [agreementId], references: [id], onDelete: Restrict)
+  agreements          Agreement[]          @relation("ProjectAgreements")
   scope               ScopeDocument?
   milestones          Milestone[]
   tasks               Task[]

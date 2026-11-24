@@ -33,7 +33,7 @@ function EngagementsView() {
   return (
     <>
       <title>Engagements, FreelanceOS</title>
-      <PageHeader title="Engagements" subtitle="Every opportunity from first conversation to won or lost."
+      <PageHeader title="Leads" subtitle="Every opportunity from first conversation to won or lost."
         actions={<><div className="groove flex gap-1 rounded-control p-1 shadow-none!">{tab('board', 'Board')}{tab('list', 'List')}</div><Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New engagement</Button></>} />
       <ErrorNote error={list.error ?? stages.error} />
       {list.isLoading || stages.isLoading ? <Spinner /> : items.length === 0 ? (

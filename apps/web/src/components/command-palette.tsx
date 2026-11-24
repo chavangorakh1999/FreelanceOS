@@ -8,13 +8,12 @@ import { api } from '@/lib/api';
 
 interface Hit { type: 'client' | 'engagement' | 'proposal' | 'agreement' | 'project' | 'change' | 'invoice' | 'document'; id: string; title: string; subtitle: string; href: string }
 const ICONS: Record<Hit['type'], LucideIcon> = { client: Users, engagement: Funnel, proposal: FileText, agreement: FileSignature, project: FolderKanban, change: Layers, invoice: Receipt, document: Files };
-const KIND: Record<Hit['type'], string> = { client: 'Client', engagement: 'Engagement', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice', document: 'Document' };
+const KIND: Record<Hit['type'], string> = { client: 'Client', engagement: 'Lead', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice', document: 'Document' };
 const JUMPS: Hit[] = [
-  { type: 'client', id: 'j-clients', title: 'Clients', subtitle: 'Go to', href: '/clients' },
+  { type: 'engagement', id: 'j-leads', title: 'Leads', subtitle: 'Go to', href: '/engagements' },
   { type: 'project', id: 'j-projects', title: 'Projects', subtitle: 'Go to', href: '/projects' },
-  { type: 'proposal', id: 'j-proposals', title: 'Proposals', subtitle: 'Go to', href: '/proposals' },
+  { type: 'client', id: 'j-clients', title: 'Clients', subtitle: 'Go to', href: '/clients' },
   { type: 'invoice', id: 'j-finance', title: 'Finance', subtitle: 'Go to', href: '/finance' },
-  { type: 'change', id: 'j-changes', title: 'Scope & Changes', subtitle: 'Go to', href: '/changes' },
 ];
 
 function useDebounced<T>(v: T, ms: number) {

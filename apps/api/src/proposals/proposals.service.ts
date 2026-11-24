@@ -12,6 +12,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
+import { adoptAcceptedProposal, projectForNewRecord } from '../projects/records';
 import { CreateProposalDto, DecisionDto, ListProposalsQuery, SaveVersionDto } from './proposals.dto';
 
 type Tx = Prisma.TransactionClient;
@@ -70,6 +71,7 @@ export class ProposalsService {
       workspaceId: a.workspaceId, archivedAt: null,
       ...(q.clientId ? { clientId: q.clientId } : {}),
       ...(q.engagementId ? { engagementId: q.engagementId } : {}),
+      ...(q.projectId ? { projectId: q.projectId } : {}),
       ...(q.status ? { status: q.status } : {}),
       ...(q.q ? { OR: [{ title: { contains: q.q, mode: 'insensitive' } }, { number: { contains: q.q, mode: 'insensitive' } }, { client: { name: { contains: q.q, mode: 'insensitive' } } }] } : {}),
     };
@@ -77,7 +79,7 @@ export class ProposalsService {
       this.prisma.proposal.count({ where }),
       this.prisma.proposal.findMany({
         where, orderBy: { updatedAt: 'desc' }, ...skipTake(q),
-        include: { client: { select: { id: true, name: true } }, versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
+        include: { client: { select: { id: true, name: true } }, project: { select: { id: true, name: true, number: true } }, versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
       }),
     ]);
     return {
@@ -95,6 +97,7 @@ export class ProposalsService {
       include: {
         client: { select: { id: true, name: true } },
         engagement: { select: { id: true, title: true } },
+        project: { select: { id: true, name: true, number: true, status: true } },
         versions: { orderBy: { versionNumber: 'desc' } },
         decisions: { orderBy: { createdAt: 'desc' } },
         // What this proposal led to, so the next step is offered only when it has not been taken (PRD §8.1).
@@ -114,11 +117,15 @@ export class ProposalsService {
 
   create(a: AuthContext, dto: CreateProposalDto) {
     return this.prisma.$transaction(async (tx) => {
-      const client = await tx.client.findFirst({ where: { id: dto.clientId, workspaceId: a.workspaceId } });
+      const project = dto.projectId ? await projectForNewRecord(tx, a.workspaceId, dto.projectId, dto.clientId) : null;
+      const clientId = project?.clientId ?? dto.clientId;
+      if (!clientId) throw new DomainError('CLIENT_REQUIRED', 'Choose a client or create the proposal inside a project', 422);
+      const client = await tx.client.findFirst({ where: { id: clientId, workspaceId: a.workspaceId } });
       if (!client) throw notFound('Client');
       if (client.status === 'ARCHIVED') throw new DomainError('CLIENT_ARCHIVED', 'Restore this client before creating a proposal', 409);
-      if (dto.engagementId) {
-        const e = await tx.engagement.findFirst({ where: { id: dto.engagementId, workspaceId: a.workspaceId, clientId: client.id } });
+      const engagementId = dto.engagementId ?? project?.engagementId ?? undefined;
+      if (engagementId) {
+        const e = await tx.engagement.findFirst({ where: { id: engagementId, workspaceId: a.workspaceId, clientId: client.id } });
         if (!e) throw new DomainError('INVALID_ENGAGEMENT', 'That engagement does not belong to this client', 422);
       }
       const tpl = await this.templates.find(tx, a.workspaceId, 'PROPOSAL', dto.templateId);
@@ -131,7 +138,7 @@ export class ProposalsService {
       const number = await this.seq.nextDocumentNumber(tx, a.workspaceId, 'PROPOSAL', 'PROP');
       const proposal = await tx.proposal.create({
         data: {
-          workspaceId: a.workspaceId, clientId: client.id, engagementId: dto.engagementId, number, title: dto.title, createdById: a.userId,
+          workspaceId: a.workspaceId, clientId: client.id, engagementId, projectId: project?.id, number, title: dto.title, createdById: a.userId,
           versions: {
             create: {
               workspaceId: a.workspaceId, versionNumber: 1, currency, createdById: a.userId,
@@ -142,7 +149,7 @@ export class ProposalsService {
           },
         },
       });
-      await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'proposal.created', targetType: 'proposal', targetId: proposal.id, objectVersion: 1, ip: a.ip, metadata: { number, clientId: client.id } });
+      await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'proposal.created', targetType: 'proposal', targetId: proposal.id, objectVersion: 1, ip: a.ip, metadata: { number, clientId: client.id, projectId: project?.id ?? null } });
       return proposal;
     });
   }
@@ -232,7 +239,7 @@ export class ProposalsService {
       if (!p) throw notFound('Proposal');
       const number = await this.seq.nextDocumentNumber(tx, a.workspaceId, 'PROPOSAL', 'PROP');
       const copy = await tx.proposal.create({
-        data: { workspaceId: a.workspaceId, clientId: p.clientId, engagementId: p.engagementId, number, title: `${p.title} (copy)`, createdById: a.userId },
+        data: { workspaceId: a.workspaceId, clientId: p.clientId, engagementId: p.engagementId, projectId: p.projectId, number, title: `${p.title} (copy)`, createdById: a.userId },
       });
       await this.copyVersion(tx, a, p.versions[0]!, copy.id, 1);
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'proposal.duplicated', targetType: 'proposal', targetId: copy.id, ip: a.ip, metadata: { from: p.number, number } });
@@ -262,6 +269,7 @@ export class ProposalsService {
         data: { workspaceId: a.workspaceId, proposalId: id, versionId: v.id, decision: dto.decision, channel: dto.channel, decidedAt, recordedById: a.portalUserId ? null : a.userId, decidedByPortalUserId: a.portalUserId ?? null, note: dto.note },
       });
       await tx.proposal.update({ where: { id }, data: { status: dto.decision, ...(dto.decision === 'ACCEPTED' ? { acceptedVersionId: v.id } : {}) } });
+      if (dto.decision === 'ACCEPTED') await adoptAcceptedProposal(tx, a.workspaceId, id);
       await this.audit.record(tx, {
         workspaceId: a.workspaceId, actorId: a.userId, actorType: a.portalUserId ? 'CLIENT_CONTACT' : 'USER', action: `proposal.${dto.decision.toLowerCase()}`, targetType: 'proposal', targetId: id, objectVersion: n, ip: a.ip,
         metadata: { channel: dto.channel, total: v.totalMinor.toString(), currency: v.currency, decisionId: decision.id },

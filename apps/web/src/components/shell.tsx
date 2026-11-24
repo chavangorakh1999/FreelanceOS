@@ -1,8 +1,7 @@
 'use client';
 
 import {
-  Calculator,
-  Activity, Bell, Files, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
+  Activity, Bell, CalendarDays, FolderKanban, Funnel, Home, LogOut, Menu,
   PanelLeftClose, PanelLeftOpen, Receipt, Settings, Users, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -17,30 +16,29 @@ import { api } from '@/lib/api';
 import { useAuth, useMe } from '@/lib/auth';
 
 interface Item { label: string; href?: string; icon: LucideIcon }
-/** Grouped by what you are doing: sell, deliver, run the business. Seven or fewer per group so each reads at a glance. */
+/**
+ * Leads stay on their own; everything after a lead (proposals, agreements, scope, changes, work, invoices, files) lives
+ * inside its project, so nothing has to be tagged with a project. Cross-project views are kept to money and dates.
+ */
 const GROUPS: { title?: string; items: Item[] }[] = [
   { items: [{ label: 'Overview', href: '/dashboard', icon: Home }, { label: 'Notifications', href: '/notifications', icon: Bell }] },
-  { title: 'Sell', items: [
-    { label: 'Clients', href: '/clients', icon: Users },
-    { label: 'Engagements', href: '/engagements', icon: Funnel },
-    { label: 'Proposals', href: '/proposals', icon: FileText },
-    { label: 'Price calculator', href: '/estimator', icon: Calculator },
-    { label: 'Agreements', href: '/agreements', icon: FileSignature },
-  ] },
-  { title: 'Deliver', items: [
+  { title: 'Work', items: [
+    { label: 'Leads', href: '/engagements', icon: Funnel },
     { label: 'Projects', href: '/projects', icon: FolderKanban },
-    { label: 'Scope & Changes', href: '/changes', icon: Layers },
-    { label: 'Calendar', href: '/calendar', icon: CalendarDays },
+    { label: 'Clients', href: '/clients', icon: Users },
   ] },
   { title: 'Business', items: [
+    { label: 'Calendar', href: '/calendar', icon: CalendarDays },
     { label: 'Finance', href: '/finance', icon: Receipt },
-    { label: 'Documents', href: '/documents', icon: Files },
     { label: 'Activity', href: '/activity', icon: Activity },
     { label: 'Settings', href: '/settings', icon: Settings },
   ] },
 ];
 
 const ICON = { size: 18, strokeWidth: 1.75, 'aria-hidden': true } as const;
+/** Pages of records that live inside a project light up Projects; money pages light up Finance. */
+const HOME_OF: [RegExp, string][] = [[/^\/(proposals|agreements|change-requests|changes|documents|estimator)(\/|$)/, '/projects'], [/^\/(invoices|payments)(\/|$)/, '/finance']];
+const navPath = (path: string) => HOME_OF.find(([re]) => re.test(path))?.[1] ?? path;
 
 function Logo() {
   return (
@@ -63,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => setMenuOpen(false), [path]);
   const unread = useQuery({ queryKey: ['notifications-unread'], queryFn: () => api<{ count: number }>('/notifications/unread-count'), refetchInterval: 60_000 });
   const count = unread.data?.count ?? 0;
-  const section = GROUPS.flatMap((g) => g.items).find((i) => i.href && (path === i.href || path.startsWith(i.href + '/')))?.label;
+  const section = GROUPS.flatMap((g) => g.items).find((i) => i.href && (navPath(path) === i.href || navPath(path).startsWith(i.href + '/')))?.label;
   const initials = me.user.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
   return (
@@ -92,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {g.title && <div className="px-3 pb-1 pt-4 text-[13px] font-medium text-muted lg:group-data-[collapsed]/nav:hidden">{g.title}</div>}
             {g.title && gi > 0 && <div aria-hidden="true" className="mx-3 my-2 hidden border-t border-line lg:group-data-[collapsed]/nav:block" />}
             {g.items.map(({ label, href, icon: Icon }) => {
-              const active = href ? path === href || path.startsWith(href + '/') : false;
+              const active = href ? navPath(path) === href || navPath(path).startsWith(href + '/') : false;
               const row = 'relative flex h-9 items-center gap-3 rounded-control px-3 text-sm';
               if (!href) {
                 return (

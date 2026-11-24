@@ -52,8 +52,8 @@ function ClientDetail() {
         subtitle={[c.type === 'COMPANY' ? 'Company' : 'Individual', c.email, c.phone].filter(Boolean).join(', ')}
         actions={archived
           ? <Button onClick={() => archive.mutate(false)} disabled={archive.isPending}>Restore client</Button>
-          : <><Button variant="danger" onClick={() => setConfirmArchive(true)}>Archive</Button><Link href={`/finance?tab=invoices&new=1&clientId=${c.id}`} className={btnSecondary}>New invoice</Link><Link href={`/engagements?new=1&clientId=${c.id}`} className={btnPrimary}>New engagement</Link></>} />
-      {archived && <Badge tone="warn">Archived, restore to edit or create engagements. History is preserved.</Badge>}
+          : <><Button variant="danger" onClick={() => setConfirmArchive(true)}>Archive</Button><Link href={`/finance?tab=invoices&new=1&clientId=${c.id}`} className={btnSecondary}>New invoice</Link><Link href={`/engagements?new=1&clientId=${c.id}`} className={btnPrimary}>New lead</Link></>} />
+      {archived && <Badge tone="warn">Archived, restore to edit or create leads. History is preserved.</Badge>}
       <ErrorNote error={archive.error ?? primary.error ?? archiveContact.error} />
 
       <div role="tablist" aria-label="Client sections" className="-mt-2 flex gap-1 overflow-x-auto border-b border-line no-scrollbar">
@@ -70,8 +70,8 @@ function ClientDetail() {
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
             <Card className="py-6" aria-labelledby="eng-h">
-              <h2 id="eng-h" className="px-6 pb-4 text-lg font-semibold">Engagements</h2>
-              {engagements.isLoading ? <Spinner /> : engagements.data?.items.length === 0 ? <EmptyState title="No engagements yet" body="Create an engagement to track this opportunity through your pipeline." /> : (
+              <h2 id="eng-h" className="px-6 pb-4 text-lg font-semibold">Leads</h2>
+              {engagements.isLoading ? <Spinner /> : engagements.data?.items.length === 0 ? <EmptyState title="No leads yet" body="Add a lead to track this opportunity through your pipeline." /> : (
                 <Table minWidth={520}>
                   <thead><tr><Th>Title</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
                   <tbody>{engagements.data?.items.map((e) => (
@@ -133,7 +133,7 @@ function ClientDetail() {
       <AddContactDialog open={contactOpen} clientId={id} onClose={() => setContactOpen(false)} onDone={refresh} />
       <Dialog open={confirmArchive} onClose={() => setConfirmArchive(false)} title={`Archive ${c.name}?`}
         footer={<><Button onClick={() => setConfirmArchive(false)}>Cancel</Button><Button variant="primary" onClick={() => { archive.mutate(true); setConfirmArchive(false); }}>Archive client</Button></>}>
-        <p className="text-ink-2">The client is hidden from your directory. Its engagements, proposals, agreements, invoices and audit history are kept, and you can restore it at any time.</p>
+        <p className="text-ink-2">The client is hidden from your directory. Its leads, projects, proposals, agreements, invoices and audit history are kept, and you can restore it at any time.</p>
       </Dialog>
     </>
   );

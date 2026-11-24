@@ -11,9 +11,7 @@ import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { loadProject } from './access';
 import { CreateProjectDto, ListProjectsQuery, UpdateProjectDto } from './projects.dto';
 
-const SECTION_TO_ITEM: Record<string, 'REQUIREMENT' | 'DELIVERABLE' | 'ASSUMPTION' | 'EXCLUSION' | undefined> = {
-  SCOPE: 'REQUIREMENT', DELIVERABLES: 'DELIVERABLE', ASSUMPTIONS: 'ASSUMPTION', EXCLUSIONS: 'EXCLUSION',
-};
+import { SECTION_TO_ITEM } from './records';
 
 /** Allowed project status moves. COMPLETED and CANCELLED close the project; history is always preserved. */
 const TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
@@ -79,7 +77,8 @@ export class ProjectsService {
     return this.prisma.$transaction(async (tx) => {
       const engagement = dto.engagementId ? await tx.engagement.findFirst({ where: { id: dto.engagementId, workspaceId: a.workspaceId } }) : null;
       if (dto.engagementId && !engagement) throw notFound('Engagement');
-      const clientId = engagement?.clientId ?? dto.clientId;
+      const fromProposal = !engagement && !dto.clientId && dto.proposalId ? await tx.proposal.findFirst({ where: { id: dto.proposalId, workspaceId: a.workspaceId }, select: { clientId: true } }) : null;
+      const clientId = engagement?.clientId ?? dto.clientId ?? fromProposal?.clientId;
       if (!clientId) throw new DomainError('CLIENT_REQUIRED', 'Choose a client or start from an engagement', 422);
       if (engagement && dto.clientId && dto.clientId !== engagement.clientId) throw new DomainError('CLIENT_MISMATCH', 'That engagement belongs to a different client', 422);
       const client = await tx.client.findFirst({ where: { id: clientId, workspaceId: a.workspaceId } });
@@ -113,6 +112,9 @@ export class ProjectsService {
           scope: { create: { workspaceId: a.workspaceId, versions: { create: { workspaceId: a.workspaceId, versionNumber: 1, createdById: a.userId, summary: proposal ? `Drafted from accepted proposal ${proposal.number}` : null, items: { create: items } } } } },
         },
       });
+      // A project started from a proposal or agreement holds them from then on.
+      if (proposal) await tx.proposal.updateMany({ where: { id: proposal.id, projectId: null }, data: { projectId: project.id } });
+      if (dto.agreementId) await tx.agreement.updateMany({ where: { id: dto.agreementId, projectId: null }, data: { projectId: project.id } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'project.created', targetType: 'project', targetId: project.id, ip: a.ip, metadata: { number, engagementId: engagement?.id ?? null, proposalId: proposal?.id ?? null, agreementId: dto.agreementId ?? null } });
       return project;
     });

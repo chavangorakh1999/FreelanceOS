@@ -42,7 +42,7 @@ export default function AgreementPage() {
   return (
     <>
       <title>{`${ag.title}, FreelanceOS`}</title>
-      <Crumbs items={[{ label: 'Agreements', href: '/agreements' }, { label: ag.number }]} />
+      <Crumbs items={ag.project ? [{ label: 'Projects', href: '/projects' }, { label: ag.project.name, href: `/projects/${ag.project.id}?tab=agreements` }, { label: ag.number }] : [{ label: 'Agreements', href: '/agreements' }, { label: ag.number }]} />
       <PageHeader title={ag.title}
         subtitle={<>{ag.number}, <Link href={`/clients/${ag.client.id}`} className="hover:underline">{ag.client.name}</Link>{ag.proposal && <>, from <Link href={`/proposals/${ag.proposal.id}`} className="hover:underline">{ag.proposal.number}</Link></>}</>}
         actions={<div className="flex flex-wrap items-center gap-2"><AgreementBadge status={ag.status} />

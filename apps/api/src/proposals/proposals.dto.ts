@@ -9,7 +9,10 @@ const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? val
 export const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'SGD', 'JPY', 'KWD'];
 
 export class CreateProposalDto {
-  @IsUUID() clientId: string;
+  /** Optional when a project is given: the client is taken from it. */
+  @IsOptional() @IsUUID() clientId?: string;
+  /** The project this proposal belongs to. */
+  @IsOptional() @IsUUID() projectId?: string;
   @IsOptional() @IsUUID() engagementId?: string;
   @IsOptional() @IsUUID() templateId?: string;
   @Transform(trim) @IsString() @MinLength(1) @MaxLength(200) title: string;
@@ -61,6 +64,7 @@ export class DecisionDto {
 
 export class ListProposalsQuery extends PageQuery {
   @IsOptional() @IsUUID() clientId?: string;
+  @IsOptional() @IsUUID() projectId?: string;
   @IsOptional() @IsUUID() engagementId?: string;
   @IsOptional() @IsEnum(ProposalStatus) status?: ProposalStatus;
   @IsOptional() @Transform(trim) @IsString() @MaxLength(100) q?: string;

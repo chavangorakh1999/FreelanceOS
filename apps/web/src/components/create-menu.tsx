@@ -1,19 +1,17 @@
 'use client';
 
-import { ChevronDown, FilePlus2, FileUp, FolderPlus, Funnel, Plus, Receipt, UserPlus, type LucideIcon } from 'lucide-react';
+import { ChevronDown, FolderPlus, Funnel, Plus, UserPlus, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { btnPrimary } from './ui';
 
 /** PRD §7.2 quick actions: start any of the core records from anywhere. */
+// Proposals, agreements, invoices and files are created inside a project, where the project is already known.
 const ITEMS: { label: string; hint: string; href: string; icon: LucideIcon }[] = [
+  { label: 'Lead', hint: 'A possible piece of work', href: '/engagements?new=1', icon: Funnel },
+  { label: 'Project', hint: 'Proposal, agreement, delivery and billing in one place', href: '/projects?new=1', icon: FolderPlus },
   { label: 'Client', hint: 'A company or person you work with', href: '/clients?new=1', icon: UserPlus },
-  { label: 'Engagement', hint: 'A possible piece of work', href: '/engagements?new=1', icon: Funnel },
-  { label: 'Proposal', hint: 'Scope and price to share', href: '/proposals?new=1', icon: FilePlus2 },
-  { label: 'Project', hint: 'Agreed work to deliver', href: '/projects?new=1', icon: FolderPlus },
-  { label: 'Invoice', hint: 'Bill a client', href: '/finance?tab=invoices&new=1', icon: Receipt },
-  { label: 'Document', hint: 'Upload a private file', href: '/documents?new=1', icon: FileUp },
 ];
 
 export function CreateMenu() {

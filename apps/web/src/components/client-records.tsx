@@ -15,9 +15,9 @@ export function ClientDeals({ clientId, archived }: { clientId: string; archived
     <div className="flex flex-col gap-6">
       <Card className="py-6" aria-labelledby="cp-h">
         <div className="flex items-center justify-between gap-3 px-6 pb-4"><h2 id="cp-h" className="text-lg font-semibold">Proposals</h2>
-          {!archived && <Link href={`/proposals?new=1&clientId=${clientId}`} className={btnSecondary}>New proposal</Link>}</div>
+</div>
         <ErrorNote error={proposals.error} />
-        {proposals.isLoading ? <Spinner /> : proposals.data?.items.length === 0 ? <EmptyState title="No proposals yet" body="Write a proposal for this client to agree scope and price." /> : (
+        {proposals.isLoading ? <Spinner /> : proposals.data?.items.length === 0 ? <EmptyState title="No proposals yet" body="Proposals are written inside a project: start one from a lead or with New project." /> : (
           <Table minWidth={560}>
             <thead><tr><Th>Proposal</Th><Th>Status</Th><Th>Valid until</Th><Th right>Total</Th></tr></thead>
             <tbody>{proposals.data?.items.map((p) => (

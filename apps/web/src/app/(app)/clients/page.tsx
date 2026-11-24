@@ -62,11 +62,11 @@ function ClientsView() {
         {list.isLoading ? <Spinner /> : list.data && list.data.items.length === 0 ? (
           <EmptyState
             title={filtered ? 'No clients match' : 'No clients yet'}
-            body={filtered ? 'Try a different search or clear the filters.' : 'Add your first client to start tracking engagements, proposals and invoices.'}
+            body={filtered ? 'Try a different search or clear the filters.' : 'Add your first client to start tracking leads and projects.'}
             action={!filtered && <Button variant="primary" onClick={() => router.push('/clients?new=1')}>Add a client</Button>} />
         ) : (
           <Table minWidth={720}>
-            <thead><tr><Th>Client</Th><Th>Primary contact</Th><Th>Status</Th><Th right>Engagements</Th><Th><span className="sr-only">Quick look</span></Th></tr></thead>
+            <thead><tr><Th>Client</Th><Th>Primary contact</Th><Th>Status</Th><Th right>Leads</Th><Th><span className="sr-only">Quick look</span></Th></tr></thead>
             <tbody>
               {list.data?.items.map((c) => (
                 <RowLink key={c.id} href={`/clients/${c.id}`}>

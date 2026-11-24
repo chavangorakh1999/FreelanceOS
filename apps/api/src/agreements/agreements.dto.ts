@@ -6,7 +6,10 @@ import { PageQuery } from '../common/pagination';
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 
 export class CreateAgreementDto {
-  @IsUUID() clientId: string;
+  /** Optional when a project or proposal is given: the client is taken from it. */
+  @IsOptional() @IsUUID() clientId?: string;
+  /** The project this agreement belongs to; taken from the proposal when not given. */
+  @IsOptional() @IsUUID() projectId?: string;
   /** If given, the proposal must be ACCEPTED; the agreement records the exact accepted version. */
   @IsOptional() @IsUUID() proposalId?: string;
   @IsOptional() @IsUUID() templateId?: string;
@@ -51,6 +54,7 @@ export class VoidDto {
 
 export class ListAgreementsQuery extends PageQuery {
   @IsOptional() @IsUUID() clientId?: string;
+  @IsOptional() @IsUUID() projectId?: string;
   @IsOptional() @IsEnum(AgreementStatus) status?: AgreementStatus;
   @IsOptional() @Transform(trim) @IsString() @MaxLength(100) q?: string;
 }

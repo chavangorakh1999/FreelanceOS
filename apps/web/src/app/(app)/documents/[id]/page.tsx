@@ -12,7 +12,7 @@ import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Selec
 import { api, DocumentCategory, DocumentDetail, downloadFile, LinkType, Paged, upload } from '@/lib/api';
 import { fmtBytes, fmtDate, fmtDateTime } from '@/lib/format';
 
-const LINK_LABEL: Record<LinkType, string> = { engagement: 'Engagement', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice' };
+const LINK_LABEL: Record<LinkType, string> = { engagement: 'Lead', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice' };
 
 export default function DocumentPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +35,7 @@ export default function DocumentPage() {
   return (
     <>
       <title>{`${d.title}, FreelanceOS`}</title>
-      <Crumbs items={[{ label: 'Documents', href: '/documents' }, { label: d.title }]} />
+      <Crumbs items={(() => { const pl = d.links.find((l) => l.type === 'project'); return pl ? [{ label: 'Projects', href: '/projects' }, { label: pl.label, href: `/projects/${pl.targetId}?tab=documents` }, { label: d.title }] : [{ label: 'Documents', href: '/documents' }, { label: d.title }]; })()} />
       <PageHeader title={d.title} subtitle={[CATEGORY[d.category], d.client?.name ?? 'Internal, no client', latest && `${latest.fileName}, ${fmtBytes(latest.sizeBytes)}`].filter(Boolean).join(', ')}
         actions={<>
           {!d.archivedAt && <Button onClick={() => setDialog('version')}><UploadIcon size={16} aria-hidden="true" />New version</Button>}

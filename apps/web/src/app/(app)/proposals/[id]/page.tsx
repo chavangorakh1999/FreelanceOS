@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateInvoice, formatMoney, hasPlaceholder, parseMoney, placeholderTitles } from '@freelanceos/shared';
 import { ChevronDown, ChevronUp, Download, FilePlus2, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { CommentsPanel } from '@/components/comments';
 import { LinkedRecords } from '@/components/linked-records';
@@ -30,6 +30,8 @@ export default function ProposalPage() {
   const version = useQuery({ queryKey: ['proposal', id, 'v', n], queryFn: () => api<ProposalVersion>(`/proposals/${id}/versions/${n}`), enabled: !!detail.data });
   const [deciding, setDeciding] = useState(false);
   const [pdfError, setPdfError] = useState<unknown>(null);
+  const router = useRouter();
+  const draftAgreement = useMutation({ mutationFn: () => api<{ id: string }>('/agreements', { body: { proposalId: id } }), onSuccess: (a) => router.push(`/agreements/${a.id}`) });
 
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['proposal', id] }); void qc.invalidateQueries({ queryKey: ['proposals'] }); };
   const newVersion = useMutation({ mutationFn: () => api<ProposalVersion>(`/proposals/${id}/versions`, { method: 'POST' }), onSuccess: (v) => { refresh(); setPicked(v.versionNumber); } });
@@ -45,11 +47,11 @@ export default function ProposalPage() {
   return (
     <>
       <title>{`${p.title}, FreelanceOS`}</title>
-      <Crumbs items={[{ label: 'Proposals', href: '/proposals' }, { label: p.number }]} />
+      <Crumbs items={p.project ? [{ label: 'Projects', href: '/projects' }, { label: p.project.name, href: `/projects/${p.project.id}?tab=proposals` }, { label: p.number }] : [{ label: 'Proposals', href: '/proposals' }, { label: p.number }]} />
       <PageHeader title={p.title} subtitle={`${p.number}, ${p.client.name}${p.engagement ? `, ${p.engagement.title}` : ''}`}
         actions={<div className="flex flex-wrap items-center gap-2">{v?.status === 'DRAFT' && <ProposalBadge status={p.status} />}
           <Button onClick={() => { setPdfError(null); downloadFile(`/proposals/${id}/versions/${n}/pdf`, `${p.number}-v${n}.pdf`).catch(setPdfError); }}><Download size={16} aria-hidden="true" />PDF</Button></div>} />
-      <ErrorNote error={pdfError ?? newVersion.error ?? duplicate.error} />
+      <ErrorNote error={pdfError ?? newVersion.error ?? duplicate.error ?? draftAgreement.error} />
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
@@ -64,14 +66,16 @@ export default function ProposalPage() {
             <div className="flex flex-col gap-2">
               {isLive && <Button variant="primary" onClick={() => setDeciding(true)}>Record client decision</Button>}
               {/* The next lifecycle step is the primary action, and a step already taken links to its record instead (PRD §8.1). */}
-              {p.status === 'ACCEPTED' && p.agreements.length === 0 && <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className={btnPrimary}><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>}
-              {p.status === 'ACCEPTED' && p.projects.length === 0 && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className={p.agreements.length > 0 ? btnPrimary : btnSecondary}>Start project</Link>}
+              {p.status === 'ACCEPTED' && p.agreements.length === 0 && (p.project
+                ? <Button variant="primary" disabled={draftAgreement.isPending} onClick={() => draftAgreement.mutate()}><FilePlus2 size={16} aria-hidden="true" />{draftAgreement.isPending ? 'Drafting…' : 'Create agreement'}</Button>
+                : <Link href={`/agreements?new=1&clientId=${p.client.id}&proposalId=${p.id}`} className={btnPrimary}><FilePlus2 size={16} aria-hidden="true" />Create agreement</Link>)}
+              {p.status === 'ACCEPTED' && p.projects.length === 0 && !p.project && <Link href={`/projects?new=1&clientId=${p.client.id}&proposalId=${p.id}${p.engagement ? `&engagementId=${p.engagement.id}` : ''}`} className={p.agreements.length > 0 ? btnPrimary : btnSecondary}>Start project</Link>}
               {latest.status === 'DRAFT' && <p className="text-[13px] text-muted">Finish the draft, then share it from the bar at the bottom of the page.</p>}
               {p.status !== 'ACCEPTED' && latest.status !== 'DRAFT' && <Button onClick={() => newVersion.mutate()} disabled={newVersion.isPending}>Start new version</Button>}
               <Button variant="ghost" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>{p.status === 'ACCEPTED' ? 'Duplicate as replacement' : 'Duplicate proposal'}</Button>
             </div>
             <LinkedRecords rows={[
-              ...(p.engagement ? [{ kind: 'Engagement', label: p.engagement.title, href: `/engagements/${p.engagement.id}` }] : []),
+              ...(p.engagement ? [{ kind: 'Lead', label: p.engagement.title, href: `/engagements/${p.engagement.id}` }] : []),
               ...p.agreements.map((a) => ({ kind: 'Agreement', label: a.number, href: `/agreements/${a.id}`, status: <AgreementBadge status={a.status} /> })),
               ...p.projects.map((x) => ({ kind: 'Project', label: x.name, href: `/projects/${x.id}`, status: <ProjectBadge status={x.status} /> })),
             ]} />

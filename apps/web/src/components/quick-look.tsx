@@ -54,7 +54,7 @@ export function ClientQuickLook({ id, onClose }: { id: string | null; onClose: (
             <Row k="Status">{c.status.charAt(0) + c.status.slice(1).toLowerCase()}</Row>
             {c.email && <Row k="Email"><a href={`mailto:${c.email}`} className="text-accent hover:underline">{c.email}</a></Row>}
             {c.phone && <Row k="Phone">{c.phone}</Row>}
-            <Row k="Engagements">{c.engagementCount}</Row>
+            <Row k="Leads">{c.engagementCount}</Row>
           </dl>
           <section aria-label="Contacts"><h3 className="mb-1 text-sm font-medium text-muted">Contacts</h3>
             {c.contacts?.length ? <ul>{c.contacts.map((p) => (

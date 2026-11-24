@@ -27,8 +27,8 @@ export function NewEngagementDialog({ open, onClose, defaultClientId }: { open: 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
   return (
-    <Dialog open={open} onClose={onClose} title="New engagement"
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="new-eng" disabled={m.isPending || !clientId}>{m.isPending ? 'Creating…' : 'Create engagement'}</Button></>}>
+    <Dialog open={open} onClose={onClose} title="New lead"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="new-eng" disabled={m.isPending || !clientId}>{m.isPending ? 'Creating…' : 'Create lead'}</Button></>}>
       <form id="new-eng" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         <Field label="Client">{(id) => (
           <Select id={id} required value={clientId} onChange={set('clientId')}>
@@ -60,7 +60,7 @@ export function MoveStageDialog({ engagement, stageId, onClose }: { engagement: 
   const needsReason = target?.kind === 'LOST';
   return (
     <Dialog open={stageId !== null} onClose={onClose} title={`Move to ${target?.name ?? '…'}`}
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="move-stage" disabled={m.isPending || (needsReason && !reason.trim())}>Move engagement</Button></>}>
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="move-stage" disabled={m.isPending || (needsReason && !reason.trim())}>Move lead</Button></>}>
       <form id="move-stage" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         <p className="text-ink-2">{engagement.title}</p>
         <Field label={needsReason ? 'Why was this lost?' : 'Note (optional)'} hint={needsReason ? 'Kept for historical reporting.' : undefined}>

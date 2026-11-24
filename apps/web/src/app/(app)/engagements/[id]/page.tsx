@@ -5,10 +5,10 @@ import { ProjectBadge, ProposalBadge } from '@/components/status';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MoveStageDialog, useStages } from '@/components/engagement-dialogs';
-import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Select, Spinner, btnPrimary, btnSecondary } from '@/components/ui';
+import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Select, Spinner, btnPrimary } from '@/components/ui';
 import { api, Engagement } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 
@@ -25,30 +25,37 @@ export default function EngagementDetailPage() {
     onSuccess: () => { setReq(''); void qc.invalidateQueries({ queryKey: ['engagement', id] }); },
   });
 
+  const router = useRouter();
+  const start = useMutation({
+    mutationFn: () => api<{ id: string }>('/projects', { body: { engagementId: id } }),
+    onSuccess: (p) => { void qc.invalidateQueries({ queryKey: ['engagement', id] }); router.push(`/projects/${p.id}?tab=proposals`); },
+  });
+
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Engagement not found" /><ErrorNote error={q.error} /><Link href="/engagements" className="text-accent hover:underline">Back to engagements</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Lead not found" /><ErrorNote error={q.error} /><Link href="/engagements" className="text-accent hover:underline">Back to leads</Link></>;
   const e = q.data;
   const stageName = (sid: string | null) => stages.data?.find((s) => s.id === sid)?.name ?? 'None';
 
   return (
     <>
       <title>{`${e.title}, FreelanceOS`}</title>
-      <Crumbs items={[{ label: 'Engagements', href: '/engagements' }, { label: e.title }]} />
+      <Crumbs items={[{ label: 'Leads', href: '/engagements' }, { label: e.title }]} />
       <PageHeader title={e.title}
         subtitle={e.description ?? undefined}
         actions={<>
           <Select aria-label="Stage" value={e.stage.id} className="w-44" onChange={(ev) => ev.target.value !== e.stage.id && setTarget(ev.target.value)}>
             {stages.data?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
-          {/* After discovery the next step is a proposal (PRD §8.1); a project can also start directly for small work. */}
-          <Link href={`/projects?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className={btnSecondary}>Start project</Link>
-          <Link href={`/proposals?new=1&clientId=${e.client.id}&engagementId=${e.id}`} className={btnPrimary}>Create proposal</Link>
+          {/* A lead becomes a project; its proposal, agreement and everything after are made inside that project. */}
+          {e.projects?.[0] ? <Link href={`/projects/${e.projects[0].id}`} className={btnPrimary}>Open project</Link>
+            : <Button variant="primary" disabled={start.isPending} onClick={() => start.mutate()}>{start.isPending ? 'Starting…' : 'Start project'}</Button>}
         </>} />
       <div className="-mt-3 flex flex-wrap items-center gap-2">
         <Badge tone={e.stage.kind === 'WON' ? 'success' : e.stage.kind === 'LOST' ? 'danger' : 'info'}>{e.stage.name}</Badge>
         <Link href={`/clients/${e.client.id}`} className="font-medium text-accent hover:underline">{e.client.name}</Link>
         <span className="text-muted"> Estimated {fmtMoney(e.estimatedValue)}</span>
       </div>
+      <ErrorNote error={start.error} />
       {e.lostReason && <p className="rounded-control bg-danger-soft px-3 py-2 text-danger">Lost: {e.lostReason}</p>}
 
       <div className="flex flex-wrap items-start gap-6">

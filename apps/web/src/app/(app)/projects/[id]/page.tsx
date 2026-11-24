@@ -10,14 +10,16 @@ import { DocumentsPanel } from '@/components/documents/panel';
 import { ChangesTab } from '@/components/project/changes-tab';
 import { ScopeTab } from '@/components/project/scope-tab';
 import { WorkTab } from '@/components/project/work-tab';
+import { AgreementsTab, InvoicesTab, NextStep, ProposalsTab } from '@/components/project/records-tabs';
 import { ClientAccessCard } from '@/components/project/client-access';
 import { ProjectBadge, ScopeBadge } from '@/components/status';
-import { Button, Card, Dialog, ErrorNote, PageHeader, Select, Spinner, Stat, btnSecondary } from '@/components/ui';
+import { Button, Card, Dialog, ErrorNote, PageHeader, Select, Spinner, Stat } from '@/components/ui';
 import { api, ProjectDetail, ProjectStatus } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
 
-const TABS = [['overview', 'Overview'], ['scope', 'Scope'], ['work', 'Work'], ['changes', 'Changes'], ['documents', 'Documents']] as const;
+// Everything after the lead lives here, in the order the work happens.
+const TABS = [['overview', 'Overview'], ['proposals', 'Proposals'], ['agreements', 'Agreements'], ['scope', 'Scope'], ['work', 'Work'], ['changes', 'Changes'], ['invoices', 'Invoices'], ['documents', 'Documents']] as const;
 type Tab = (typeof TABS)[number][0];
 const NEXT: Record<ProjectStatus, ProjectStatus[]> = { PLANNING: ['ACTIVE', 'CANCELLED'], ACTIVE: ['ON_HOLD', 'COMPLETED', 'CANCELLED'], ON_HOLD: ['ACTIVE', 'CANCELLED'], COMPLETED: [], CANCELLED: [] };
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -49,7 +51,6 @@ function ProjectView() {
       <Crumbs items={[{ label: 'Projects', href: '/projects' }, { label: p.name }]} />
       <PageHeader title={p.name} subtitle={<>{p.number}, <Link href={`/clients/${p.client.id}`} className="hover:underline">{p.client.name}</Link></>}
         actions={<div className="flex flex-wrap items-center gap-2"><ProjectBadge status={p.status} />
-          <Link href={`/finance?tab=invoices&new=1&clientId=${p.client.id}&projectId=${p.id}`} className={btnSecondary}>Create invoice</Link>
           {NEXT[p.status].length > 0 && <Select aria-label="Change project status" value="" className="w-44" onChange={(e) => e.target.value && setMoving(e.target.value as ProjectStatus)}>
             <option value="">Change status…</option>{NEXT[p.status].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select>}</div>} />
       {closed && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">This project is {p.status.toLowerCase()}. Everything is preserved and read-only.</p>}
@@ -64,6 +65,7 @@ function ProjectView() {
 
       {tab === 'overview' && (
         <div className="flex flex-col gap-6">
+          <NextStep project={p} go={go} />
           <section aria-label="Summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
             <Stat label="Progress" value={p.progress.total === 0 ? 'None' : `${Math.round(p.progress.basisPoints / 100)}%`} note={p.progress.total === 0 ? 'No tasks yet' : `${p.progress.done} of ${p.progress.total} tasks, cancelled not counted`} />
             <Stat label="Approved scope" value={p.baseline ? `v${p.baseline.versionNumber}` : 'None'} note={p.baseline ? 'Frozen baseline' : 'Needs approval to start'} tone={p.baseline ? 'good' : 'warn'} />
@@ -75,7 +77,7 @@ function ProjectView() {
               <h2 id="det-h" className="mb-4 text-lg font-semibold">Details</h2>
               <dl className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-3">
                 <dt className="text-muted">Client</dt><dd><Link href={`/clients/${p.client.id}`} className="text-accent hover:underline">{p.client.name}</Link></dd>
-                <dt className="text-muted">Engagement</dt><dd>{p.engagement ? <Link href={`/engagements/${p.engagement.id}`} className="text-accent hover:underline">{p.engagement.title}</Link> : 'None'}</dd>
+                <dt className="text-muted">Lead</dt><dd>{p.engagement ? <Link href={`/engagements/${p.engagement.id}`} className="text-accent hover:underline">{p.engagement.title}</Link> : 'None'}</dd>
                 <dt className="text-muted">Proposal</dt><dd>{p.proposal ? <Link href={`/proposals/${p.proposal.id}`} className="text-accent hover:underline">{p.proposal.number}</Link> : 'None'}</dd>
                 <dt className="text-muted">Agreement</dt><dd>{p.agreement ? <Link href={`/agreements/${p.agreement.id}`} className="text-accent hover:underline">{p.agreement.number}</Link> : 'None'}</dd>
                 <dt className="text-muted">Start</dt><dd>{p.startDate ? fmtDate(p.startDate) : 'None'}</dd>
@@ -90,6 +92,9 @@ function ProjectView() {
             load={() => api<CommentItem[]>(`/projects/${id}/comments`)} post={(body, visibility) => api(`/projects/${id}/comments`, { body: { body, visibility } })} />
         </div>
       )}
+      {tab === 'proposals' && <ProposalsTab project={p} closed={closed} />}
+      {tab === 'agreements' && <AgreementsTab project={p} closed={closed} />}
+      {tab === 'invoices' && <InvoicesTab project={p} closed={closed} />}
       {tab === 'scope' && <ScopeTab projectId={id} closed={closed} onChanged={refresh} goChanges={() => go('changes')} />}
       {tab === 'work' && <WorkTab projectId={id} closed={closed} onChanged={refresh} />}
       {tab === 'documents' && <DocumentsPanel scope={{ link: { type: 'project', id } }} archived={closed} />}

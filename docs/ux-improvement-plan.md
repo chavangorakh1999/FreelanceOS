@@ -113,3 +113,16 @@ Measured with `ops/e2e/real-user.cjs` (counts every click, field, choice and upl
 Every screen was captured at 1440 px and 390 px and reviewed. Fixed along the way: the board pushed the phone page sideways, the
 project tabs overflowed on phones, signer buttons wrapped, drawn signatures carried empty margins, and the portal task row was
 cramped on phones.
+
+## Project-first navigation
+
+Only leads live outside a project. A lead becomes a project with one click (*Start project*), and everything after that is made
+inside the project, which already knows its client and lead: Proposals, Agreements, Scope, Work, Changes, Invoices and Documents
+are tabs of the project, and the Overview shows the one next step (write the proposal, draft the agreement, get it signed,
+approve the scope). The sidebar keeps Leads, Projects and Clients, plus Calendar, Finance, Activity and Settings for views across
+projects. The Create menu offers Lead, Project and Client.
+
+Data: proposals and agreements carry a `projectId` (backfilled from projects started from them; a database trigger keeps it to the
+same workspace and client). A proposal accepted inside a project becomes its source and fills an empty first scope draft; an
+agreement drafted from it lands in the same project, and becomes the project's agreement once signed. Older records without a
+project still open from search and their client page.
