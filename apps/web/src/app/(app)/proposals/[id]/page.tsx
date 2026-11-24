@@ -13,7 +13,7 @@ import { LinkedRecords } from '@/components/linked-records';
 import { AgreementBadge, LockedBadge, ProjectBadge, ProposalBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary } from '@/components/ui';
 import { api, ApiError, downloadFile, ProposalDetail, ProposalVersion } from '@/lib/api';
-import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
+import { fmtDate, fmtDateTime, fmtMoney, trimDecimal } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
 
 const PRICING = ['FIXED', 'MILESTONE', 'HOURLY', 'DAILY', 'TIME_AND_MATERIALS', 'RETAINER', 'HYBRID'];
@@ -163,7 +163,7 @@ function DraftEditor({ proposalId, clientId, version: v, onChanged }: { proposal
   const [validUntil, setValidUntil] = useState(v.validUntil ? v.validUntil.slice(0, 10) : '');
   const [summary, setSummary] = useState(v.summary ?? '');
   const [sections, setSections] = useState(v.sections.map((s) => ({ kind: s.kind, title: s.title, body: s.body })));
-  const [lines, setLines] = useState<Line[]>(v.lineItems.map((l) => ({ description: l.description, quantity: l.quantity.replace(/\.?0+$/, '') || '0', unitLabel: l.unitLabel, unitRate: l.unitRate.decimal, discountPct: String(l.discountBps / 100), taxPct: String(l.taxBps / 100) })));
+  const [lines, setLines] = useState<Line[]>(v.lineItems.map((l) => ({ description: l.description, quantity: trimDecimal(l.quantity), unitLabel: l.unitLabel, unitRate: l.unitRate.decimal, discountPct: String(l.discountBps / 100), taxPct: String(l.taxBps / 100) })));
   const [terms, setTerms] = useState<Term[]>(v.paymentTerms.map((t) => ({ label: t.label, kind: t.kind, percent: bpsToPct(t.percentageBps), dueInDays: t.dueInDays == null ? '' : String(t.dueInDays) })));
   const [sharing, setSharing] = useState(false);
 

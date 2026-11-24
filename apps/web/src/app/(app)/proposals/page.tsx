@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { ProposalBadge } from '@/components/status';
-import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
+import { Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink, btnSecondary } from '@/components/ui';
 import { api, ApiError, Client, Engagement, Paged, ProposalSummary, TemplateInfo } from '@/lib/api';
 import { fmtDate, fmtMoney } from '@/lib/format';
 
@@ -28,7 +28,7 @@ function ProposalsView() {
     <>
       <title>Proposals, FreelanceOS</title>
       <PageHeader title="Proposals" subtitle="Priced offers, versioned so you always know exactly what the client saw."
-        actions={<Button variant="primary" onClick={() => router.push('/proposals?new=1')}>New proposal</Button>} />
+        actions={<><Link href="/estimator" className={btnSecondary}>Price calculator</Link><Button variant="primary" onClick={() => router.push('/proposals?new=1')}>New proposal</Button></>} />
       <Card className="py-6" aria-label="Proposals">
         <div className="flex flex-wrap items-end gap-3 px-6 pb-5">
           <div className="min-w-[220px] flex-1"><Field label="Search">{(id) => <Input id={id} type="search" placeholder="Title, number or client" value={q} onChange={(e) => setQ(e.target.value)} />}</Field></div>

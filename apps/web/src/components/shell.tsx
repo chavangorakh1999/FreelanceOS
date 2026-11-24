@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Calculator,
   Activity, Bell, Files, CalendarDays, FileSignature, FileText, FolderKanban, Funnel, Home, Layers, LogOut, Menu,
   PanelLeftClose, PanelLeftOpen, Receipt, Settings, Users, X, type LucideIcon,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
     { label: 'Clients', href: '/clients', icon: Users },
     { label: 'Engagements', href: '/engagements', icon: Funnel },
     { label: 'Proposals', href: '/proposals', icon: FileText },
+    { label: 'Price calculator', href: '/estimator', icon: Calculator },
     { label: 'Agreements', href: '/agreements', icon: FileSignature },
   ] },
   { title: 'Deliver', items: [

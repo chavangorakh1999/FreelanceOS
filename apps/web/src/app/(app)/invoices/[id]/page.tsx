@@ -12,7 +12,7 @@ import { RecordPaymentDialog } from '@/components/finance/record-payment';
 import { InvoiceBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Stat, Table, Td, Textarea, Th } from '@/components/ui';
 import { api, ApiError, AuditEvent, downloadFile, InvoiceDetail } from '@/lib/api';
-import { describeAction, fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
+import { describeAction, fmtDate, fmtDateTime, fmtMoney, trimDecimal } from '@/lib/format';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 const problems = (e: unknown): string[] | null => (e instanceof ApiError && Array.isArray(e.details) ? (e.details as string[]) : null);
@@ -160,7 +160,7 @@ function DraftEditor({ invoice: inv, onSaved, onIssue, onDeleted }: { invoice: I
   const [currency] = useState(inv.currency);
   const [terms, setTerms] = useState(String(inv.paymentTermsDays));
   const [notes, setNotes] = useState(inv.notes ?? '');
-  const [lines, setLines] = useState<Line[]>(inv.lines.map((l) => ({ description: l.description, quantity: l.quantity.replace(/\.?0+$/, '') || '0', unitLabel: l.unitLabel, unitRate: l.unitRate.decimal, discountPct: String(l.discountBps / 100), taxPct: String(l.taxBps / 100) })));
+  const [lines, setLines] = useState<Line[]>(inv.lines.map((l) => ({ description: l.description, quantity: trimDecimal(l.quantity), unitLabel: l.unitLabel, unitRate: l.unitRate.decimal, discountPct: String(l.discountBps / 100), taxPct: String(l.taxBps / 100) })));
   const payload = useMemo(() => ({ currency, paymentTermsDays: Number(terms || '0'), notes: notes || undefined, lines: lines.map((l) => ({ description: l.description, quantity: l.quantity || '0', unitLabel: l.unitLabel || undefined, unitRate: l.unitRate || '0', discountBps: pctToBps(l.discountPct), taxBps: pctToBps(l.taxPct) })) }), [currency, terms, notes, lines]);
   const [saved, setSaved] = useState(() => JSON.stringify(payload));
   const dirty = JSON.stringify(payload) !== saved;

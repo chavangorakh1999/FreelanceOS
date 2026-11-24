@@ -83,3 +83,6 @@ const LABELS: Record<string, (m: Record<string, unknown> | null) => string> = {
 export const describeAction = (action: string, meta: Record<string, unknown> | null) => LABELS[action]?.(meta) ?? action;
 
 export const fmtBytes = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+/** "2.5000" → "2.5", "90.0000" → "90", "90" → "90". Trailing zeros are trimmed only after a decimal point. */
+export const trimDecimal = (q: string) => (q.includes('.') ? q.replace(/0+$/, '').replace(/\.$/, '') : q) || '0';

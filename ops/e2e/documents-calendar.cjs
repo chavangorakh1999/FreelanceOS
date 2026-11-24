@@ -65,7 +65,10 @@ const psql = sharedPsql;
   await owner.screenshot({ path: `${out}/calendar-month.png` }); ok('month view shows the Design milestone');
   await owner.getByLabel('Milestones').uncheck(); await owner.getByRole('link', { name: /^Design/ }).first().waitFor({ state: 'detached' }); ok('type filter hides milestones');
   await owner.getByLabel('Milestones').check();
-  await owner.getByRole('button', { name: 'Agenda' }).click(); await owner.waitForURL(/view=agenda/); await owner.getByText(/INV\/26-27\/\d+ due/).first().waitFor();
+  await owner.getByRole('button', { name: 'Agenda' }).click(); await owner.waitForURL(/view=agenda/);
+  // Seeded invoices fall due 15 days after today, which late in a month is next month.
+  const due = owner.getByText(/INV\/\d{2}-\d{2}\/\d+ due/).first();
+  if (!(await due.waitFor({ timeout: 5000 }).then(() => true, () => false))) { await owner.getByRole('button', { name: 'Next month' }).click(); await due.waitFor(); }
   await owner.screenshot({ path: `${out}/calendar-agenda.png`, fullPage: true }); ok('agenda view lists invoice due dates; the view is kept in the URL');
   const [ics] = await Promise.all([owner.waitForEvent('download'), owner.getByRole('button', { name: 'Export .ics' }).click()]);
   const text = fs.readFileSync(await ics.path(), 'utf8'); if (!text.startsWith('BEGIN:VCALENDAR') || !text.includes('SUMMARY:Design')) throw new Error('bad ics');

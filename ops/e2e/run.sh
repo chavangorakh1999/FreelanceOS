@@ -45,6 +45,7 @@ node "$HERE/seed.cjs" > "$OUT/ids.json"
 node "$HERE/navigation.cjs" "$OUT"
 node "$HERE/search-quicklook.cjs" "$OUT"
 node "$HERE/documents-calendar.cjs" "$OUT"
+node "$HERE/estimator.cjs"
 fresh_db; start_api
 E2E_OUT="$OUT" node "$HERE/real-user.cjs"
 

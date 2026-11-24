@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeAction, fmtMoney } from './format';
+import { describeAction, fmtMoney, trimDecimal } from './format';
 
 describe('fmtMoney', () => {
   it('renders minor units exactly with Indian grouping', () => {
@@ -24,5 +24,11 @@ describe('describeAction', () => {
   });
   it('falls back to the raw action for unknown events', () => {
     expect(describeAction('something.new', null)).toBe('something.new');
+  });
+});
+
+describe('trimDecimal', () => {
+  it('keeps whole numbers whole and trims only after the point', () => {
+    expect(['90', '10', '100', '90.0000', '2.5000', '0.5', '0', '0.0000'].map(trimDecimal)).toEqual(['90', '10', '100', '90', '2.5', '0.5', '0', '0']);
   });
 });
