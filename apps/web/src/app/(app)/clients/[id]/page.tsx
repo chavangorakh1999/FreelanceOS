@@ -47,7 +47,7 @@ function ClientDetail() {
   return (
     <>
       <title>{`${c.name}, FreelanceOS`}</title>
-      <Crumbs items={[{ label: 'Clients', href: '/clients' }, { label: c.name }]} />
+      <Crumbs items={[{ label: 'Leads', href: '/engagements' }, { label: 'Clients', href: '/clients' }, { label: c.name }]} />
       <PageHeader title={c.name}
         subtitle={[c.type === 'COMPANY' ? 'Company' : 'Individual', c.email, c.phone].filter(Boolean).join(', ')}
         actions={archived

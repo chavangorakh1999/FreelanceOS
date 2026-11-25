@@ -2,7 +2,7 @@
 
 import {
   Activity, Bell, CalendarDays, FolderKanban, Funnel, Home, LogOut, Menu,
-  PanelLeftClose, PanelLeftOpen, Receipt, Settings, Users, X, type LucideIcon,
+  PanelLeftClose, PanelLeftOpen, Receipt, Settings, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,7 +17,7 @@ import { useAuth, useMe } from '@/lib/auth';
 
 interface Item { label: string; href?: string; icon: LucideIcon }
 /**
- * Leads stay on their own; everything after a lead (proposals, agreements, scope, changes, work, invoices, files) lives
+ * Leads (with the clients they come from) stay on their own; everything after a lead (proposals, agreements, scope, changes, work, invoices, files) lives
  * inside its project, so nothing has to be tagged with a project. Cross-project views are kept to money and dates.
  */
 const GROUPS: { title?: string; items: Item[] }[] = [
@@ -25,7 +25,6 @@ const GROUPS: { title?: string; items: Item[] }[] = [
   { title: 'Work', items: [
     { label: 'Leads', href: '/engagements', icon: Funnel },
     { label: 'Projects', href: '/projects', icon: FolderKanban },
-    { label: 'Clients', href: '/clients', icon: Users },
   ] },
   { title: 'Business', items: [
     { label: 'Calendar', href: '/calendar', icon: CalendarDays },
@@ -37,7 +36,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
 
 const ICON = { size: 18, strokeWidth: 1.75, 'aria-hidden': true } as const;
 /** Pages of records that live inside a project light up Projects; money pages light up Finance. */
-const HOME_OF: [RegExp, string][] = [[/^\/(proposals|agreements|change-requests|changes|documents|estimator)(\/|$)/, '/projects'], [/^\/(invoices|payments)(\/|$)/, '/finance']];
+const HOME_OF: [RegExp, string][] = [[/^\/clients(\/|$)/, '/engagements'], [/^\/(proposals|agreements|change-requests|changes|documents|estimator)(\/|$)/, '/projects'], [/^\/(invoices|payments)(\/|$)/, '/finance']];
 const navPath = (path: string) => HOME_OF.find(([re]) => re.test(path))?.[1] ?? path;
 
 function Logo() {

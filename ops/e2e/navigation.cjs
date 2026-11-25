@@ -25,7 +25,12 @@ const ids = require(process.argv[2] + '/ids.json');
   const pc = await p.getByRole('navigation', { name: 'Breadcrumb' }).innerText(); if (!pc.includes('Projects') || !pc.includes(leadTitle)) throw new Error('proposal crumbs: ' + pc);
   ok('the proposal is created inside the project (no client or project to pick) and its breadcrumb shows the project');
   if (await p.locator('nav[aria-label="Workspace"] >> text=Proposals').count()) throw new Error('Proposals should not be in the sidebar');
-  ok('the sidebar keeps only leads, projects and clients for work');
+  ok('Proposals are not in the sidebar');
+  // Clients sit under Leads: a tab beside the pipeline, and the sidebar highlights Leads on client pages.
+  await p.goto(WEB + '/engagements'); await p.getByRole('navigation', { name: 'Leads sections' }).getByRole('link', { name: 'Clients' }).click(); await p.waitForURL(/\/clients$/);
+  if (await p.locator('nav[aria-label="Workspace"]').getByRole('link', { name: 'Clients' }).count()) throw new Error('Clients should not be in the sidebar');
+  if (await p.locator('nav[aria-label="Workspace"]').getByRole('link', { name: 'Leads' }).getAttribute('aria-current') !== 'page') throw new Error('Leads should be highlighted on Clients');
+  ok('Clients open from a tab under Leads, and the sidebar shows Leads');
   // Create menu
   await p.goto(WEB + '/dashboard'); await p.getByRole('button', { name: 'Create', exact: true }).click();
   const items = await p.getByRole('menuitem').allInnerTexts(); if (items.map((t) => t.split('\n')[0].trim()).join(',') !== 'Lead,Project,Client') throw new Error('Create menu: ' + items.join(' | '));

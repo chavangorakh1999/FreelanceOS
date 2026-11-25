@@ -119,8 +119,8 @@ cramped on phones.
 Only leads live outside a project. A lead becomes a project with one click (*Start project*), and everything after that is made
 inside the project, which already knows its client and lead: Proposals, Agreements, Scope, Work, Changes, Invoices and Documents
 are tabs of the project, and the Overview shows the one next step (write the proposal, draft the agreement, get it signed,
-approve the scope). The sidebar keeps Leads, Projects and Clients, plus Calendar, Finance, Activity and Settings for views across
-projects. The Create menu offers Lead, Project and Client.
+approve the scope). The sidebar keeps Leads and Projects, plus Calendar, Finance, Activity and Settings for views across projects. Clients sit
+under Leads, as a tab beside the pipeline. The Create menu offers Lead, Project and Client.
 
 Data: proposals and agreements carry a `projectId` (backfilled from projects started from them; a database trigger keeps it to the
 same workspace and client). A proposal accepted inside a project becomes its source and fills an empty first scope draft; an

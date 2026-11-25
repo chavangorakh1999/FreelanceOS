@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { Crumbs } from '@/components/crumbs';
+import { LeadsTabs } from '@/components/leads-tabs';
 import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Th, RowLink, QuickLookButton } from '@/components/ui';
 import { api, ApiError, Client, Paged } from '@/lib/api';
 
@@ -40,8 +42,10 @@ function ClientsView() {
   return (
     <>
       <title>Clients, FreelanceOS</title>
+      <Crumbs items={[{ label: 'Leads', href: '/engagements' }, { label: 'Clients' }]} />
       <PageHeader title="Clients" subtitle="Companies and individuals you work with."
         actions={<Button variant="primary" onClick={() => router.push('/clients?new=1')}>New client</Button>} />
+      <LeadsTabs />
 
       <Card className="py-6" aria-label="Client directory">
         <div className="flex flex-wrap items-end gap-3 px-7 pb-5">

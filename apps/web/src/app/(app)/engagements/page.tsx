@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { MoveStageDialog, NewEngagementDialog, useStages } from '@/components/engagement-dialogs';
+import { LeadsTabs } from '@/components/leads-tabs';
 import { Badge, Button, Card, EmptyState, ErrorNote, PageHeader, Select, Spinner, Table, Td, Th, RowLink } from '@/components/ui';
 import { api, Engagement, Paged } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
@@ -32,19 +33,20 @@ function EngagementsView() {
 
   return (
     <>
-      <title>Engagements, FreelanceOS</title>
+      <title>Leads, FreelanceOS</title>
       <PageHeader title="Leads" subtitle="Every opportunity from first conversation to won or lost."
-        actions={<><div className="groove flex gap-1 rounded-control p-1 shadow-none!">{tab('board', 'Board')}{tab('list', 'List')}</div><Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New engagement</Button></>} />
+        actions={<><div className="groove flex gap-1 rounded-control p-1 shadow-none!">{tab('board', 'Board')}{tab('list', 'List')}</div><Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New lead</Button></>} />
+      <LeadsTabs />
       <ErrorNote error={list.error ?? stages.error} />
       {list.isLoading || stages.isLoading ? <Spinner /> : items.length === 0 ? (
-        <Card><EmptyState title="No engagements yet" body="Create an engagement for a client to start tracking it through your pipeline." action={<Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New engagement</Button>} /></Card>
+        <Card><EmptyState title="No leads yet" body="Add a lead for a client to track it through your pipeline." action={<Button variant="primary" onClick={() => router.push('/engagements?new=1')}>New lead</Button>} /></Card>
       ) : view === 'board' ? (
         <div className="-mx-2 overflow-x-auto px-2 pb-2">
           <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
             {stages.data?.map((s) => {
               const col = items.filter((e) => e.stage.id === s.id);
               return (
-                <section key={s.id} aria-label={`${s.name}, ${col.length} engagements`}
+                <section key={s.id} aria-label={`${s.name}, ${col.length} leads`}
                   className={`flex w-[280px] shrink-0 flex-col gap-3 rounded-stat bg-stat p-3 outline-2 outline-offset-2 ${over === s.id ? 'outline outline-accent' : ''}`}
                   onDragOver={(ev) => { if (dragged && dragged.stage.id !== s.id) { ev.preventDefault(); setOver(s.id); } }}
                   onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node)) setOver(null); }}
@@ -73,7 +75,7 @@ function EngagementsView() {
       ) : (
         <Card className="py-6">
           <Table minWidth={720}>
-            <thead><tr><Th>Engagement</Th><Th>Client</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
+            <thead><tr><Th>Lead</Th><Th>Client</Th><Th>Stage</Th><Th right>Estimated value</Th></tr></thead>
             <tbody>{items.map((e) => (
               <RowLink key={e.id} href={`/engagements/${e.id}`}>
                 <Td><Link href={`/engagements/${e.id}`} className="font-medium hover:text-accent hover:underline">{e.title}</Link></Td>
