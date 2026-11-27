@@ -31,9 +31,10 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   COMMENT: 'New comments',
   DOCUMENT_SHARED: 'A document is shared with you',
   TASK_ASSIGNED: 'A task is assigned to you',
+  ACCOUNT_SECURITY: 'Password reset links',
 };
 /** Security-relevant: always sent, cannot be switched off. */
-const ALWAYS_EMAIL: NotificationCategory[] = ['INVITATION'];
+const ALWAYS_EMAIL: NotificationCategory[] = ['INVITATION', 'ACCOUNT_SECURITY'];
 
 @Injectable()
 export class NotificationsService {

@@ -36,6 +36,7 @@ model User {
 
   memberships             WorkspaceMembership[]
   sessions                UserSession[]
+  passwordResets          PasswordResetToken[]
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
   comments                Comment[]
@@ -56,6 +57,8 @@ model Workspace {
   postalCode      String?
   country         String?  @db.Char(2) // ISO 3166-1 alpha-2
   taxIdentifier   String? // e.g. GSTIN; not assumed to be Indian
+  /// How clients pay: bank account, UPI ID, payment link. Printed on every invoice.
+  paymentInstructions String?
   defaultCurrency String   @default("INR") @db.Char(3)
   timezone        String   @default("Asia/Kolkata")
   locale          String   @default("en-IN")
@@ -1421,6 +1424,7 @@ enum NotificationCategory {
   COMMENT
   DOCUMENT_SHARED
   TASK_ASSIGNED
+  ACCOUNT_SECURITY
 }
 
 enum DeliveryStatus {
@@ -1443,6 +1447,7 @@ model PortalUser {
 
   memberships       PortalMembership[]
   sessions          PortalSession[]
+  passwordResets    PasswordResetToken[]
   notifications     Notification[]
   preferences       NotificationPreference[]
   comments          Comment[]
@@ -1745,4 +1750,23 @@ model DocumentAccessLog {
 
   @@index([documentId, createdAt])
   @@map("document_access_logs")
+}
+
+/// A one-time link to set a new password, for a workspace user or a portal user (exactly one). Stored hashed, valid for an hour.
+model PasswordResetToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String?   @db.Uuid
+  portalUserId String?   @db.Uuid
+  tokenHash    String    @unique
+  expiresAt    DateTime  @db.Timestamptz
+  usedAt       DateTime? @db.Timestamptz
+  requestedIp  String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  portalUser PortalUser? @relation(fields: [portalUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([portalUserId])
+  @@map("password_reset_tokens")
 }

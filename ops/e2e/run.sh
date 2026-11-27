@@ -38,6 +38,9 @@ export E2E_DATABASE_URL="$DB"
 wait_for http://localhost:3000/portal/login
 
 fresh_db; start_api
+node "$HERE/first-run.cjs"
+
+fresh_db; start_api
 mkdir -p "$OUT/shots"; node "$HERE/portal-flow.cjs" "$OUT/shots"
 
 fresh_db; start_api

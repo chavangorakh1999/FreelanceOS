@@ -9,7 +9,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MoveStageDialog, useStages } from '@/components/engagement-dialogs';
 import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Select, Spinner, btnPrimary } from '@/components/ui';
-import { api, Engagement } from '@/lib/api';
+import { api, Engagement, unlessNotFound } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 
 export default function EngagementDetailPage() {
@@ -32,7 +32,7 @@ export default function EngagementDetailPage() {
   });
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Lead not found" /><ErrorNote error={q.error} /><Link href="/engagements" className="text-accent hover:underline">Back to leads</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Lead not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/engagements" className="text-accent hover:underline">Back to leads</Link></>;
   const e = q.data;
   const stageName = (sid: string | null) => stages.data?.find((s) => s.id === sid)?.name ?? 'None';
 

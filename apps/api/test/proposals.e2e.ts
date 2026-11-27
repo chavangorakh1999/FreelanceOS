@@ -62,7 +62,10 @@ describe('proposals', () => {
     const p = await create();
     const res = await share(p.id, 1).expect(422);
     expect(res.body.error.code).toBe('NOT_READY_TO_SHARE');
-    expect(res.body.error.details).toEqual(expect.arrayContaining(['Add at least one pricing line', 'Set a valid-until date']));
+    expect(res.body.error.details).toEqual(expect.arrayContaining(['Add at least one pricing line']));
+    expect(res.body.error.details).not.toContain('Set a valid-until date'); // new drafts default to 30 days
+    await save(p.id, 1, CONTENT({ validUntil: null })).expect(200);
+    expect((await share(p.id, 1).expect(422)).body.error.details).toContain('Set a valid-until date');
 
     await save(p.id, 1, CONTENT({ paymentTerms: [{ label: 'A', kind: 'UPFRONT', percentageBps: 5000 }, { label: 'B', kind: 'ON_COMPLETION', percentageBps: 4000 }] })).expect(200);
     const pct = await share(p.id, 1).expect(422);

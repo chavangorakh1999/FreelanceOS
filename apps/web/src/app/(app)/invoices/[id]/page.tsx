@@ -1,5 +1,7 @@
 'use client';
 
+import type { Profile } from '@/components/business-profile';
+import { useUnsavedChanges } from '@/lib/unsaved';
 import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +13,7 @@ import { useMemo, useState } from 'react';
 import { RecordPaymentDialog } from '@/components/finance/record-payment';
 import { InvoiceBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Stat, Table, Td, Textarea, Th } from '@/components/ui';
-import { api, ApiError, AuditEvent, downloadFile, InvoiceDetail } from '@/lib/api';
+import { api, ApiError, AuditEvent, downloadFile, InvoiceDetail, unlessNotFound } from '@/lib/api';
 import { describeAction, fmtDate, fmtDateTime, fmtMoney, trimDecimal } from '@/lib/format';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -27,11 +29,12 @@ export default function InvoicePage() {
   const activity = useQuery({ queryKey: ['invoice', id, 'activity'], queryFn: () => api<{ items: AuditEvent[] }>('/activity', { query: { targetType: 'invoice', targetId: id, limit: 30 } }), enabled: q.data?.stored !== 'DRAFT' });
   const [dialog, setDialog] = useState<null | 'issue' | 'void' | 'credit' | 'pay' | 'share'>(null);
   const [pdfError, setPdfError] = useState<unknown>(null);
+  const profile = useQuery({ queryKey: ['workspace-profile'], queryFn: () => api<Profile>('/workspace/profile') });
   const refresh = () => { for (const k of ['invoice', 'invoices', 'payments', 'finance', 'dashboard']) void qc.invalidateQueries({ queryKey: [k] }); setDialog(null); };
   const share = useMutation({ mutationFn: () => api(`/invoices/${id}/share`, { method: 'POST' }), onSuccess: refresh });
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Invoice not found" /><ErrorNote error={q.error} /><Link href="/finance?tab=invoices" className="text-accent hover:underline">Back to invoices</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Invoice not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/finance?tab=invoices" className="text-accent hover:underline">Back to invoices</Link></>;
   const inv = q.data;
   const draft = inv.stored === 'DRAFT';
   const open = inv.stored === 'ISSUED' && BigInt(inv.balance.outstanding.amountMinor) > 0n;
@@ -55,6 +58,8 @@ export default function InvoicePage() {
       <ErrorNote error={pdfError ?? share.error} />
       {inv.stored === 'VOID' && <p className="rounded-control bg-stat px-4 py-3 text-ink-2">Voided{inv.voidReason ? `: ${inv.voidReason}` : ''}. The number {inv.number} is kept and will not be reused.</p>}
 
+      {draft && profile.data && !profile.data.complete && (
+        <p role="status" className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn-ink">Your business profile is incomplete, so this invoice would go out without your address, tax ID or how to pay. <Link href="/settings" className="font-medium underline">Complete it in Settings</Link> before issuing.</p>)}
       {draft ? <DraftEditor key={inv.id} invoice={inv} onSaved={refresh} onIssue={() => setDialog('issue')} onDeleted={() => router.replace('/finance?tab=invoices')} /> : (
         <>
           <section aria-label="Balance" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
@@ -164,6 +169,7 @@ function DraftEditor({ invoice: inv, onSaved, onIssue, onDeleted }: { invoice: I
   const payload = useMemo(() => ({ currency, paymentTermsDays: Number(terms || '0'), notes: notes || undefined, lines: lines.map((l) => ({ description: l.description, quantity: l.quantity || '0', unitLabel: l.unitLabel || undefined, unitRate: l.unitRate || '0', discountBps: pctToBps(l.discountPct), taxBps: pctToBps(l.taxPct) })) }), [currency, terms, notes, lines]);
   const [saved, setSaved] = useState(() => JSON.stringify(payload));
   const dirty = JSON.stringify(payload) !== saved;
+  useUnsavedChanges(dirty);
   const [deleting, setDeleting] = useState(false);
 
   const preview = useMemo(() => {

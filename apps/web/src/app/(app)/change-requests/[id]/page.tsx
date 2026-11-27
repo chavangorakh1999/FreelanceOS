@@ -11,7 +11,7 @@ import { CommentsPanel } from '@/components/comments';
 import { DiffCard } from '@/components/project/scope-tab';
 import { ChangeBadge, ScopeBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui';
-import { api, ApiError, Assessment, ChangeDetail } from '@/lib/api';
+import { api, ApiError, Assessment, ChangeDetail, unlessNotFound } from '@/lib/api';
 import { useMe } from '@/lib/auth';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
@@ -31,7 +31,7 @@ export default function ChangeRequestPage() {
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['change-request', id] }); void qc.invalidateQueries({ queryKey: ['changes'] }); void qc.invalidateQueries({ queryKey: ['scope'] }); void qc.invalidateQueries({ queryKey: ['project'] }); setDialog(null); };
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Change request not found" /><ErrorNote error={q.error} /><Link href="/changes" className="text-accent hover:underline">Back to changes</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Change request not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/changes" className="text-accent hover:underline">Back to changes</Link></>;
   const c = q.data;
   const open = OPEN.includes(c.status);
   const a = c.assessments[0] ?? null;

@@ -17,6 +17,23 @@ describe('api client', () => {
     expect(init.credentials).toBe('include');
   });
 
+  it('sends a double-clicked create once and gives both callers the same answer', async () => {
+    let release!: (r: Response) => void;
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { release = r; }));
+    const one = api('/clients', { body: { name: 'Acme' } });
+    const two = api('/clients', { body: { name: 'Acme' } });
+    release(json(201, { id: 'c1' }));
+    expect(await Promise.all([one, two])).toEqual([{ id: 'c1' }, { id: 'c1' }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Once the first has finished, the same request goes out again (a deliberate second create).
+    fetchMock.mockResolvedValueOnce(json(201, { id: 'c2' }));
+    expect(await api('/clients', { body: { name: 'Acme' } })).toEqual({ id: 'c2' });
+    // Different bodies are never merged, and reads are never merged.
+    fetchMock.mockResolvedValue(json(200, {}));
+    await Promise.all([api('/clients', { body: { name: 'A' } }), api('/clients', { body: { name: 'B' } }), api('/clients'), api('/clients')]);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
   it('refreshes once on 401 and retries with the new token', async () => {
     fetchMock
       .mockResolvedValueOnce(json(401, { error: { code: 'UNAUTHENTICATED', message: 'x' } }))

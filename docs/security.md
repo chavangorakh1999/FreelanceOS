@@ -5,12 +5,12 @@ Tests live in `apps/api/test/`; run them with `pnpm --filter @freelanceos/api te
 
 ## Automated audit (generated, not hand-picked)
 
-`security-audit.e2e.ts` reads every route from Nest's own metadata (`route-inventory.ts`: 181 routes, 121 taking ids, at the time of
+`security-audit.e2e.ts` reads every route from Nest's own metadata (`route-inventory.ts`: the full route list, at the time of
 writing). A route added later is covered without anyone remembering to add a test.
 
 | Check | Result |
 |---|---|
-| Every route outside a 12-route public list refuses a request with no session (401) | all pass |
+| Every route outside an 18-route public list (sign-in, setup, invitations, password reset, health) refuses a request with no session (401) | all pass |
 | A forged token is refused on every GET route | all pass |
 | A staff token opens no portal route; a portal token opens no staff route | all pass |
 | A second workspace, given the first workspace's real ids, gets no success from any route (GET answers 404/400/422, never 200), and nothing in the first workspace changes (no audit event, no rows) | all pass |
@@ -23,6 +23,7 @@ writing). A route added later is covered without anyone remembering to add a tes
 | Authentication on every protected API | global `AuthGuard`; `@Public()` only on a fixed list; portal routes add `PortalGuard` | `security-audit.e2e.ts` |
 | Workspace isolation | `workspaceId` taken from the verified session only; every query scoped; 404 (never 403) across workspaces; database triggers reject cross-workspace links, grants and memberships | `security-audit.e2e.ts`, every module's e2e "other workspace" test |
 | Client, contact and project access | portal visibility in one module (`portal/visibility.ts`); per-project grants; viewer vs approver | `portal-data.e2e.ts`, `documents.e2e.ts` |
+| Password reset | one-hour, single-use links stored as SHA-256; a new request voids the previous link; the same answer whether or not the address exists; using a link signs out every device; staff and portal links are not interchangeable; rate limited (5/min) | `account.e2e.ts` |
 | Password hashing, token generation | bcrypt cost 12 with a dummy hash for unknown accounts (no timing oracle); 32-byte random refresh tokens stored as SHA-256; invitation tokens hashed at rest, single use | `auth.e2e.ts`, `portal-auth.e2e.ts` |
 | Secrets outside source control | `.env` is ignored; `.env.example` holds placeholders; the API refuses to start with a JWT secret under 32 characters | `config/env.ts` |
 | TLS | terminated at the proxy; HSTS sent by the API (helmet) and by the web app in production | headers test |

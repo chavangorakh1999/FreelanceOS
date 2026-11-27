@@ -1,5 +1,6 @@
 'use client';
 
+import { unlessNotFound } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Download, Hourglass } from 'lucide-react';
 import Link from 'next/link';
@@ -30,7 +31,7 @@ export default function PortalAgreementPage() {
   useEffect(() => { if (opened) void papi(`/portal/agreements/${opened}/viewed`, { method: 'POST' }).catch(() => undefined); }, [opened]);
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Agreement not found" /><ErrorNote error={q.error} /><Link href="/portal/agreements" className="text-accent hover:underline">Back to agreements</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Agreement not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/portal/agreements" className="text-accent hover:underline">Back to agreements</Link></>;
   const a = q.data;
   const name = typed ?? a.you?.name ?? '';
 

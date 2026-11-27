@@ -1,5 +1,6 @@
 'use client';
 
+import { useUnsavedChanges } from '@/lib/unsaved';
 import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +14,7 @@ import { AgreementBadge, LockedBadge } from '@/components/status';
 import { useMe } from '@/lib/auth';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui';
 import { hasPlaceholder } from '@freelanceos/shared';
-import { AgreementDetail, AgreementVersion, api, ApiError, downloadFile, fetchBlobUrl, Signer } from '@/lib/api';
+import { AgreementDetail, AgreementVersion, api, ApiError, downloadFile, fetchBlobUrl, Signer, unlessNotFound } from '@/lib/api';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -33,7 +34,7 @@ export default function AgreementPage() {
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['agreement', id] }); void qc.invalidateQueries({ queryKey: ['agreements'] }); };
 
   if (detail.isLoading) return <Spinner />;
-  if (detail.error || !detail.data) return <><PageHeader title="Agreement not found" /><ErrorNote error={detail.error} /><Link href="/agreements" className="text-accent hover:underline">Back to agreements</Link></>;
+  if (detail.error || !detail.data) return <><PageHeader title="Agreement not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(detail.error)} /><Link href="/agreements" className="text-accent hover:underline">Back to agreements</Link></>;
   const ag = detail.data;
   const v = version.data;
   const open = v?.status === 'SENT' && ['SENT', 'VIEWED', 'PARTIALLY_SIGNED'].includes(ag.status);
@@ -109,6 +110,7 @@ function DraftEditor({ agreementId, clientId, version: v, onChanged }: { agreeme
   const payload = { clauses, signers };
   const [saved, setSaved] = useState(() => JSON.stringify(payload));
   const dirty = JSON.stringify(payload) !== saved;
+  useUnsavedChanges(dirty);
   const save = useMutation({ mutationFn: () => api(`/agreements/${agreementId}/versions/${v.versionNumber}`, { method: 'PUT', body: payload }), onSuccess: () => { setSaved(JSON.stringify(payload)); onChanged(); } });
   const send = useMutation({
     mutationFn: async () => { await api(`/agreements/${agreementId}/versions/${v.versionNumber}`, { method: 'PUT', body: payload }); return api(`/agreements/${agreementId}/versions/${v.versionNumber}/send`, { method: 'POST' }); },

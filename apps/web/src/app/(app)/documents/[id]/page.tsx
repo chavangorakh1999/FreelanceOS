@@ -9,7 +9,7 @@ import { useRef, useState } from 'react';
 import { Crumbs } from '@/components/crumbs';
 import { ACCEPT, CATEGORY } from '@/components/documents/panel';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th } from '@/components/ui';
-import { api, DocumentCategory, DocumentDetail, downloadFile, LinkType, Paged, upload } from '@/lib/api';
+import { api, DocumentCategory, DocumentDetail, downloadFile, LinkType, Paged, upload, unlessNotFound } from '@/lib/api';
 import { fmtBytes, fmtDate, fmtDateTime } from '@/lib/format';
 
 const LINK_LABEL: Record<LinkType, string> = { engagement: 'Lead', proposal: 'Proposal', agreement: 'Agreement', project: 'Project', change: 'Change request', invoice: 'Invoice' };
@@ -26,7 +26,7 @@ export default function DocumentPage() {
   const [dlError, setDlError] = useState<unknown>(null);
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Document not found" /><ErrorNote error={q.error} /><Link href="/documents" className="text-accent hover:underline">Back to documents</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Document not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/documents" className="text-accent hover:underline">Back to documents</Link></>;
   const d = q.data;
   const latest = d.versions[0];
   const shared = d.visibility === 'CLIENT_VISIBLE';

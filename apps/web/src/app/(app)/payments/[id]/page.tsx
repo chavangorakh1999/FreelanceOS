@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Stat, Table, Td, Textarea, Th, RowLink } from '@/components/ui';
-import { api, InvoiceSummary, Paged, PaymentDetail } from '@/lib/api';
+import { api, InvoiceSummary, Paged, PaymentDetail, unlessNotFound } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney } from '@/lib/format';
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -19,7 +19,7 @@ export default function PaymentPage() {
   const refresh = () => { for (const k of ['payment', 'payments', 'invoice', 'invoices', 'finance', 'dashboard']) void qc.invalidateQueries({ queryKey: [k] }); setReversing(false); };
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Payment not found" /><ErrorNote error={q.error} /><Link href="/finance?tab=payments" className="text-accent hover:underline">Back to payments</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Payment not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/finance?tab=payments" className="text-accent hover:underline">Back to payments</Link></>;
   const p = q.data;
   const left = BigInt(p.unallocated.amountMinor) > 0n;
 

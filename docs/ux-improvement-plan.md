@@ -126,3 +126,17 @@ Data: proposals and agreements carry a `projectId` (backfilled from projects sta
 same workspace and client). A proposal accepted inside a project becomes its source and fills an empty first scope draft; an
 agreement drafted from it lands in the same project, and becomes the project's agreement once signed. Older records without a
 project still open from search and their client page.
+
+## Review fixes: first run, business profile, safety nets
+
+From a fresh-account review (sign-up to first proposal, watched in a browser):
+- **Business profile** in Settings: legal name, address, tax ID, how clients pay (bank, UPI, link), currency, time zone, invoice
+  prefix, payment terms, default tax. Issued invoices carry the address and tax ID; unpaid invoices and the portal show how to pay.
+  Draft invoices warn while the profile is incomplete. Sign-up asks for the billing currency and takes the browser's time zone.
+- **Forgot password** for you and for clients: one-hour, single-use links; every device signed out after a reset.
+- **No lost work:** leaving a page with unsaved edits (proposal, agreement, invoice, scope, profile) asks first; closing the tab
+  shows the browser's prompt.
+- **No duplicates:** identical changes sent while the first is in flight (a double-click) share one request.
+- **First run:** "Get started" checklist on the dashboard until the four first steps are done; the first lead creates its client in
+  the same dialog; new proposals are valid for 30 days by default; a real 404 page; "not found" said once.
+Checked by `ops/e2e/first-run.cjs` and `apps/api/test/account.e2e.ts`.

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button, ErrorNote, Field, Input, Spinner } from '@/components/ui';
@@ -31,6 +32,7 @@ export default function LoginPage() {
       </div>
       <Field label="Email">{(id) => <Input id={id} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
       <Field label="Password">{(id) => <Input id={id} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
+      <Link href="/forgot-password" className="-mt-3 self-end text-[13px] text-accent hover:underline">Forgot password?</Link>
       <ErrorNote error={error} />
       <Button type="submit" variant="primary" disabled={busy} className="h-11">{busy ? 'Signing in…' : 'Sign in'}</Button>
     </form>

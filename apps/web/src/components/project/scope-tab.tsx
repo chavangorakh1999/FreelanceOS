@@ -1,5 +1,6 @@
 'use client';
 
+import { useUnsavedChanges } from '@/lib/unsaved';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hasPlaceholder } from '@freelanceos/shared';
 import { Plus, Trash2 } from 'lucide-react';
@@ -145,6 +146,7 @@ function Editor({ projectId, version: v, onChanged }: { projectId: string; versi
   const payload = { summary: summary || undefined, items };
   const [saved, setSaved] = useState(() => JSON.stringify(payload));
   const dirty = JSON.stringify(payload) !== saved;
+  useUnsavedChanges(dirty);
   const [submitting, setSubmitting] = useState(false);
   const unfinished = items.filter((i) => hasPlaceholder(i.description)).length;
 

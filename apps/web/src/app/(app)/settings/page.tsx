@@ -1,5 +1,6 @@
 'use client';
 
+import { BusinessProfileCard } from '@/components/business-profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Spinner } from '@/components/ui';
@@ -30,15 +31,14 @@ export default function SettingsPage() {
   return (
     <>
       <title>Settings, FreelanceOS</title>
-      <PageHeader title="Settings" subtitle="Your workspace and account security." />
+      <PageHeader title="Settings" subtitle="Your business details, notifications and account security." />
+
+      <BusinessProfileCard />
 
       <Card className="p-6" aria-labelledby="ws-h">
-        <h2 id="ws-h" className="mb-4 text-lg font-semibold">Workspace</h2>
+        <h2 id="ws-h" className="mb-4 text-lg font-semibold">Your account</h2>
         <dl className="grid max-w-xl grid-cols-[130px_minmax(0,1fr)] gap-y-3">
-          <dt className="text-muted">Business</dt><dd>{me.workspace.name}</dd>
-          <dt className="text-muted">Default currency</dt><dd>{me.workspace.defaultCurrency}</dd>
-          <dt className="text-muted">Timezone</dt><dd>{me.workspace.timezone}</dd>
-          <dt className="text-muted">Signed in as</dt><dd>{me.user.email} <Badge tone="info">{me.role.toLowerCase()}</Badge></dd>
+          <dt className="text-muted">Signed in as</dt><dd>{me.user.name}, {me.user.email} <Badge tone="info">{me.role.toLowerCase()}</Badge></dd>
         </dl>
       </Card>
 

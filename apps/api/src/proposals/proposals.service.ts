@@ -142,6 +142,8 @@ export class ProposalsService {
           versions: {
             create: {
               workspaceId: a.workspaceId, versionNumber: 1, currency, createdById: a.userId,
+              // Valid for 30 days unless changed, so a new draft is never blocked on a date nobody thought about.
+              validUntil: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 30)),
               pricingModel: (body.pricingModel as never) ?? 'FIXED',
               sections: { create: (body.sections ?? []).map((s, i) => ({ workspaceId: a.workspaceId, position: i, kind: s.kind as never, title: s.title, body: subst(s.body) })) },
               paymentTerms: { create: (body.paymentTerms ?? []).map((t, i) => ({ workspaceId: a.workspaceId, position: i, label: t.label, kind: t.kind as never, percentageBps: t.percentageBps ?? null, dueInDays: t.dueInDays ?? null })) },

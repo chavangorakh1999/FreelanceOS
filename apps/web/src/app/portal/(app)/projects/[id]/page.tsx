@@ -1,5 +1,6 @@
 'use client';
 
+import { unlessNotFound } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -36,7 +37,7 @@ export default function PortalProjectPage() {
   const raise = useMutation({ mutationFn: () => papi(`/portal/projects/${id}/changes`, { body: cr }), onSuccess: () => { setRaising(false); setCr({ title: '', description: '', reason: '' }); refresh(); } });
 
   if (project.isLoading) return <Spinner />;
-  if (project.error || !project.data) return <><PageHeader title="Project not found" /><ErrorNote error={project.error} /><Link href="/portal/projects" className="text-accent hover:underline">Back to projects</Link></>;
+  if (project.error || !project.data) return <><PageHeader title="Project not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(project.error)} /><Link href="/portal/projects" className="text-accent hover:underline">Back to projects</Link></>;
   const p = project.data;
   const s = scope.data;
   const review = s?.inReview;

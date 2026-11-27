@@ -61,7 +61,9 @@ const psql = sharedPsql;
   await owner.reload(); await owner.getByText(/Priya Menon/).first().waitFor(); ok('the owner sees the client download in the access history');
 
   // calendar
-  await owner.goto(`${WEB}/calendar`); await owner.getByRole('link', { name: /^Design/ }).first().waitFor();
+  // The seeded Design milestone is due in 10 days, which late in a month falls in the next one: open its month.
+  const designMonth = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 7);
+  await owner.goto(`${WEB}/calendar?month=${designMonth}`); await owner.getByRole('link', { name: /^Design/ }).first().waitFor();
   await owner.screenshot({ path: `${out}/calendar-month.png` }); ok('month view shows the Design milestone');
   await owner.getByLabel('Milestones').uncheck(); await owner.getByRole('link', { name: /^Design/ }).first().waitFor({ state: 'detached' }); ok('type filter hides milestones');
   await owner.getByLabel('Milestones').check();

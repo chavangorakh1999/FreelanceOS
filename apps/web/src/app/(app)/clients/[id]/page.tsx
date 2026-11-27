@@ -9,7 +9,7 @@ import { ClientDeals, ClientMoney, ClientProjects } from '@/components/client-re
 import { DocumentsPanel } from '@/components/documents/panel';
 import { Badge, Button, Card, Dialog, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary, RowLink } from '@/components/ui';
 import { DevInviteLink, PortalAccessCard } from '@/components/portal-access';
-import { api, Client, Engagement, Paged } from '@/lib/api';
+import { api, Client, Engagement, Paged, unlessNotFound } from '@/lib/api';
 import { fmtDateTime, fmtMoney } from '@/lib/format';
 
 interface Interaction { id: string; type: string; summary: string; occurredAt: string }
@@ -40,7 +40,7 @@ function ClientDetail() {
   const [confirmArchive, setConfirmArchive] = useState(false);
 
   if (client.isLoading) return <Spinner />;
-  if (client.error || !client.data) return <><PageHeader title="Client not found" /><ErrorNote error={client.error} /><Link href="/clients" className="text-accent hover:underline">Back to clients</Link></>;
+  if (client.error || !client.data) return <><PageHeader title="Client not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(client.error)} /><Link href="/clients" className="text-accent hover:underline">Back to clients</Link></>;
   const c = client.data;
   const archived = c.status === 'ARCHIVED';
 

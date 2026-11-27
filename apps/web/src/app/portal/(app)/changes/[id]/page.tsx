@@ -1,5 +1,6 @@
 'use client';
 
+import { unlessNotFound } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -25,7 +26,7 @@ export default function PortalChangePage() {
     onSuccess: () => { setAction(null); setNote(''); void qc.invalidateQueries({ queryKey: ['portal'] }); },
   });
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Change request not found" /><ErrorNote error={q.error} /><Link href="/portal/projects" className="text-accent hover:underline">Back to projects</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Change request not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/portal/projects" className="text-accent hover:underline">Back to projects</Link></>;
   const c = q.data;
   const a = c.assessment;
   const TITLES: Record<Decision, string> = { APPROVED: 'Approve this change', REJECTED: 'Decline this change', CLARIFICATION_REQUESTED: 'Ask a question' };

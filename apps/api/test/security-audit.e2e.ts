@@ -8,6 +8,9 @@ const PUBLIC = new Set([
   'get /health', 'get /health/live', 'get /health/ready', 'get /metrics',
   'get /auth/status', 'post /auth/setup', 'post /auth/login', 'post /auth/refresh',
   'get /portal/auth/invitations/:token', 'post /portal/auth/accept', 'post /portal/auth/login', 'post /portal/auth/refresh',
+  // Forgot password: public by design, rate limited, and they never say whether an account exists (account.e2e.ts).
+  'post /auth/password-reset', 'get /auth/password-reset/:token', 'post /auth/password-reset/confirm',
+  'post /portal/auth/password-reset', 'get /portal/auth/password-reset/:token', 'post /portal/auth/password-reset/confirm',
 ]);
 const RANDOM = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
 const fill = (path: string, ids: Record<string, string> = {}) =>

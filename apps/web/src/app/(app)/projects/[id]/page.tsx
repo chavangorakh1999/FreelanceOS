@@ -14,7 +14,7 @@ import { AgreementsTab, InvoicesTab, NextStep, ProposalsTab } from '@/components
 import { ClientAccessCard } from '@/components/project/client-access';
 import { ProjectBadge, ScopeBadge } from '@/components/status';
 import { Button, Card, Dialog, ErrorNote, PageHeader, Select, Spinner, Stat } from '@/components/ui';
-import { api, ProjectDetail, ProjectStatus } from '@/lib/api';
+import { api, ProjectDetail, ProjectStatus, unlessNotFound } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
 
@@ -40,7 +40,7 @@ function ProjectView() {
   const move = useMutation({ mutationFn: (status: ProjectStatus) => api(`/projects/${id}`, { method: 'PATCH', body: { status } }), onSuccess: () => { setMoving(null); refresh(); } });
 
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Project not found" /><ErrorNote error={q.error} /><Link href="/projects" className="text-accent hover:underline">Back to projects</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Project not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/projects" className="text-accent hover:underline">Back to projects</Link></>;
   const p = q.data;
   const closed = p.status === 'COMPLETED' || p.status === 'CANCELLED';
   const go = (t: Tab) => router.replace(`/projects/${id}?tab=${t}`);

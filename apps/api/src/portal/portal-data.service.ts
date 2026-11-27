@@ -333,6 +333,7 @@ export class PortalDataService {
       totals: inv.totals, lines: inv.lines, balance: inv.balance, voidReason: inv.status === 'VOID' ? inv.voidReason : null,
       payments: inv.allocations.filter((x) => !x.payment.reversed).map((x) => ({ receivedAt: x.payment.receivedAt, method: x.payment.method, cash: x.cash, withholding: x.withholding })),
       creditNotes: inv.creditNotes.map((n) => ({ number: n.number, issuedAt: n.issuedAt, amount: n.amount, reason: n.reason })),
+      howToPay: (await this.prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { paymentInstructions: true } })).paymentInstructions,
     };
   }
 

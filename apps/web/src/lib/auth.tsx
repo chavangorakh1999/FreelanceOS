@@ -14,8 +14,10 @@ type State = { status: 'loading' } | { status: 'setup' } | { status: 'anon' } | 
 interface AuthApi {
   state: State;
   login: (email: string, password: string) => Promise<void>;
-  setup: (input: { name: string; email: string; password: string; workspaceName: string }) => Promise<void>;
+  setup: (input: { name: string; email: string; password: string; workspaceName: string; defaultCurrency?: string; timezone?: string }) => Promise<void>;
   logout: () => Promise<void>;
+  /** Re-read the signed-in user and workspace, e.g. after the business profile changes. */
+  reloadMe: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthApi | null>(null);
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await loadMe();
       router.replace('/dashboard');
     },
+    reloadMe: loadMe,
     logout: async () => {
       await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
       setAccessToken(null);

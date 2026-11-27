@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { GettingStarted } from '@/components/getting-started';
 import { Badge, Card, EmptyState, ErrorNote, PageHeader, Select, Spinner } from '@/components/ui';
 import { api, Dashboard } from '@/lib/api';
 import { useMe } from '@/lib/auth';
@@ -93,10 +94,11 @@ export default function DashboardPage() {
   return (
     <>
       <title>Overview, FreelanceOS</title>
-      <PageHeader title="Overview" subtitle={`Welcome back, ${me.user.name.split(' ')[0]}. Here’s where things stand.`}
+      <PageHeader title="Overview" subtitle={`${data && data.activeClients === 0 && data.activeProjects === 0 ? 'Welcome' : 'Welcome back'}, ${me.user.name.split(' ')[0]}. Here’s where things stand.`}
         actions={<Select aria-label="Period for invoiced and cash received" className="w-52" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
           {(Object.keys(PERIODS) as Period[]).map((k) => <option key={k} value={k}>{PERIODS[k]}</option>)}</Select>} />
       <ErrorNote error={error} />
+      <GettingStarted />
       {isLoading && <Spinner />}
       {data && fin && (
         <>
@@ -128,7 +130,7 @@ export default function DashboardPage() {
                   <li key={p.stageId} className="flex items-center justify-between gap-4 border-b border-line py-3 last:border-b-0">
                     <span className="font-medium">{p.name}</span>
                     <span className="text-muted">
-                      {p.count} {p.count === 1 ? 'engagement' : 'engagements'}
+                      {p.count} {p.count === 1 ? 'lead' : 'leads'}
                       {p.valueByCurrency.length > 0 && ', ' + p.valueByCurrency.map((v) => fmtMoney({ amountMinor: v.amountMinor, currency: v.currency })).join(' + ')}
                     </span>
                   </li>

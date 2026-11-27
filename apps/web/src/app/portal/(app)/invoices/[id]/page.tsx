@@ -1,5 +1,6 @@
 'use client';
 
+import { unlessNotFound } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import Link from 'next/link';
@@ -16,7 +17,7 @@ export default function PortalInvoicePage() {
   const { id } = useParams<{ id: string }>();
   const q = useQuery({ queryKey: ['portal', 'invoice', id], queryFn: () => papi<PInvoiceDetail>(`/portal/invoices/${id}`) });
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Invoice not found" /><ErrorNote error={q.error} /><Link href="/portal/invoices" className="text-accent hover:underline">Back to invoices</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Invoice not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/portal/invoices" className="text-accent hover:underline">Back to invoices</Link></>;
   const i = q.data;
   const outstanding = BigInt(i.balance.outstanding.amountMinor) > 0n;
 
@@ -27,6 +28,13 @@ export default function PortalInvoicePage() {
       <PageHeader title={`Invoice ${i.number}`} subtitle={`${i.issueDate ? `Issued ${fmtDate(i.issueDate)}` : ''}${i.dueDate ? `, due ${fmtDate(i.dueDate)}` : ''}`}
         actions={<div className="flex flex-wrap items-center gap-2">{i.status === 'VOID' ? <Badge>Void</Badge> : outstanding ? <Badge tone="info">{fmtMoney(i.balance.outstanding)} outstanding</Badge> : <Badge tone="success">Paid</Badge>}
           <Button onClick={() => void portalDownload(`/portal/invoices/${id}/pdf`, `${i.number}.pdf`)}><Download size={16} aria-hidden="true" />PDF</Button></div>} />
+
+      {outstanding && i.status !== 'VOID' && i.howToPay && (
+        <Card className="border-accent/30 bg-accent-soft/40 p-5 sm:p-6" aria-labelledby="how-h">
+          <h2 id="how-h" className="mb-1 text-lg font-semibold">How to pay {fmtMoney(i.balance.outstanding)}</h2>
+          <p className="whitespace-pre-wrap text-ink-2">{i.howToPay}</p>
+          <p className="mt-2 text-[13px] text-muted">Mention invoice {i.number} with your payment.</p>
+        </Card>)}
 
       <Card className="p-5 sm:p-6">
         <div className="grid gap-6 sm:grid-cols-2"><Party title="From" p={i.supplier} /><Party title="Billed to" p={i.billTo} /></div>

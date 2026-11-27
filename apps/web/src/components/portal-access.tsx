@@ -8,11 +8,11 @@ import { api, PortalContactRow, PortalOverview } from '@/lib/api';
 import { fmtDate, fmtDateTime } from '@/lib/format';
 
 /** Development only: the API returns the invitation link when email is logged instead of sent. */
-export function DevInviteLink({ link }: { link: string }) {
+export function DevInviteLink({ link, what = 'invitation link' }: { link: string; what?: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="grid gap-2 rounded-stat bg-stat p-3">
-      <p className="text-[13px] text-muted">Development: email isn’t sent, so open or copy the invitation link yourself (use a private window, since you’re signed in here).</p>
+      <p className="text-[13px] text-muted">Development: email isn’t sent, so open or copy the {what} yourself (use a private window, since you’re signed in here).</p>
       <div className="flex items-center gap-2">
         <a href={link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-[13px] text-accent hover:underline">{link}</a>
         <Button className="h-8 px-3 text-[13px]" onClick={() => void navigator.clipboard.writeText(link).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy'}</Button>

@@ -27,7 +27,24 @@ export function refreshSession(): Promise<boolean> {
 
 interface Options { method?: string; body?: unknown; headers?: Record<string, string>; query?: Record<string, string | number | boolean | undefined | null> }
 
-export async function api<T = unknown>(path: string, opts: Options = {}, retried = false): Promise<T> {
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * Sends a request. Two identical changes sent while the first is still on its way (a double-click, a key held down)
+ * share one request and one answer, so nothing is ever created twice by accident.
+ */
+export function api<T = unknown>(path: string, opts: Options = {}, retried = false): Promise<T> {
+  const method = opts.method ?? (opts.body ? 'POST' : 'GET');
+  if (method === 'GET' || retried) return send<T>(path, opts, retried);
+  const key = JSON.stringify([method, path, opts.query ?? null, opts.body ?? null, opts.headers ?? null]);
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<T>;
+  const p = send<T>(path, opts, retried).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+async function send<T>(path: string, opts: Options, retried: boolean): Promise<T> {
   const qs = opts.query
     ? '?' + new URLSearchParams(Object.entries(opts.query).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)])).toString()
     : '';
@@ -49,6 +66,9 @@ export async function api<T = unknown>(path: string, opts: Options = {}, retried
   }
   return data as T;
 }
+
+/** A missing record already says so in the page title; show any other error. */
+export const unlessNotFound = (e: unknown) => (e instanceof ApiError && e.status === 404 ? null : e);
 
 /** Multipart upload with the same auth, refresh and error envelope as `api`. The browser sets the boundary. */
 export async function upload<T = unknown>(path: string, form: FormData, retried = false): Promise<T> {

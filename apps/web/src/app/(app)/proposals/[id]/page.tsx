@@ -1,5 +1,6 @@
 'use client';
 
+import { useUnsavedChanges } from '@/lib/unsaved';
 import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +13,7 @@ import { CommentsPanel } from '@/components/comments';
 import { LinkedRecords } from '@/components/linked-records';
 import { AgreementBadge, LockedBadge, ProjectBadge, ProposalBadge } from '@/components/status';
 import { Badge, Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select, Spinner, Table, Td, Textarea, Th, btnPrimary, btnSecondary } from '@/components/ui';
-import { api, ApiError, downloadFile, ProposalDetail, ProposalVersion } from '@/lib/api';
+import { api, ApiError, downloadFile, ProposalDetail, ProposalVersion, unlessNotFound } from '@/lib/api';
 import { fmtDate, fmtDateTime, fmtMoney, trimDecimal } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
 
@@ -38,7 +39,7 @@ export default function ProposalPage() {
   const duplicate = useMutation({ mutationFn: () => api<{ id: string }>(`/proposals/${id}/duplicate`, { method: 'POST' }), onSuccess: (p) => { refresh(); window.location.assign(`/proposals/${p.id}`); } });
 
   if (detail.isLoading) return <Spinner />;
-  if (detail.error || !detail.data) return <><PageHeader title="Proposal not found" /><ErrorNote error={detail.error} /><Link href="/proposals" className="text-accent hover:underline">Back to proposals</Link></>;
+  if (detail.error || !detail.data) return <><PageHeader title="Proposal not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(detail.error)} /><Link href="/proposals" className="text-accent hover:underline">Back to proposals</Link></>;
   const p = detail.data;
   const latest = p.versions[0]!;
   const v = version.data;
@@ -179,6 +180,7 @@ function DraftEditor({ proposalId, clientId, version: v, onChanged }: { proposal
   }), [pricingModel, currency, validUntil, summary, sections, lines, terms]);
   const [saved, setSaved] = useState(() => JSON.stringify(payload));
   const dirty = JSON.stringify(payload) !== saved;
+  useUnsavedChanges(dirty);
 
   // Preview totals with the same shared library the server uses; the server remains authoritative.
   const preview = useMemo(() => {

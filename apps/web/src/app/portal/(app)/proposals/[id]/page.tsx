@@ -1,5 +1,6 @@
 'use client';
 
+import { unlessNotFound } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import Link from 'next/link';
@@ -29,7 +30,7 @@ export default function PortalProposalPage() {
     onSuccess: () => { setAction(null); setNote(''); void qc.invalidateQueries({ queryKey: ['portal'] }); },
   });
   if (q.isLoading) return <Spinner />;
-  if (q.error || !q.data) return <><PageHeader title="Proposal not found" /><ErrorNote error={q.error} /><Link href="/portal/proposals" className="text-accent hover:underline">Back to proposals</Link></>;
+  if (q.error || !q.data) return <><PageHeader title="Proposal not found" subtitle="It may have been removed, or the link is incomplete." /><ErrorNote error={unlessNotFound(q.error)} /><Link href="/portal/proposals" className="text-accent hover:underline">Back to proposals</Link></>;
   const p = q.data;
   const v = p.version;
   const copy = action ? COPY[action] : null;

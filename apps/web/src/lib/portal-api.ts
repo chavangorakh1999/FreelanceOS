@@ -22,7 +22,24 @@ export function refreshPortal(): Promise<boolean> {
 interface Options { method?: string; body?: unknown }
 const AUTHLESS = ['/portal/auth/login', '/portal/auth/accept', '/portal/auth/refresh', '/portal/auth/invitations'];
 
-export async function papi<T = unknown>(path: string, opts: Options = {}, retried = false): Promise<T> {
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * Sends a request. Two identical changes sent while the first is still on its way (a double-click, a key held down)
+ * share one request and one answer, so nothing is ever created twice by accident.
+ */
+export function papi<T = unknown>(path: string, opts: Options = {}, retried = false): Promise<T> {
+  const method = opts.method ?? (opts.body ? 'POST' : 'GET');
+  if (method === 'GET' || retried) return send<T>(path, opts, retried);
+  const key = JSON.stringify([method, path, opts.body ?? null]);
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<T>;
+  const p = send<T>(path, opts, retried).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+async function send<T>(path: string, opts: Options, retried: boolean): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: opts.method ?? (opts.body !== undefined ? 'POST' : 'GET'),
     credentials: 'include',
@@ -110,7 +127,7 @@ export interface PChange {
 }
 export interface PInvoiceItem { id: string; number: string | null; status: 'PAID' | 'DUE' | 'OVERDUE' | 'VOID'; issueDate: string | null; dueDate: string | null; total: MoneyJson; outstanding: MoneyJson; project: { name: string; number: string } | null }
 export interface PInvoiceDetail {
-  id: string; number: string | null; status: string; issueDate: string | null; dueDate: string | null; paymentTermsDays: number; notes: string | null;
+  id: string; number: string | null; status: string; issueDate: string | null; dueDate: string | null; paymentTermsDays: number; notes: string | null; howToPay: string | null;
   supplier: { name: string | null; taxId: string | null; address: string | null }; billTo: { name: string | null; taxId: string | null; address: string | null };
   project: { name: string; number: string } | null;
   totals: { subtotal: MoneyJson; discount: MoneyJson; tax: MoneyJson; total: MoneyJson };
