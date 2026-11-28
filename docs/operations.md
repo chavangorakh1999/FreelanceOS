@@ -31,6 +31,8 @@ For whoever runs FreelanceOS in production. PRD §10.3 (availability and reliabi
 | `WEB_ORIGIN` | yes | the only origin allowed by CORS; used in email links |
 | `STORAGE_DIR`, `MAX_UPLOAD_MB` | yes, 20 | |
 | `EMAIL_PROVIDER=smtp`, `SMTP_URL`, `EMAIL_FROM` | for real email | `log` only prints |
+| `API_PUBLIC_URL` | for Cashfree webhooks | the https address Cashfree posts payment events to |
+| `SECRETS_KEY` | in production | 32 bytes, base64; encrypts saved gateway keys. Back it up with the database |
 | `METRICS_TOKEN` | recommended | enables `/metrics` |
 | `LOG_REQUESTS` | `on` | JSON access log to stdout |
 | `NODE_ENV=production` | yes | `THROTTLE_DISABLED` is ignored unless `NODE_ENV=test` |
@@ -97,3 +99,15 @@ log line. Log lines contain the route pattern, status and duration only: never U
 3. Back up, then `prisma migrate deploy`.
 4. Deploy API, then web. Check `/health/ready`, sign in, open the dashboard.
 5. Watch error rate and p95 for 30 minutes.
+
+
+## Cashfree online payments
+
+1. In Cashfree: create API keys (Developers > API Keys), whitelist the web app's domain for checkout, and add the webhook
+   URL shown in Settings > Online payments (`<API_PUBLIC_URL>/webhooks/cashfree/<workspace id>`) for payment events.
+2. In FreelanceOS: Settings > Online payments, choose Test or Live, paste the App ID and Secret Key, Connect. The keys are
+   checked with Cashfree before they are saved.
+3. A payment is recorded only after Cashfree confirms the order is PAID (when the client returns from checkout, and again on
+   the webhook); it is keyed by Cashfree's payment id, so retries never record it twice. If a webhook is missed, the client's
+   return still records it; if both are missed, the order stays ACTIVE and can be checked again from the client's invoice.
+4. Rotating `SECRETS_KEY` makes saved gateway keys unreadable: reconnect Cashfree afterwards.

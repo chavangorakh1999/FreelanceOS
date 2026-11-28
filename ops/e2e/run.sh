@@ -26,7 +26,7 @@ start_api() {
   if [ -n "$API_PID" ]; then kill "$API_PID" 2>/dev/null || true; wait "$API_PID" 2>/dev/null || true; fi
   if curl -sf -o /dev/null http://localhost:4000/health/live; then echo "port 4000 is still in use by another process" >&2; exit 1; fi
   (cd "$ROOT/apps/api" && DATABASE_URL="$DB?schema=public" JWT_ACCESS_SECRET="e2e-secret-e2e-secret-e2e-secret-12345" WEB_ORIGIN=http://localhost:3000 \
-    STORAGE_DIR="$OUT/storage" EMAIL_WORKER=off LOG_REQUESTS=off PORT=4000 exec node dist/main.js >> "$OUT/api.log" 2>&1) & API_PID=$!
+    CASHFREE_API_BASE="http://127.0.0.1:4999/pg" STORAGE_DIR="$OUT/storage" EMAIL_WORKER=off LOG_REQUESTS=off PORT=4000 exec node dist/main.js >> "$OUT/api.log" 2>&1) & API_PID=$!
   wait_for http://localhost:4000/health/live
 }
 
@@ -54,5 +54,8 @@ E2E_OUT="$OUT" node "$HERE/real-user.cjs"
 
 fresh_db; start_api
 E2E_OUT="$OUT" node "$HERE/time-payments.cjs"
+
+fresh_db; start_api
+E2E_OUT="$OUT" node "$HERE/cashfree.cjs"
 
 echo "E2E PASSED (screenshots and logs in $OUT)"

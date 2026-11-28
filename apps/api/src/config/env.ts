@@ -14,6 +14,10 @@ export interface Env {
   /** Private file storage root for documents. Never served directly. */
   storageDir: string;
   maxUploadBytes: number;
+  /** Where Cashfree and other services reach this API (webhooks). */
+  apiPublicUrl: string;
+  /** 32-byte key (base64) for gateway secrets at rest. Derived from the JWT secret when not set; set it in production. */
+  secretsKey: string | undefined;
 }
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -39,5 +43,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     emailWorker: (source.EMAIL_WORKER ?? 'on') !== 'off',
     storageDir: source.STORAGE_DIR ?? './var/storage',
     maxUploadBytes: Number(source.MAX_UPLOAD_MB ?? 20) * 1024 * 1024,
+    apiPublicUrl: (source.API_PUBLIC_URL ?? `http://localhost:${source.PORT ?? 4000}`).replace(/\/$/, ''),
+    secretsKey: source.SECRETS_KEY,
   };
 }

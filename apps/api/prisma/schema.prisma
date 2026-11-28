@@ -1313,6 +1313,8 @@ model Invoice {
 
   timeEntries TimeEntry[]
 
+  gatewayOrders GatewayOrder[]
+
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId, status])
   @@index([workspaceId, status, dueDate])
@@ -1813,4 +1815,55 @@ model TimeEntry {
   @@index([invoiceId])
   @@index([userId, runningSince])
   @@map("time_entries")
+}
+
+enum GatewayEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum GatewayOrderStatus {
+  ACTIVE
+  PAID
+  EXPIRED
+  FAILED
+}
+
+/// The freelancer's own Cashfree account. The secret is encrypted with the server's key and never returned.
+model PaymentGateway {
+  workspaceId     String             @id @db.Uuid
+  provider        String             @default("CASHFREE")
+  environment     GatewayEnvironment @default(SANDBOX)
+  clientId        String
+  secretEncrypted String
+  secretLast4     String
+  enabled         Boolean            @default(true)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz
+
+  @@map("payment_gateways")
+}
+
+/// One checkout started by a client for one invoice. Paid only after the gateway itself confirms it; the payment it
+/// produced is linked so the same gateway payment is never recorded twice.
+model GatewayOrder {
+  id               String             @id @default(uuid()) @db.Uuid
+  workspaceId      String             @db.Uuid
+  invoiceId        String             @db.Uuid
+  provider         String             @default("CASHFREE")
+  environment      GatewayEnvironment
+  orderId          String             @unique
+  cfOrderId        String?
+  amountMinor      BigInt
+  currency         String             @db.Char(3)
+  status           GatewayOrderStatus @default(ACTIVE)
+  gatewayPaymentId String?
+  paymentId        String?            @db.Uuid
+  portalUserId     String?            @db.Uuid
+  createdAt        DateTime           @default(now()) @db.Timestamptz
+  updatedAt        DateTime           @updatedAt @db.Timestamptz
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, invoiceId])
+  @@map("gateway_orders")
 }

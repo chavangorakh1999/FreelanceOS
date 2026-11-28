@@ -1,6 +1,7 @@
 'use client';
 
 import { BusinessProfileCard } from '@/components/business-profile';
+import { PaymentGatewayCard } from '@/components/payment-gateway';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Badge, Button, Card, ErrorNote, Field, Input, PageHeader, Spinner } from '@/components/ui';
@@ -34,6 +35,7 @@ export default function SettingsPage() {
       <PageHeader title="Settings" subtitle="Your business details, notifications and account security." />
 
       <BusinessProfileCard />
+      <PaymentGatewayCard />
 
       <Card className="p-6" aria-labelledby="ws-h">
         <h2 id="ws-h" className="mb-4 text-lg font-semibold">Your account</h2>

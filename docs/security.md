@@ -10,7 +10,7 @@ writing). A route added later is covered without anyone remembering to add a tes
 
 | Check | Result |
 |---|---|
-| Every route outside an 18-route public list (sign-in, setup, invitations, password reset, health) refuses a request with no session (401) | all pass |
+| Every route outside a 19-route public list (sign-in, setup, invitations, password reset, health) refuses a request with no session (401) | all pass |
 | A forged token is refused on every GET route | all pass |
 | A staff token opens no portal route; a portal token opens no staff route | all pass |
 | A second workspace, given the first workspace's real ids, gets no success from any route (GET answers 404/400/422, never 200), and nothing in the first workspace changes (no audit event, no rows) | all pass |
@@ -37,6 +37,7 @@ writing). A route added later is covered without anyone remembering to add a tes
 | IDOR | every lookup includes the workspace (and for the portal, the client and grants) in the `WHERE` clause | `security-audit.e2e.ts` sweep |
 | Client access and sharing | one card decides who sees a project (grants and invitations in one transaction, project visibility follows the grants); share dialogs show who will see an item; tasks assigned to a client are forced visible and a client can complete only their own visible task | `collaboration.e2e.ts` |
 | Signatures | a signer signs only as themselves (owner in app, client in portal); staff cannot record `PORTAL` or `IN_APP` methods; images are checked (PNG/JPEG, size), stored privately with SHA-256 and never given a public URL; append-only signature events | `collaboration.e2e.ts` |
+| Online payments (Cashfree) | the owner's own keys; checked with Cashfree before saving; the secret encrypted at rest (AES-256-GCM, `SECRETS_KEY`) and never returned; webhooks verified as base64 HMAC-SHA256 of timestamp + raw body; a payment is recorded only after Cashfree's Get Order says PAID, keyed by Cashfree's payment id so it is recorded once; clients reach only their own invoices' orders | `gateway.e2e.ts`, `ops/e2e/cashfree.cjs` |
 | Audit trail | append-only `audit_events` (trigger), written in the same transaction as the change; covers auth, portal access, sharing, documents, money | e2e tests per module |
 | Export and retention | owner-only workspace and client exports; erasure of a contact's personal data; scheduled purge of expired sessions and old email bodies | `retention.e2e.ts`, `docs/operations.md` |
 

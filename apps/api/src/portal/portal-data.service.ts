@@ -11,6 +11,7 @@ import { InvoicesService } from '../finance/invoices.service';
 import { outstandingMinor, settlementOf, settlements } from '../finance/balances';
 import { NotificationsService } from '../notifications/notifications.service';
 import { payOptions } from '../finance/pay-options';
+import { GatewayService } from '../gateway/gateway.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { presentVersion, ProposalsService } from '../proposals/proposals.service';
 import { ScopeService } from '../scope/scope.service';
@@ -30,7 +31,7 @@ export class PortalDataService {
   constructor(
     private readonly prisma: PrismaService, private readonly proposals: ProposalsService, private readonly agreements: AgreementsService,
     private readonly scope: ScopeService, private readonly changes: ChangeRequestsService, private readonly invoices: InvoicesService,
-    private readonly notify: NotificationsService,
+    private readonly notify: NotificationsService, private readonly gateway: GatewayService,
   ) {}
 
   private async workspaceToday(workspaceId: string) {
@@ -336,6 +337,7 @@ export class PortalDataService {
       creditNotes: inv.creditNotes.map((n) => ({ number: n.number, issuedAt: n.issuedAt, amount: n.amount, reason: n.reason })),
       pay: inv.status === 'VOID' ? null : await payOptions(await this.prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { name: true, legalName: true, paymentInstructions: true, upiId: true, paymentLinkTemplate: true } }),
         { number: inv.number, currency: inv.currency, outstandingMinor: BigInt(inv.balance.outstanding.amountMinor) }),
+      online: inv.status === 'ISSUED' && BigInt(inv.balance.outstanding.amountMinor) > 0n ? await this.gateway.portalOffer(p.workspaceId, inv.currency, p.contactId) : null,
     };
   }
 

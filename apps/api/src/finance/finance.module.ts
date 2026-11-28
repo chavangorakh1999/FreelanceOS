@@ -5,5 +5,5 @@ import { InvoicesService } from './invoices.service';
 import { PaymentsService } from './payments.service';
 
 @Global()
-@Module({ controllers: [FinanceController], providers: [InvoicesService, PaymentsService, FinanceService], exports: [FinanceService, InvoicesService] })
+@Module({ controllers: [FinanceController], providers: [InvoicesService, PaymentsService, FinanceService], exports: [FinanceService, InvoicesService, PaymentsService] })
 export class FinanceModule {}

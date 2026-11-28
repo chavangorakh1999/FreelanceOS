@@ -1,4 +1,5 @@
 import { AccountModule } from './account/account.module';
+import { GatewayModule } from './gateway/gateway.module';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -35,6 +36,7 @@ import { TemplatesModule } from './templates/templates.module';
     AppConfigModule,
     PrismaModule,
     AccountModule,
+    GatewayModule,
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: 300 }],
       // Only honoured under NODE_ENV=test so it can never weaken a deployed instance.

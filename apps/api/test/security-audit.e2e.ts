@@ -11,6 +11,8 @@ const PUBLIC = new Set([
   // Forgot password: public by design, rate limited, and they never say whether an account exists (account.e2e.ts).
   'post /auth/password-reset', 'get /auth/password-reset/:token', 'post /auth/password-reset/confirm',
   'post /portal/auth/password-reset', 'get /portal/auth/password-reset/:token', 'post /portal/auth/password-reset/confirm',
+  // Cashfree's signed payment notifications; refused unless the HMAC matches the workspace's secret (gateway.e2e.ts).
+  'post /webhooks/cashfree/:workspaceId',
 ]);
 const RANDOM = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
 const fill = (path: string, ids: Record<string, string> = {}) =>
