@@ -130,11 +130,15 @@ export class ProposalsService {
       }
       const tpl = await this.templates.find(tx, a.workspaceId, 'PROPOSAL', dto.templateId);
       if (dto.templateId && !tpl) throw notFound('Template');
-      const body = (tpl?.body ?? {}) as { pricingModel?: string; sections?: { kind: string; title: string; body: string }[]; paymentTerms?: { label: string; kind: string; percentageBps?: number; dueInDays?: number }[] };
+      const body = (tpl?.body ?? {}) as { pricingModel?: string; currency?: string; sections?: { kind: string; title: string; body: string }[]; paymentTerms?: { label: string; kind: string; percentageBps?: number; dueInDays?: number }[]; lineItems?: { description: string; quantity: string; unitLabel?: string; unitRate: string; discountBps?: number; taxBps?: number }[] };
       const ws = await tx.workspace.findUniqueOrThrow({ where: { id: a.workspaceId }, select: { defaultCurrency: true, name: true } });
-      const currency = dto.currency ?? ws.defaultCurrency;
+      const currency = dto.currency ?? body.currency ?? ws.defaultCurrency;
       const subst = (t: string) => t.replaceAll('{{client.name}}', client.name).replaceAll('{{freelancer.name}}', ws.name);
 
+      // Pricing lines from a saved template carry over when the currency matches (rates are in that currency).
+      const tplLines = body.currency === currency ? (body.lineItems ?? []) : [];
+      const priced = tplLines.map((l) => ({ description: subst(l.description), quantity: l.quantity, unitRate: this.parse(l.unitRate, currency), discountBps: l.discountBps ?? 0, taxBps: l.taxBps ?? 0 }));
+      const calc = calculateInvoice(currency, priced);
       const number = await this.seq.nextDocumentNumber(tx, a.workspaceId, 'PROPOSAL', 'PROP');
       const proposal = await tx.proposal.create({
         data: {
@@ -145,6 +149,8 @@ export class ProposalsService {
               // Valid for 30 days unless changed, so a new draft is never blocked on a date nobody thought about.
               validUntil: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 30)),
               pricingModel: (body.pricingModel as never) ?? 'FIXED',
+              subtotalMinor: calc.subtotal.amountMinor, discountMinor: calc.discountTotal.amountMinor, taxMinor: calc.taxTotal.amountMinor, totalMinor: calc.total.amountMinor,
+              lineItems: { create: priced.map((l, i) => ({ workspaceId: a.workspaceId, position: i, description: l.description, quantity: l.quantity, unitLabel: tplLines[i]!.unitLabel ?? 'unit', unitRateMinor: l.unitRate.amountMinor, discountBps: l.discountBps, taxBps: l.taxBps, netMinor: calc.lines[i]!.net.amountMinor, taxMinor: calc.lines[i]!.tax.amountMinor })) },
               sections: { create: (body.sections ?? []).map((s, i) => ({ workspaceId: a.workspaceId, position: i, kind: s.kind as never, title: s.title, body: subst(s.body) })) },
               paymentTerms: { create: (body.paymentTerms ?? []).map((t, i) => ({ workspaceId: a.workspaceId, position: i, label: t.label, kind: t.kind as never, percentageBps: t.percentageBps ?? null, dueInDays: t.dueInDays ?? null })) },
             },
@@ -235,13 +241,17 @@ export class ProposalsService {
   }
 
   /** A replacement proposal (e.g. after acceptance): new identity, content copied from the latest version. */
-  duplicate(a: AuthContext, id: string) {
+  duplicate(a: AuthContext, id: string, intoProjectId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const p = await tx.proposal.findFirst({ where: { id, workspaceId: a.workspaceId }, include: { versions: { orderBy: { versionNumber: 'desc' }, take: 1, include: FULL } } });
       if (!p) throw notFound('Proposal');
+      // Copying a past proposal into another project: it takes that project's client and lead.
+      const target = intoProjectId ? await projectForNewRecord(tx, a.workspaceId, intoProjectId) : null;
       const number = await this.seq.nextDocumentNumber(tx, a.workspaceId, 'PROPOSAL', 'PROP');
       const copy = await tx.proposal.create({
-        data: { workspaceId: a.workspaceId, clientId: p.clientId, engagementId: p.engagementId, projectId: p.projectId, number, title: `${p.title} (copy)`, createdById: a.userId },
+        data: target
+          ? { workspaceId: a.workspaceId, clientId: target.clientId, engagementId: target.engagementId, projectId: target.id, number, title: target.name, createdById: a.userId }
+          : { workspaceId: a.workspaceId, clientId: p.clientId, engagementId: p.engagementId, projectId: p.projectId, number, title: `${p.title} (copy)`, createdById: a.userId },
       });
       await this.copyVersion(tx, a, p.versions[0]!, copy.id, 1);
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'proposal.duplicated', targetType: 'proposal', targetId: copy.id, ip: a.ip, metadata: { from: p.number, number } });

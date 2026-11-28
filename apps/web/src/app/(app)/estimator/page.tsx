@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Minus, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -10,7 +10,7 @@ import {
 } from '@freelanceos/shared';
 import { Crumbs } from '@/components/crumbs';
 import { Button, Card, Dialog, ErrorNote, Field, Input, PageHeader, Select } from '@/components/ui';
-import { api, Paged, ProjectDetail, ProjectSummary } from '@/lib/api';
+import { api, Paged, ProjectDetail, ProjectSummary, ProposalDetail, ProposalVersion } from '@/lib/api';
 import { fmtMoney } from '@/lib/format';
 
 const CURRENCIES = ['USD', 'INR', 'EUR', 'GBP', 'AED', 'AUD', 'CAD', 'SGD', 'JPY', 'KWD'];
@@ -48,7 +48,9 @@ export default function EstimatorPage() {
   const set = (p: Partial<State>) => setS((x) => ({ ...x, ...p }));
   const [proposing, setProposing] = useState(false);
   const [projectId, setProjectIdParam] = useState<string | null>(null);
-  useEffect(() => { setProjectIdParam(new URLSearchParams(window.location.search).get('projectId')); }, []);
+  const [proposalId, setProposalId] = useState<string | null>(null);
+  useEffect(() => { const q = new URLSearchParams(window.location.search); setProjectIdParam(q.get('projectId')); setProposalId(q.get('proposalId')); }, []);
+  const forProposal = useQuery({ queryKey: ['proposal', proposalId], queryFn: () => api<ProposalDetail>(`/proposals/${proposalId}`), enabled: !!proposalId });
   const fromProject = useQuery({ queryKey: ['project', projectId], queryFn: () => api<ProjectDetail>(`/projects/${projectId}`), enabled: !!projectId });
 
   const input: EstimateInput | null = useMemo(() => {
@@ -79,10 +81,11 @@ export default function EstimatorPage() {
   return (
     <>
       <title>Price calculator, FreelanceOS</title>
-      <Crumbs items={fromProject.data ? [{ label: 'Projects', href: '/projects' }, { label: fromProject.data.name, href: `/projects/${fromProject.data.id}?tab=proposals` }, { label: 'Price calculator' }] : [{ label: 'Projects', href: '/projects' }, { label: 'Price calculator' }]} />
+      <Crumbs items={forProposal.data ? [{ label: 'Projects', href: '/projects' }, ...(forProposal.data.project ? [{ label: forProposal.data.project.name, href: `/projects/${forProposal.data.project.id}?tab=proposals` }] : []), { label: forProposal.data.number, href: `/proposals/${forProposal.data.id}` }, { label: 'Price calculator' }] : fromProject.data ? [{ label: 'Projects', href: '/projects' }, { label: fromProject.data.name, href: `/projects/${fromProject.data.id}?tab=proposals` }, { label: 'Price calculator' }] : [{ label: 'Projects', href: '/projects' }, { label: 'Price calculator' }]} />
       <PageHeader title="Price calculator" subtitle="Pick what the project needs. Hours come from published estimates; your rate and discount set the price."
         actions={<><Button onClick={() => setS({ ...fresh(s.currency), rate: s.rate })}><RotateCcw size={16} aria-hidden="true" />Start over</Button>
-          <Button variant="primary" disabled={!r || r.totalHours === 0} onClick={() => setProposing(true)}>Create proposal</Button></>} />
+          {forProposal.data ? <UseInProposal proposal={forProposal.data} input={input} result={r} payments={payments} />
+            : <Button variant="primary" disabled={!r || r.totalHours === 0} onClick={() => setProposing(true)}>Create proposal</Button>}</>} />
 
       <section aria-labelledby="tpl-h" className="flex flex-col gap-2">
         <h2 id="tpl-h" className="text-sm font-medium text-ink-2">Start from a template</h2>
@@ -285,5 +288,32 @@ function ProposalDialog({ input, result, payments, projectId: fixed, onClose }: 
         <ErrorNote error={create.error} />
       </form>
     </Dialog>
+  );
+}
+
+/** Opened from a proposal: replace that draft's pricing lines, payment terms and pricing model with this estimate. */
+function UseInProposal({ proposal, input, result, payments }: { proposal: ProposalDetail; input: EstimateInput | null; result: ReturnType<typeof calculateEstimate> | null; payments: ReturnType<typeof planPayments> | null }) {
+  const router = useRouter();
+  const qc = useQueryClient();
+  const latest = proposal.versions[0]!;
+  const use = useMutation({
+    mutationFn: async () => {
+      const v = await api<ProposalVersion>(`/proposals/${proposal.id}/versions/${latest.versionNumber}`);
+      await api(`/proposals/${proposal.id}/versions/${latest.versionNumber}`, { method: 'PUT', body: {
+        pricingModel: payments!.pricingModel, currency: input!.currency, validUntil: v.validUntil ? v.validUntil.slice(0, 10) : null,
+        summary: v.summary ?? `Estimated at ${result!.totalHours} hours. ${payments!.description}`,
+        sections: v.sections.map((x) => ({ kind: x.kind, title: x.title, body: x.body })),
+        lineItems: estimateToProposalLines(input!, result!), paymentTerms: payments!.terms,
+      } });
+    },
+    // The proposal page must load the new pricing, not a cached copy.
+    onSuccess: () => { qc.removeQueries({ queryKey: ['proposal', proposal.id] }); router.push(`/proposals/${proposal.id}`); },
+  });
+  if (latest.status !== 'DRAFT') return <span className="self-center text-[13px] text-muted">{proposal.number} v{latest.versionNumber} is locked. Start a new version on the proposal to re-price it.</span>;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="primary" disabled={!result || result.totalHours === 0 || !payments || use.isPending} onClick={() => use.mutate()}>{use.isPending ? 'Saving…' : `Use in ${proposal.number}`}</Button>
+      {use.error ? <ErrorNote error={use.error} /> : <span className="text-[12px] text-muted">Replaces its pricing and payment terms; text is kept.</span>}
+    </div>
   );
 }

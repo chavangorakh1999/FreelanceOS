@@ -1,9 +1,11 @@
+import { IsOptional, IsUUID } from 'class-validator';
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Auth, AuthContext } from '../common/auth';
 import { CreateProposalDto, DecisionDto, ListProposalsQuery, SaveVersionDto } from './proposals.dto';
 import { ProposalsService } from './proposals.service';
 
+class DuplicateDto { @IsOptional() @IsUUID() projectId?: string }
 const uuid = new ParseUUIDPipe();
 const ver = new ParseIntPipe();
 
@@ -27,7 +29,7 @@ export class ProposalsController {
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"`, 'Cache-Control': 'private, no-store' }).send(buffer);
   }
 
-  @Post(':id/duplicate') duplicate(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.svc.duplicate(a, id); }
+  @Post(':id/duplicate') duplicate(@Auth() a: AuthContext, @Param('id', uuid) id: string, @Body() dto: DuplicateDto) { return this.svc.duplicate(a, id, dto?.projectId); }
   @HttpCode(204) @Post(':id/archive') archive(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.svc.setArchived(a, id, true); }
   @HttpCode(204) @Post(':id/restore') restore(@Auth() a: AuthContext, @Param('id', uuid) id: string) { return this.svc.setArchived(a, id, false); }
 }

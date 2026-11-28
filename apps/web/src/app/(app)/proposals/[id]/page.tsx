@@ -5,7 +5,7 @@ import { WhoSees } from '@/components/who-sees';
 import { Crumbs } from '@/components/crumbs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { calculateInvoice, formatMoney, hasPlaceholder, parseMoney, placeholderTitles } from '@freelanceos/shared';
-import { ChevronDown, ChevronUp, Download, FilePlus2, Plus, Trash2 } from 'lucide-react';
+import { Calculator, ChevronDown, ChevronUp, Download, FilePlus2, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -31,6 +31,7 @@ export default function ProposalPage() {
   const version = useQuery({ queryKey: ['proposal', id, 'v', n], queryFn: () => api<ProposalVersion>(`/proposals/${id}/versions/${n}`), enabled: !!detail.data });
   const [deciding, setDeciding] = useState(false);
   const [pdfError, setPdfError] = useState<unknown>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const router = useRouter();
   const draftAgreement = useMutation({ mutationFn: () => api<{ id: string }>('/agreements', { body: { proposalId: id } }), onSuccess: (a) => router.push(`/agreements/${a.id}`) });
 
@@ -74,6 +75,7 @@ export default function ProposalPage() {
               {latest.status === 'DRAFT' && <p className="text-[13px] text-muted">Finish the draft, then share it from the bar at the bottom of the page.</p>}
               {p.status !== 'ACCEPTED' && latest.status !== 'DRAFT' && <Button onClick={() => newVersion.mutate()} disabled={newVersion.isPending}>Start new version</Button>}
               <Button variant="ghost" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>{p.status === 'ACCEPTED' ? 'Duplicate as replacement' : 'Duplicate proposal'}</Button>
+              <Button variant="ghost" onClick={() => setSavingTemplate(true)}>Save as template</Button>
             </div>
             <LinkedRecords rows={[
               ...(p.engagement ? [{ kind: 'Lead', label: p.engagement.title, href: `/engagements/${p.engagement.id}` }] : []),
@@ -110,6 +112,7 @@ export default function ProposalPage() {
       </div>
       <CommentsPanel staff shared={p.versions.some((x) => x.status !== 'DRAFT')} queryKey={['staff-comments', 'proposal', id]}
         load={() => api<CommentItem[]>(`/proposals/${id}/comments`)} post={(body, visibility) => api(`/proposals/${id}/comments`, { body: { body, visibility } })} />
+      {savingTemplate && <SaveTemplateDialog proposalId={id} defaultName={p.title} onClose={() => setSavingTemplate(false)} />}
       {v && <DecisionDialog open={deciding} onClose={() => setDeciding(false)} proposalId={id} version={v} onDone={() => { setDeciding(false); refresh(); }} />}
     </>
   );
@@ -162,6 +165,7 @@ const pctToBps = (s: string) => Math.min(10000, Math.max(0, Math.round(Number(s 
 const bpsToPct = (b: number | null) => (b == null ? '' : String(b / 100));
 
 function DraftEditor({ proposalId, clientId, version: v, onChanged }: { proposalId: string; clientId: string; version: ProposalVersion; onChanged: () => void }) {
+  const profile = useQuery({ queryKey: ['workspace-profile'], queryFn: () => api<{ defaultTaxBps: number }>('/workspace/profile') });
   const qc = useQueryClient();
   const [pricingModel, setPricingModel] = useState(v.pricingModel);
   const [currency, setCurrency] = useState(v.currency);
@@ -242,7 +246,9 @@ function DraftEditor({ proposalId, clientId, version: v, onChanged }: { proposal
       <div><Button onClick={() => setSections((s) => [...s, { kind: 'CUSTOM', title: 'New section', body: '' }])}><Plus size={16} aria-hidden="true" />Add section</Button></div>
 
       <Card className="p-6" aria-labelledby="lines-h">
-        <h2 id="lines-h" className="mb-4 text-lg font-semibold">Pricing</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 id="lines-h" className="text-lg font-semibold">Pricing</h2>
+          <Link href={`/estimator?proposalId=${proposalId}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"><Calculator size={15} aria-hidden="true" />{lines.length ? 'Re-price with the calculator' : 'Price with the calculator'}</Link></div>
+        {lines.length === 0 && <p className="mb-2 rounded-control bg-stat px-4 py-3 text-[13px] text-ink-2">No pricing yet. <Link href={`/estimator?proposalId=${proposalId}`} className="font-medium text-accent hover:underline">Use the price calculator</Link> to fill hours, rate and payment terms from researched estimates, or add lines yourself.</p>}
         <div className="flex flex-col gap-4">
           {lines.map((l, i) => (
             <fieldset key={i} className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] items-end gap-3 rounded-stat bg-stat p-4">
@@ -260,7 +266,7 @@ function DraftEditor({ proposalId, clientId, version: v, onChanged }: { proposal
             </fieldset>
           ))}
         </div>
-        <div className="mt-4"><Button onClick={() => setLines((a) => [...a, { description: '', quantity: '1', unitLabel: 'unit', unitRate: '0', discountPct: '0', taxPct: '18' }])}><Plus size={16} aria-hidden="true" />Add line</Button></div>
+        <div className="mt-4"><Button onClick={() => setLines((a) => [...a, { description: '', quantity: '1', unitLabel: 'unit', unitRate: '0', discountPct: '0', taxPct: String((profile.data?.defaultTaxBps ?? 0) / 100) }])}><Plus size={16} aria-hidden="true" />Add line</Button></div>
         <div className="ml-auto mt-5 flex w-[300px] max-w-full flex-col gap-2">
           {preview.ok ? (<>
             <Row k="Subtotal" v={formatMoney(preview.c.subtotal, { locale: 'en-IN' })} />
@@ -331,6 +337,24 @@ function DecisionDialog({ open, onClose, proposalId, version, onDone }: { open: 
         <Field label={decision === 'CHANGES_REQUESTED' ? 'What changes were requested?' : 'Note / evidence (optional)'} hint="E.g. who confirmed it and where.">{(id, d) => <Textarea id={id} aria-describedby={d} required={decision === 'CHANGES_REQUESTED'} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
         <ErrorNote error={m.error} />
       </form>
+    </Dialog>
+  );
+}
+
+/** Keep this proposal's sections, pricing and payment terms as a template for the next client. */
+function SaveTemplateDialog({ proposalId, defaultName, onClose }: { proposalId: string; defaultName: string; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(defaultName);
+  const m = useMutation({ mutationFn: () => api('/templates/from-proposal', { body: { proposalId, name: name.trim() } }), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['templates'] }); } });
+  return (
+    <Dialog open onClose={onClose} title="Save as template"
+      footer={m.isSuccess ? <Button variant="primary" onClick={onClose}>Done</Button> : <><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="save-tpl" disabled={!name.trim() || m.isPending}>{m.isPending ? 'Saving…' : 'Save template'}</Button></>}>
+      {m.isSuccess ? <p role="status" className="text-ink-2">Saved. Choose <strong>{name}</strong> under “Start from template” when you write the next proposal.</p> : (
+        <form id="save-tpl" className="grid gap-3" onSubmit={(e) => { e.preventDefault(); if (!m.isPending) m.mutate(); }}>
+          <Field label="Template name">{(fid) => <Input id={fid} required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+          <p className="text-[13px] text-muted">Sections, pricing lines and payment terms are saved. The client’s name becomes a placeholder, filled in for the next client.</p>
+          <ErrorNote error={m.error} />
+        </form>)}
     </Dialog>
   );
 }

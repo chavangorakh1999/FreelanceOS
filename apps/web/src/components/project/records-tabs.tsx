@@ -45,19 +45,29 @@ function NewProposal({ project, onClose }: { project: ProjectDetail; onClose: ()
   const router = useRouter();
   const templates = useQuery({ queryKey: ['templates', 'PROPOSAL'], queryFn: () => api<TemplateInfo[]>('/templates', { query: { kind: 'PROPOSAL' } }) });
   const [title, setTitle] = useState(project.name);
-  const [templateId, setTemplateId] = useState('');
+  const [from, setFrom] = useState('');
+  // Your past proposals (from any project) can be copied in: sections, pricing and terms, ready to adjust.
+  const past = useQuery({ queryKey: ['proposals', 'all-for-copy'], queryFn: () => api<Paged<ProposalSummary>>('/proposals', { query: { pageSize: 50 } }) });
+  const copying = from.startsWith('p:');
   const m = useMutation({
-    mutationFn: () => api<{ id: string }>('/proposals', { body: { projectId: project.id, title: title.trim(), templateId: templateId || undefined } }),
+    mutationFn: () => copying
+      ? api<{ id: string }>(`/proposals/${from.slice(2)}/duplicate`, { body: { projectId: project.id } })
+      : api<{ id: string }>('/proposals', { body: { projectId: project.id, title: title.trim(), templateId: from.startsWith('t:') ? from.slice(2) : undefined } }),
     onSuccess: (p) => router.push(`/proposals/${p.id}`),
   });
+  const tpl = templates.data?.find((t) => `t:${t.id}` === from);
   return (
     <Dialog open onClose={onClose} title={`New proposal for ${project.client.name}`}
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="proj-proposal" disabled={m.isPending || !title.trim()}>{m.isPending ? 'Creating…' : 'Create proposal'}</Button></>}>
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="proj-proposal" disabled={m.isPending || (!copying && !title.trim())}>{m.isPending ? 'Creating…' : 'Create proposal'}</Button></>}>
       <form id="proj-proposal" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
-        <Field label="Title">{(id) => <Input id={id} required value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} />}</Field>
-        <Field label="Start from template" hint={templates.data?.find((t) => t.id === templateId)?.description ?? 'Defaults to the first template.'}>
-          {(id, d) => <Select id={id} aria-describedby={d} value={templateId} onChange={(e) => setTemplateId(e.target.value)}><option value="">Default</option>{templates.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select>}
+        <Field label="Start from" hint={copying ? 'A copy with its sections, pricing and payment terms, filed under this project.' : tpl?.description ?? 'The first template, with guidance to replace.'}>
+          {(id, d) => <Select id={id} aria-describedby={d} value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value="">Default template</option>
+            {templates.data?.length ? <optgroup label="Templates">{templates.data.map((t) => <option key={t.id} value={`t:${t.id}`}>{t.name}</option>)}</optgroup> : null}
+            {past.data?.items.length ? <optgroup label="Copy a past proposal">{past.data.items.map((x) => <option key={x.id} value={`p:${x.id}`}>{x.number}, {x.title} ({x.client.name})</option>)}</optgroup> : null}
+          </Select>}
         </Field>
+        {!copying && <Field label="Title">{(id) => <Input id={id} required value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} />}</Field>}
         <ErrorNote error={m.error} />
       </form>
     </Dialog>

@@ -154,3 +154,16 @@ Checked by `ops/e2e/first-run.cjs` and `apps/api/test/account.e2e.ts`.
   {currency} and {invoice} filled in. Both are on the PDF too. The client can press "I've paid this" with a reference; you get a
   notification (once a day per invoice) and record the payment against your bank statement.
 Checked by `apps/api/test/time.e2e.ts` and `ops/e2e/time-payments.cjs`.
+
+## Faster proposals
+
+- **Your own templates:** "Save as template" on any proposal keeps its sections, pricing lines (with currency), payment terms
+  and pricing model; the client's name becomes a placeholder. New proposals start from it with prices filled in (when the
+  currency matches). Templates can be deleted, and the name reused.
+- **Copy a past proposal** from the project's New proposal dialog ("Start from" lists templates and past proposals): the copy
+  takes the project's client, lead and name.
+- **Calculator inside the editor:** "Price with the calculator" on a draft opens the calculator for that proposal; "Use in
+  PROP-…" replaces its pricing lines, payment terms and pricing model and keeps the text. New lines use the workspace's
+  default tax instead of a fixed 18%.
+Measured: from a lead to a priced draft from a template, 4 actions. Checked by `apps/api/test/templates.e2e.ts` and
+`ops/e2e/faster-proposal.cjs`.
