@@ -27,6 +27,8 @@ const ok = (m) => console.log('✓ ' + m);
 
   await p.getByRole('link', { name: 'Open settings' }).click(); await p.waitForURL('**/settings');
   await p.getByText('Incomplete').waitFor();
+  await p.getByLabel('Logo image').setInputFiles(path.join(__dirname, '../../apps/api/test/fixtures-signature.png'));
+  await p.getByRole('img', { name: 'Your logo' }).waitFor();
   await p.getByLabel('Address line 1').fill('12 MG Road'); await p.getByLabel('City').fill('Pune'); await p.getByLabel('Country').fill('in');
   await p.getByLabel('Tax ID (GSTIN, VAT, EIN)').fill('27ABCDE1234F1Z5'); await p.getByLabel('UPI ID').fill('gorakh@okhdfcbank'); await p.getByLabel('Other ways to pay').fill('Bank: HDFC, A/C 123');
   await p.getByLabel('Default tax (%)').fill('0');
@@ -34,7 +36,7 @@ const ok = (m) => console.log('✓ ' + m);
   await p.getByRole('button', { name: 'Save profile' }).click(); await p.getByText('Ready for invoices').waitFor();
   if (psql("SELECT timezone FROM workspaces") !== tzBefore) throw new Error('saving the profile changed the time zone');
   await p.screenshot({ path: `${out}/02-business-profile.png`, fullPage: true });
-  ok('the business profile saves address, tax ID, how to pay and defaults');
+  ok('the business profile saves the logo, address, tax ID, how to pay and defaults');
 
   await p.goto(WEB + '/engagements?new=1'); const d = p.locator('dialog[open]');
   await d.getByLabel('Client name').waitFor(); // no clients yet: the new-client fields are already open

@@ -36,10 +36,13 @@ const STYLE = `
   .draft { color: #92400e; background: #fef3e2; }
 `;
 
-const page = (title: string, body: string) =>
-  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${STYLE}</style></head><body>${body}</body></html>`;
+/** The logo is a data URL we built from a checked PNG, JPEG or WebP; anything else is ignored. */
+const logoHtml = (logo?: string | null) => (logo && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(logo) ? `<img src="${logo}" alt="" style="display:block;max-height:56px;max-width:200px;object-fit:contain;margin:0 0 20px">` : '');
+const page = (title: string, logo: string | null | undefined, body: string) =>
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${STYLE}</style></head><body>${logoHtml(logo)}${body}</body></html>`;
 
 export interface ProposalDoc {
+  logo?: string | null;
   number: string; title: string; versionNumber: number; status: string; currency: string; locale: string;
   workspaceName: string; clientName: string; validUntil: string | null; pricingModel: string; summary: string | null;
   sections: { title: string; body: string }[];
@@ -56,7 +59,7 @@ export function renderProposalHtml(d: ProposalDoc): string {
     const due = t.dueInDays != null ? `within ${t.dueInDays} days` : '';
     return `<tr><td>${esc(t.label)}</td><td class="r">${esc([how, due].filter(Boolean).join(' · '))}</td></tr>`;
   }).join('');
-  return page(`${d.number} v${d.versionNumber}`, `
+  return page(`${d.number} v${d.versionNumber}`, d.logo, `
     <h1>${esc(d.title)}${draft}</h1>
     <div class="meta">${esc(d.number)} · Version ${d.versionNumber} · Prepared by ${esc(d.workspaceName)} for ${esc(d.clientName)}${d.validUntil ? ` · Valid until ${esc(d.validUntil)}` : ''}</div>
     ${d.summary ? para(d.summary) : ''}
@@ -76,6 +79,7 @@ export function renderProposalHtml(d: ProposalDoc): string {
 }
 
 export interface AgreementDoc {
+  logo?: string | null;
   number: string; title: string; versionNumber: number; status: string; workspaceName: string; clientName: string;
   contentHash: string | null; sentAt: string | null;
   clauses: { heading: string; body: string }[];
@@ -85,7 +89,7 @@ export interface AgreementDoc {
 
 export function renderAgreementHtml(d: AgreementDoc): string {
   const draft = d.status === 'DRAFT' ? '<span class="badge draft">DRAFT</span>' : '';
-  return page(`${d.number} v${d.versionNumber}`, `
+  return page(`${d.number} v${d.versionNumber}`, d.logo, `
     <h1>${esc(d.title)}${draft}</h1>
     <div class="meta">${esc(d.number)} · Version ${d.versionNumber} · ${esc(d.workspaceName)} and ${esc(d.clientName)}</div>
     ${d.clauses.map((c, i) => `<h2>${i + 1}. ${esc(c.heading)}</h2>${para(c.body)}`).join('')}
@@ -95,6 +99,7 @@ export function renderAgreementHtml(d: AgreementDoc): string {
 }
 
 export interface InvoiceDoc {
+  logo?: string | null;
   number: string | null; status: string; currency: string; locale: string; issueDate: string | null; dueDate: string | null;
   supplier: { name: string; taxId: string | null; address: string | null }; billTo: { name: string; taxId: string | null; address: string | null };
   notes: string | null;
@@ -112,7 +117,7 @@ export function renderInvoiceHtml(d: InvoiceDoc): string {
   const m = (v: bigint) => esc(fmt(v, d.currency, d.locale));
   const draft = d.status === 'DRAFT' ? '<span class="badge draft">DRAFT</span>' : d.status === 'VOID' ? '<span class="badge draft">VOID</span>' : '';
   const taxLabel = (bps: number) => (bps ? `${(bps / 100).toFixed(2).replace(/\.00$/, '')}%` : '—');
-  return page(d.number ?? 'Draft invoice', `
+  return page(d.number ?? 'Draft invoice', d.logo, `
     <h1>Invoice ${esc(d.number ?? '')}${draft}</h1>
     <div class="meta">${d.issueDate ? `Issued ${esc(d.issueDate)}` : 'Not yet issued'}${d.dueDate ? ` · Due ${esc(d.dueDate)}` : ''}</div>
     <div class="sig" style="margin-top:0">

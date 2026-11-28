@@ -47,7 +47,7 @@ model User {
 }
 
 model Workspace {
-  id                  String   @id @default(uuid()) @db.Uuid
+  id                  String    @id @default(uuid()) @db.Uuid
   name                String
   legalName           String?
   email               String?
@@ -57,7 +57,7 @@ model Workspace {
   city                String?
   region              String?
   postalCode          String?
-  country             String?  @db.Char(2) // ISO 3166-1 alpha-2
+  country             String?   @db.Char(2) // ISO 3166-1 alpha-2
   taxIdentifier       String? // e.g. GSTIN; not assumed to be Indian
   /// How clients pay: bank account, UPI ID, payment link. Printed on every invoice.
   paymentInstructions String?
@@ -65,11 +65,15 @@ model Workspace {
   upiId               String?
   /// A payment page (Razorpay, Stripe, PayPal...). {amount}, {currency} and {invoice} are filled in per invoice.
   paymentLinkTemplate String?
-  defaultCurrency     String   @default("INR") @db.Char(3)
-  timezone            String   @default("Asia/Kolkata")
-  locale              String   @default("en-IN")
-  createdAt           DateTime @default(now()) @db.Timestamptz
-  updatedAt           DateTime @updatedAt @db.Timestamptz
+  /// The business logo, stored privately like documents; printed on PDFs and shown in the client portal.
+  logoStorageKey      String?
+  logoMimeType        String?
+  logoUpdatedAt       DateTime? @db.Timestamptz
+  defaultCurrency     String    @default("INR") @db.Char(3)
+  timezone            String    @default("Asia/Kolkata")
+  locale              String    @default("en-IN")
+  createdAt           DateTime  @default(now()) @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @db.Timestamptz
 
   memberships     WorkspaceMembership[]
   settings        WorkspaceSettings?

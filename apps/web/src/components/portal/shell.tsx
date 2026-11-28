@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Bell, Files, FileSignature, FileText, FolderKanban, Home, LogOut, Receipt, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { papi } from '@/lib/portal-api';
+import { papi, portalBlobUrl } from '@/lib/portal-api';
 import { usePortalAuth, usePortalMe } from '@/lib/portal-auth';
 
 const NAV = [
@@ -31,7 +31,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       <header className="border-b border-line bg-shell">
         <div className="mx-auto flex w-full max-w-[1040px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink text-sm font-semibold text-white">{me.businessName.charAt(0).toUpperCase()}</span>
+            <BusinessMark name={me.businessName} version={me.logoVersion} />
             <div className="min-w-0 leading-tight"><div className="truncate font-semibold">{me.businessName}</div><div className="truncate text-[13px] text-muted">for {me.organization.name}</div></div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -69,4 +69,12 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       <footer className="mx-auto hidden w-full max-w-[1040px] px-4 pb-8 text-[13px] text-muted sm:block sm:px-6">Shared securely by {me.businessName}.</footer>
     </div>
   );
+}
+
+/** The freelancer's logo when they have one, else the first letter of the business name. */
+function BusinessMark({ name, version }: { name: string; version: number | null }) {
+  const img = useQuery({ queryKey: ['portal', 'logo', version], queryFn: () => portalBlobUrl('/portal/branding/logo'), enabled: version !== null, staleTime: Infinity });
+  // eslint-disable-next-line @next/next/no-img-element
+  if (version !== null && img.data) return <img src={img.data} alt={name} className="h-8 max-w-28 shrink-0 object-contain" />;
+  return <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink text-sm font-semibold text-white">{name.charAt(0).toUpperCase()}</span>;
 }

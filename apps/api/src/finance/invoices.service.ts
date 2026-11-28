@@ -10,6 +10,7 @@ import { skipTake } from '../common/pagination';
 import { renderInvoiceHtml } from '../documents/html';
 import { payOptions } from './pay-options';
 import { PdfService } from '../documents/pdf.service';
+import { BrandingService } from '../account/branding.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
@@ -28,7 +29,7 @@ const lineJson = (l: { id: string; position: number; description: string; quanti
 export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService, private readonly audit: AuditService,
-    private readonly seq: NumberSequenceService, private readonly pdf: PdfService, private readonly notify: NotificationsService,
+    private readonly seq: NumberSequenceService, private readonly pdf: PdfService, private readonly notify: NotificationsService, private readonly branding: BrandingService,
   ) {}
 
   private async today(db: Db, workspaceId: string) {
@@ -286,6 +287,7 @@ export class InvoicesService {
     const c = inv.currency;
     const pay = inv.stored === 'ISSUED' ? await payOptions(ws, { number: inv.number, currency: c, outstandingMinor: BigInt(inv.balance.outstanding.amountMinor) }) : null;
     const html = renderInvoiceHtml({
+      logo: await this.branding.dataUrl(a.workspaceId),
       number: inv.number, status: inv.stored, currency: c, locale: ws.locale, issueDate: inv.issueDate ? ymd(inv.issueDate) : null, dueDate: inv.dueDate ? ymd(inv.dueDate) : null,
       supplier: { name: inv.supplier.name ?? ws.name, taxId: inv.supplier.taxId, address: inv.supplier.address }, billTo: { name: inv.billTo.name ?? inv.client.name, taxId: inv.billTo.taxId, address: inv.billTo.address },
       notes: inv.notes, paymentInstructions: ws.paymentInstructions, upiQrSvg: pay?.upiQrSvg ?? null, upiId: pay?.upiLink ? ws.upiId : null, payLink: pay?.payLink ?? null, lines: inv.lines.map((l) => ({ description: l.description, quantity: l.quantity, unitLabel: l.unitLabel, unitRateMinor: BigInt(l.unitRate.amountMinor), netMinor: BigInt(l.net.amountMinor), taxBps: l.taxBps })),

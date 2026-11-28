@@ -167,3 +167,9 @@ Checked by `apps/api/test/time.e2e.ts` and `ops/e2e/time-payments.cjs`.
   default tax instead of a fixed 18%.
 Measured: from a lead to a priced draft from a template, 4 actions. Checked by `apps/api/test/templates.e2e.ts` and
 `ops/e2e/faster-proposal.cjs`.
+
+## Logo
+
+Settings > Business profile takes a logo (PNG, JPEG or WebP, up to 1 MB, checked by its bytes; no SVG, which can carry
+script). It prints at the top of invoice, proposal and agreement PDFs and replaces the letter mark in the client portal
+header. Stored privately like documents and served only to the workspace and its portal users.

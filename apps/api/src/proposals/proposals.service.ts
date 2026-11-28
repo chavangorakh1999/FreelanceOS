@@ -9,6 +9,7 @@ import { skipTake } from '../common/pagination';
 import { renderProposalHtml } from '../documents/html';
 import { PdfService } from '../documents/pdf.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BrandingService } from '../account/branding.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
@@ -61,7 +62,7 @@ export class ProposalsService {
     private readonly seq: NumberSequenceService,
     private readonly templates: TemplatesService,
     private readonly pdf: PdfService,
-    private readonly notify: NotificationsService,
+    private readonly notify: NotificationsService, private readonly branding: BrandingService,
   ) {}
 
   // ───────── reads ─────────
@@ -308,6 +309,7 @@ export class ProposalsService {
     if (!p) throw notFound('Proposal');
     const v = await this.loadVersion(this.prisma, a, id, n);
     const html = renderProposalHtml({
+      logo: await this.branding.dataUrl(a.workspaceId),
       number: p.number, title: p.title, versionNumber: v.versionNumber, status: v.status, currency: v.currency, locale: p.workspace.locale,
       workspaceName: p.workspace.name, clientName: p.client.name, validUntil: v.validUntil ? v.validUntil.toISOString().slice(0, 10) : null,
       pricingModel: v.pricingModel, summary: v.summary, sections: v.sections,

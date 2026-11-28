@@ -82,7 +82,7 @@ export async function portalDownload(path: string, fallbackName: string): Promis
 // ───────── response types ─────────
 
 export type Role = 'VIEWER' | 'APPROVER';
-export interface PortalMe { user: { id: string; name: string; email: string }; role: Role; organization: { id: string; name: string }; businessName: string; membershipId: string }
+export interface PortalMe { user: { id: string; name: string; email: string }; role: Role; organization: { id: string; name: string }; businessName: string; membershipId: string; logoVersion: number | null }
 export interface PortalOrg { membershipId: string; organizationName: string; businessName: string; role: Role }
 export interface InvitationInfo { valid: boolean; businessName?: string; organizationName?: string; firstName?: string; role?: Role; existingAccount?: boolean }
 

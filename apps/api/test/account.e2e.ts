@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { bearer, createHarness, Harness, OWNER, setupOwner } from './harness';
 import { PORTAL_PASSWORD, portalKit } from './portal-helpers';
@@ -26,6 +28,29 @@ describe('business profile and password reset', () => {
       expect([400, 422]).toContain(r.status);
     }
     await h.http().patch('/workspace/profile').send({ name: 'x' }).expect(401);
+  });
+
+  it('uploads a logo (PNG, JPEG or WebP only, 1 MB max), serves it to the owner and the client portal, and removes it', async () => {
+    const png = readFileSync(join(__dirname, 'fixtures-signature.png'));
+    expect((await h.http().get('/workspace/profile').set(T()).expect(200)).body.logo).toBeNull();
+    await h.http().post('/workspace/profile/logo').set(T()).attach('file', Buffer.from('<svg onload="x()"/>'), 'logo.svg').expect(422);
+    await h.http().post('/workspace/profile/logo').set(T()).attach('file', Buffer.alloc(1024 * 1024 + 10, 1), 'big.png').expect((r) => expect([413, 422]).toContain(r.status));
+    await h.http().post('/workspace/profile/logo').set(T()).attach('file', png, 'logo.png').expect(201);
+    expect((await h.http().get('/workspace/profile').set(T()).expect(200)).body.logo).toEqual({ version: expect.any(Number) });
+    const got = await h.http().get('/workspace/profile/logo').set(T()).buffer(true).parse((res, cb) => { const c: Buffer[] = []; res.on('data', (d: Buffer) => c.push(d)); res.on('end', () => cb(null, Buffer.concat(c))); }).expect(200);
+    expect(got.headers['content-type']).toBe('image/png');
+    expect(Buffer.compare(got.body as Buffer, png)).toBe(0);
+
+    const k = portalKit(h, token);
+    const c = await k.client();
+    const { token: pt } = await k.onboard({ ...c, email: 'priya@northwindlabs.test' });
+    expect((await h.http().get('/portal/auth/me').set(bearer(pt)).expect(200)).body.logoVersion).toEqual(expect.any(Number));
+    await h.http().get('/portal/branding/logo').set(bearer(pt)).expect(200);
+    await h.http().get('/portal/branding/logo').expect(401);
+
+    await h.http().delete('/workspace/profile/logo').set(T()).expect(204);
+    await h.http().get('/workspace/profile/logo').set(T()).expect(404);
+    expect((await h.http().get('/portal/auth/me').set(bearer(pt)).expect(200)).body.logoVersion).toBeNull();
   });
 
   it('prints the business address, tax ID and how to pay on issued invoices', async () => {

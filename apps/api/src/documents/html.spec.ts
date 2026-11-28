@@ -20,6 +20,15 @@ describe('document HTML', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
+  it('prints a logo only when it is a real image data URL', () => {
+    const doc = (logo: string) => renderProposalHtml({
+      logo, number: 'P', title: 'T', versionNumber: 1, status: 'SHARED', currency: 'INR', locale: 'en-IN', workspaceName: 'W', clientName: 'C', validUntil: null,
+      pricingModel: 'FIXED', summary: null, sections: [], lineItems: [], paymentTerms: [], subtotalMinor: 0n, discountMinor: 0n, taxMinor: 0n, totalMinor: 0n,
+    });
+    expect(doc('data:image/png;base64,iVBORw0KGgo=')).toContain('<img src="data:image/png;base64,iVBORw0KGgo="');
+    for (const bad of ['data:image/svg+xml;base64,PHN2Zz4=', 'javascript:alert(1)', 'data:image/png;base64,"><script>x</script>', 'https://evil.example/x.png']) expect(doc(bad)).not.toContain('<img');
+  });
+
   it('formats money exactly and labels drafts', () => {
     const html = renderProposalHtml({
       number: 'P', title: 'T', versionNumber: 2, status: 'DRAFT', currency: 'INR', locale: 'en-IN', workspaceName: 'W', clientName: 'C', validUntil: '2026-12-01',

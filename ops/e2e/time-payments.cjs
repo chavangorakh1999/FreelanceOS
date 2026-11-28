@@ -14,6 +14,9 @@ const ok = (m) => console.log('✓ ' + m);
   const setup = await (await fetch(API + '/auth/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Gorakh Chavan', email: 'owner@example.com', password: PW, workspaceName: 'Gorakh Studio', defaultCurrency: 'INR' }) })).json();
   const call = async (m, u, b) => { const r = await fetch(API + u, { method: m, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + setup.accessToken }, body: b ? JSON.stringify(b) : undefined }); const t = await r.text(); if (!r.ok) throw new Error(`${m} ${u} ${r.status} ${t}`); return t ? JSON.parse(t) : null; };
   await call('PATCH', '/workspace/profile', { addressLine1: '12 MG Road', city: 'Pune', country: 'IN', upiId: 'gorakh@okhdfcbank', paymentLinkTemplate: 'https://pay.example.com/gorakh?amount={amount}&ref={invoice}', defaultTaxBps: 0 });
+  const fd = new FormData(); fd.append('file', new Blob([fs.readFileSync(path.join(__dirname, '../../apps/api/test/fixtures-signature.png'))], { type: 'image/png' }), 'logo.png');
+  const up = await fetch(API + '/workspace/profile/logo', { method: 'POST', headers: { Authorization: 'Bearer ' + setup.accessToken }, body: fd });
+  if (up.status !== 201) throw new Error('logo upload ' + up.status);
   const c = await call('POST', '/clients', { type: 'COMPANY', name: 'Northwind Labs', primaryContact: { firstName: 'Priya', lastName: 'Menon', email: 'priya@nw.test' } });
   const pr = await call('POST', '/projects', { clientId: c.id, name: 'Billing portal' });
   await call('POST', `/projects/${pr.id}/tasks`, { title: 'Checkout page' });
@@ -53,6 +56,7 @@ const ok = (m) => console.log('✓ ' + m);
   const phone = await (await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true })).newPage();
   await phone.goto(WEB + '/portal/login'); await phone.getByLabel('Email').fill('priya@nw.test'); await phone.getByLabel('Password').fill(PW); await phone.getByRole('button', { name: 'Sign in' }).click(); await phone.waitForURL('**/portal');
   await phone.goto(`${WEB}/portal/invoices/${invoiceId}`);
+  await phone.getByRole('img', { name: 'Gorakh Studio' }).first().waitFor(); // the freelancer's logo in the portal header
   await phone.getByRole('heading', { name: 'Pay ₹9,625.00' }).waitFor();
   await phone.getByRole('img', { name: 'UPI QR code', includeHidden: true }).waitFor({ state: 'attached' }); // shown from tablet width up; a phone opens the UPI app instead
   if (await phone.getByRole('img', { name: 'UPI QR code' }).isVisible()) throw new Error('a phone cannot scan its own screen: the QR should be hidden there');

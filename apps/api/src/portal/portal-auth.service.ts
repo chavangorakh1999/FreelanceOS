@@ -99,8 +99,8 @@ export class PortalAuthService {
       this.prisma.portalMembership.findUniqueOrThrow({ where: { id: p.membershipId }, select: { role: true, client: { select: { id: true, name: true } }, contact: { select: { firstName: true, lastName: true } } } }),
       this.prisma.portalMembership.count({ where: { portalUserId: p.portalUserId, status: 'ACTIVE' } }),
     ]);
-    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { name: true } });
-    return { user: { id: p.portalUserId, name: p.name, email: p.email }, role: membership.role, organization: membership.client, businessName: ws.name, organizationCount: count };
+    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { name: true, logoStorageKey: true, logoUpdatedAt: true } });
+    return { user: { id: p.portalUserId, name: p.name, email: p.email }, role: membership.role, organization: membership.client, businessName: ws.name, organizationCount: count, logoVersion: ws.logoStorageKey ? ws.logoUpdatedAt?.getTime() ?? 0 : null };
   }
 
   /** Which organisations this person can switch between (same identity, several clients). */

@@ -13,6 +13,7 @@ import { renderAgreementHtml } from '../documents/html';
 import { PdfService } from '../documents/pdf.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { projectForNewRecord } from '../projects/records';
+import { BrandingService } from '../account/branding.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NumberSequenceService } from '../sequences/number-sequence.service';
 import { TemplatesService } from '../templates/templates.service';
@@ -46,7 +47,7 @@ export class AgreementsService {
     private readonly templates: TemplatesService,
     private readonly pdf: PdfService,
     private readonly notify: NotificationsService,
-    @Inject(FILE_STORAGE) private readonly storage: FileStorage,
+    @Inject(FILE_STORAGE) private readonly storage: FileStorage, private readonly branding: BrandingService,
   ) {}
 
   // ───────── reads ─────────
@@ -342,6 +343,7 @@ export class AgreementsService {
     const v = await this.loadVersion(this.prisma, a, id, n);
     const marks = await this.signatureMarks(v.id);
     const html = renderAgreementHtml({
+      logo: await this.branding.dataUrl(a.workspaceId),
       number: ag.number, title: ag.title, versionNumber: v.versionNumber, status: v.status, workspaceName: ag.workspace.name, clientName: ag.client.name,
       contentHash: v.contentHash, sentAt: v.sentAt?.toISOString() ?? null, clauses: v.clauses,
       signers: v.signers.map((s) => ({ role: s.role, name: s.name, email: s.email, status: s.status, signedAt: s.signedAt?.toISOString().slice(0, 10) ?? null, signatureImage: marks.get(s.id)?.image ?? null, typedSignature: marks.get(s.id)?.typed ?? null })),
