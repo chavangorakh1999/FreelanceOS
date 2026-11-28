@@ -3,6 +3,8 @@ import { Auth, AuthContext } from '../common/auth';
 import { AddDependencyDto, CreateDeliverableDto, CreateMilestoneDto, CreateProjectDto, CreateTaskDto, ListProjectsQuery, ListTasksQuery, UpdateDeliverableDto, UpdateMilestoneDto, UpdateProjectDto, UpdateTaskDto } from './projects.dto';
 import { ProjectsService } from './projects.service';
 import { WorkService } from './work.service';
+import { BillTimeDto, CreateTimeDto, ListTimeQuery, StartTimerDto, UpdateTimeDto } from './time.dto';
+import { TimeService } from './time.service';
 
 const uuid = new ParseUUIDPipe();
 
@@ -27,4 +29,17 @@ export class ProjectsController {
   @Patch('tasks/:tid') updateTask(@Auth() a: AuthContext, @Param('tid', uuid) tid: string, @Body() dto: UpdateTaskDto) { return this.work.updateTask(a, tid, dto); }
   @Post('tasks/:tid/dependencies') addDependency(@Auth() a: AuthContext, @Param('tid', uuid) tid: string, @Body() dto: AddDependencyDto) { return this.work.addDependency(a, tid, dto.dependsOnTaskId); }
   @HttpCode(204) @Delete('tasks/:tid/dependencies/:dep') removeDependency(@Auth() a: AuthContext, @Param('tid', uuid) tid: string, @Param('dep', uuid) dep: string) { return this.work.removeDependency(a, tid, dep); }
+}
+
+@Controller()
+export class TimeController {
+  constructor(private readonly time: TimeService) {}
+  @Get('projects/:id/time') list(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Query() q: ListTimeQuery) { return this.time.list(a, id, q); }
+  @Post('projects/:id/time') create(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Body() dto: CreateTimeDto) { return this.time.create(a, id, dto); }
+  @Post('projects/:id/time/start') start(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Body() dto: StartTimerDto) { return this.time.start(a, id, dto); }
+  @HttpCode(200) @Post('projects/:id/time/bill') bill(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Body() dto: BillTimeDto) { return this.time.bill(a, id, dto); }
+  @Get('time/running') running(@Auth() a: AuthContext) { return this.time.running(a); }
+  @HttpCode(200) @Post('time/:id/stop') stop(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) { return this.time.stop(a, id); }
+  @Patch('time/:id') update(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateTimeDto) { return this.time.update(a, id, dto); }
+  @HttpCode(204) @Delete('time/:id') remove(@Auth() a: AuthContext, @Param('id', new ParseUUIDPipe()) id: string) { return this.time.remove(a, id); }
 }

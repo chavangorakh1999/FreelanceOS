@@ -28,7 +28,7 @@ const ok = (m) => console.log('✓ ' + m);
   await p.getByRole('link', { name: 'Open settings' }).click(); await p.waitForURL('**/settings');
   await p.getByText('Incomplete').waitFor();
   await p.getByLabel('Address line 1').fill('12 MG Road'); await p.getByLabel('City').fill('Pune'); await p.getByLabel('Country').fill('in');
-  await p.getByLabel('Tax ID (GSTIN, VAT, EIN)').fill('27ABCDE1234F1Z5'); await p.getByLabel('How clients pay you').fill('UPI: gorakh@upi');
+  await p.getByLabel('Tax ID (GSTIN, VAT, EIN)').fill('27ABCDE1234F1Z5'); await p.getByLabel('UPI ID').fill('gorakh@okhdfcbank'); await p.getByLabel('Other ways to pay').fill('Bank: HDFC, A/C 123');
   await p.getByLabel('Default tax (%)').fill('0');
   const tzBefore = await p.getByLabel('Time zone').inputValue();
   await p.getByRole('button', { name: 'Save profile' }).click(); await p.getByText('Ready for invoices').waitFor();

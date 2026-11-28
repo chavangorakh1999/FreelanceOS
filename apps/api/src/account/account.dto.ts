@@ -25,6 +25,10 @@ export class UpdateProfileDto {
   @IsOptional() @Transform(blankToNull) @ValidateIf((_, v) => v !== null) @Matches(/^[A-Z]{2}$/, { message: 'country must be a two-letter code such as IN or US' }) country?: string | null;
   @IsOptional() @Transform(blankToNull) @ValidateIf((_, v) => v !== null) @IsString() @MaxLength(40) taxIdentifier?: string | null;
   @IsOptional() @Transform(blankToNull) @ValidateIf((_, v) => v !== null) @IsString() @MaxLength(2000) paymentInstructions?: string | null;
+  /** A UPI virtual payment address, e.g. name@okhdfcbank. */
+  @IsOptional() @Transform(blankToNull) @ValidateIf((_, v) => v !== null) @Matches(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, { message: 'upiId looks like name@bank' }) upiId?: string | null;
+  /** An https payment page; may contain {amount}, {currency} and {invoice}. */
+  @IsOptional() @Transform(blankToNull) @ValidateIf((_, v) => v !== null) @MaxLength(500) @Matches(/^https:\/\/[^\s]+$/, { message: 'paymentLinkTemplate must be an https link' }) paymentLinkTemplate?: string | null;
   @IsOptional() @IsIn(CURRENCIES) defaultCurrency?: string;
   @IsOptional() @IsString() @MaxLength(64) timezone?: string;
   @IsOptional() @Transform(trim) @Matches(/^[A-Z0-9-]{1,10}$/, { message: 'invoicePrefix uses capital letters, digits and dashes, up to 10' }) invoicePrefix?: string;

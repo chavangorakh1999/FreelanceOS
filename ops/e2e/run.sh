@@ -52,4 +52,7 @@ node "$HERE/estimator.cjs"
 fresh_db; start_api
 E2E_OUT="$OUT" node "$HERE/real-user.cjs"
 
+fresh_db; start_api
+E2E_OUT="$OUT" node "$HERE/time-payments.cjs"
+
 echo "E2E PASSED (screenshots and logs in $OUT)"

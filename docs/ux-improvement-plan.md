@@ -140,3 +140,17 @@ From a fresh-account review (sign-up to first proposal, watched in a browser):
 - **First run:** "Get started" checklist on the dashboard until the four first steps are done; the first lead creates its client in
   the same dialog; new proposals are valid for 30 days by default; a real 404 page; "not found" said once.
 Checked by `ops/e2e/first-run.cjs` and `apps/api/test/account.e2e.ts`.
+
+## Hours to cash: time tracking and paying from the invoice
+
+- **Time tab on every project:** a start/stop timer (one at a time; it also shows in the header on every page), or type hours as
+  1:30, 1.5h or 90m with a date, a task and a billable switch. The log groups by day with totals: logged, billable, not yet billed.
+- **Bill hours in one dialog:** unbilled billable hours become a draft invoice for the project's client, one line per task (or per
+  entry, or one line), at a rate remembered per project; the workspace's default tax applies. Billed hours are locked; deleting
+  the draft or voiding the invoice releases them to be billed again. A database trigger keeps entries, tasks and invoices to the
+  same project and client; one running timer per person is a unique index.
+- **Pay from the invoice:** with a UPI ID in the business profile, INR invoices show a UPI QR (computers) or a "Pay with a UPI app"
+  button (phones) with the amount and invoice number filled in; a payment-page link (Razorpay, Stripe, PayPal) gets {amount},
+  {currency} and {invoice} filled in. Both are on the PDF too. The client can press "I've paid this" with a reference; you get a
+  notification (once a day per invoice) and record the payment against your bank statement.
+Checked by `apps/api/test/time.e2e.ts` and `ops/e2e/time-payments.cjs`.

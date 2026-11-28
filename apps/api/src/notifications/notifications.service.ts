@@ -32,6 +32,7 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   DOCUMENT_SHARED: 'A document is shared with you',
   TASK_ASSIGNED: 'A task is assigned to you',
   ACCOUNT_SECURITY: 'Password reset links',
+  PAYMENT_NOTICE: 'A client says they have paid',
 };
 /** Security-relevant: always sent, cannot be switched off. */
 const ALWAYS_EMAIL: NotificationCategory[] = ['INVITATION', 'ACCOUNT_SECURITY'];

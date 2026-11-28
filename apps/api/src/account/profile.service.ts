@@ -15,12 +15,12 @@ export class ProfileService {
   async get(a: AuthContext) {
     const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: a.workspaceId } });
     const st = await this.prisma.workspaceSettings.findUnique({ where: { workspaceId: a.workspaceId } });
-    const { id, name, legalName, email, phone, addressLine1, addressLine2, city, region, postalCode, country, taxIdentifier, paymentInstructions, defaultCurrency, timezone } = ws;
+    const { id, name, legalName, email, phone, addressLine1, addressLine2, city, region, postalCode, country, taxIdentifier, paymentInstructions, upiId, paymentLinkTemplate, defaultCurrency, timezone } = ws;
     return {
-      id, name, legalName, email, phone, addressLine1, addressLine2, city, region, postalCode, country, taxIdentifier, paymentInstructions, defaultCurrency, timezone,
+      id, name, legalName, email, phone, addressLine1, addressLine2, city, region, postalCode, country, taxIdentifier, paymentInstructions, upiId, paymentLinkTemplate, defaultCurrency, timezone,
       invoicePrefix: st?.invoicePrefix ?? 'INV', defaultPaymentTermsDays: st?.defaultPaymentTermsDays ?? 30, defaultTaxBps: st?.defaultTaxBps ?? 1800,
       // What a client needs to see on an invoice; the app nudges until these are filled.
-      complete: Boolean(addressLine1 && city && country && paymentInstructions),
+      complete: Boolean(addressLine1 && city && country && (paymentInstructions || upiId || paymentLinkTemplate)),
     };
   }
 

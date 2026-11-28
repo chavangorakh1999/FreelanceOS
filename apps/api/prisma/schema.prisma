@@ -41,29 +41,35 @@ model User {
   notificationPreferences NotificationPreference[]
   comments                Comment[]
 
+  timeEntries TimeEntry[]
+
   @@map("users")
 }
 
 model Workspace {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String
-  legalName       String?
-  email           String?
-  phone           String?
-  addressLine1    String?
-  addressLine2    String?
-  city            String?
-  region          String?
-  postalCode      String?
-  country         String?  @db.Char(2) // ISO 3166-1 alpha-2
-  taxIdentifier   String? // e.g. GSTIN; not assumed to be Indian
+  id                  String   @id @default(uuid()) @db.Uuid
+  name                String
+  legalName           String?
+  email               String?
+  phone               String?
+  addressLine1        String?
+  addressLine2        String?
+  city                String?
+  region              String?
+  postalCode          String?
+  country             String?  @db.Char(2) // ISO 3166-1 alpha-2
+  taxIdentifier       String? // e.g. GSTIN; not assumed to be Indian
   /// How clients pay: bank account, UPI ID, payment link. Printed on every invoice.
   paymentInstructions String?
-  defaultCurrency String   @default("INR") @db.Char(3)
-  timezone        String   @default("Asia/Kolkata")
-  locale          String   @default("en-IN")
-  createdAt       DateTime @default(now()) @db.Timestamptz
-  updatedAt       DateTime @updatedAt @db.Timestamptz
+  /// UPI ID (e.g. name@bank): invoices in INR show a QR code and a pay link for any UPI app.
+  upiId               String?
+  /// A payment page (Razorpay, Stripe, PayPal...). {amount}, {currency} and {invoice} are filled in per invoice.
+  paymentLinkTemplate String?
+  defaultCurrency     String   @default("INR") @db.Char(3)
+  timezone            String   @default("Asia/Kolkata")
+  locale              String   @default("en-IN")
+  createdAt           DateTime @default(now()) @db.Timestamptz
+  updatedAt           DateTime @updatedAt @db.Timestamptz
 
   memberships     WorkspaceMembership[]
   settings        WorkspaceSettings?
@@ -514,7 +520,9 @@ model Proposal {
   workspaceId       String         @db.Uuid
   clientId          String         @db.Uuid
   engagementId      String?        @db.Uuid
-  /** The project this proposal was written in. Optional for proposals made before projects held their proposals. */
+  /**
+   * The project this proposal was written in. Optional for proposals made before projects held their proposals.
+   */
   projectId         String?        @db.Uuid
   number            String
   title             String
@@ -853,24 +861,27 @@ enum Visibility {
 
 /// The delivery container. Created by an explicit action — an engagement never becomes a project by itself.
 model Project {
-  id            String         @id @default(uuid()) @db.Uuid
-  documentLinks DocumentLink[]
-  workspaceId   String         @db.Uuid
-  clientId      String         @db.Uuid
-  engagementId  String?        @db.Uuid
-  proposalId    String?        @db.Uuid
-  agreementId   String?        @db.Uuid
-  number        String
-  name          String
-  description   String?
-  status        ProjectStatus  @default(PLANNING)
-  startDate     DateTime?      @db.Date
-  targetDate    DateTime?      @db.Date
-  ownerId       String         @db.Uuid
-  visibility    Visibility     @default(INTERNAL)
-  archivedAt    DateTime?      @db.Timestamptz
-  createdAt     DateTime       @default(now()) @db.Timestamptz
-  updatedAt     DateTime       @updatedAt @db.Timestamptz
+  id                 String         @id @default(uuid()) @db.Uuid
+  documentLinks      DocumentLink[]
+  workspaceId        String         @db.Uuid
+  clientId           String         @db.Uuid
+  engagementId       String?        @db.Uuid
+  proposalId         String?        @db.Uuid
+  agreementId        String?        @db.Uuid
+  number             String
+  name               String
+  description        String?
+  status             ProjectStatus  @default(PLANNING)
+  startDate          DateTime?      @db.Date
+  targetDate         DateTime?      @db.Date
+  ownerId            String         @db.Uuid
+  visibility         Visibility     @default(INTERNAL)
+  /// The rate hours are billed at, remembered from the last time hours were invoiced.
+  hourlyRateMinor    BigInt?
+  hourlyRateCurrency String?        @db.Char(3)
+  archivedAt         DateTime?      @db.Timestamptz
+  createdAt          DateTime       @default(now()) @db.Timestamptz
+  updatedAt          DateTime       @updatedAt @db.Timestamptz
 
   workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -885,6 +896,7 @@ model Project {
   changeRequests      ChangeRequest[]
   invoices            Invoice[]
   portalProjectGrants PortalProjectGrant[]
+  timeEntries         TimeEntry[]
   comments            Comment[]
 
   @@unique([workspaceId, number])
@@ -1081,6 +1093,8 @@ model Task {
 
   assigneeUser    User?          @relation("TaskAssignee", fields: [assigneeUserId], references: [id], onDelete: Restrict)
   assigneeContact ClientContact? @relation("TaskContactAssignee", fields: [assigneeContactId], references: [id], onDelete: Restrict)
+
+  timeEntries TimeEntry[]
 
   @@unique([projectId, number])
   @@index([workspaceId, assigneeUserId])
@@ -1297,6 +1311,8 @@ model Invoice {
   allocations   PaymentAllocation[]
   creditNotes   CreditNote[]
 
+  timeEntries TimeEntry[]
+
   @@unique([workspaceId, number])
   @@index([workspaceId, clientId, status])
   @@index([workspaceId, status, dueDate])
@@ -1425,6 +1441,7 @@ enum NotificationCategory {
   DOCUMENT_SHARED
   TASK_ASSIGNED
   ACCOUNT_SECURITY
+  PAYMENT_NOTICE
 }
 
 enum DeliveryStatus {
@@ -1769,4 +1786,31 @@ model PasswordResetToken {
   @@index([userId])
   @@index([portalUserId])
   @@map("password_reset_tokens")
+}
+
+/// Hours worked on a project. A running timer has runningSince set (one per person); billed hours point at their invoice.
+model TimeEntry {
+  id           String    @id @default(uuid()) @db.Uuid
+  workspaceId  String    @db.Uuid
+  projectId    String    @db.Uuid
+  taskId       String?   @db.Uuid
+  userId       String    @db.Uuid
+  date         DateTime  @db.Date
+  minutes      Int       @default(0)
+  description  String    @default("")
+  billable     Boolean   @default(true)
+  runningSince DateTime? @db.Timestamptz
+  invoiceId    String?   @db.Uuid
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  task    Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, projectId, date])
+  @@index([invoiceId])
+  @@index([userId, runningSince])
+  @@map("time_entries")
 }

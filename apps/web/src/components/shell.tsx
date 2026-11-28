@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { CommandPalette } from '@/components/command-palette';
 import { CreateMenu } from '@/components/create-menu';
+import { RunningTimer } from '@/components/running-timer';
 import { CrumbsProvider, CrumbTrail } from '@/components/crumbs';
 import { btnSecondary } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -124,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-[200] border-b border-line bg-panel/90 backdrop-blur-sm">
             <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
               <CrumbTrail fallback={section ? [{ label: section }] : []} />
-              <div className="flex shrink-0 items-center gap-2"><CommandPalette /><CreateMenu /></div>
+              <div className="flex shrink-0 items-center gap-2"><RunningTimer /><CommandPalette /><CreateMenu /></div>
             </div>
           </header>
           <main className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-7 px-5 py-7 sm:px-8 lg:px-10">{children}</main>

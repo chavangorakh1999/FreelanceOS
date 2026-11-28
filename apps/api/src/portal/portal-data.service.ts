@@ -10,6 +10,7 @@ import { ChangeRequestsService } from '../change-requests/change-requests.servic
 import { InvoicesService } from '../finance/invoices.service';
 import { outstandingMinor, settlementOf, settlements } from '../finance/balances';
 import { NotificationsService } from '../notifications/notifications.service';
+import { payOptions } from '../finance/pay-options';
 import { PrismaService } from '../prisma/prisma.service';
 import { presentVersion, ProposalsService } from '../proposals/proposals.service';
 import { ScopeService } from '../scope/scope.service';
@@ -333,8 +334,24 @@ export class PortalDataService {
       totals: inv.totals, lines: inv.lines, balance: inv.balance, voidReason: inv.status === 'VOID' ? inv.voidReason : null,
       payments: inv.allocations.filter((x) => !x.payment.reversed).map((x) => ({ receivedAt: x.payment.receivedAt, method: x.payment.method, cash: x.cash, withholding: x.withholding })),
       creditNotes: inv.creditNotes.map((n) => ({ number: n.number, issuedAt: n.issuedAt, amount: n.amount, reason: n.reason })),
-      howToPay: (await this.prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { paymentInstructions: true } })).paymentInstructions,
+      pay: inv.status === 'VOID' ? null : await payOptions(await this.prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { name: true, legalName: true, paymentInstructions: true, upiId: true, paymentLinkTemplate: true } }),
+        { number: inv.number, currency: inv.currency, outstandingMinor: BigInt(inv.balance.outstanding.amountMinor) }),
     };
+  }
+
+  /** "I've paid": tells the freelancer, who then records the payment against the bank statement. Once per invoice per day. */
+  async paymentNotice(p: PortalContext, id: string, dto: { reference?: string; note?: string }) {
+    const visible = await this.prisma.invoice.findFirst({ where: { id, ...invoiceWhere(p), status: 'ISSUED' }, select: { id: true, number: true } });
+    if (!visible) throw notFound('Invoice');
+    await this.prisma.$transaction(async (tx) => {
+      const day = new Date().toISOString().slice(0, 10);
+      const ref = dto.reference?.trim();
+      await this.notify.emit(tx, {
+        workspaceId: p.workspaceId, category: 'PAYMENT_NOTICE', title: `${p.name} says invoice ${visible.number} is paid`,
+        body: [ref ? `Reference: ${ref}` : 'No reference given', dto.note?.trim()].filter(Boolean).join('. '), linkPath: `/invoices/${id}`, dedupeKey: `paid-notice:${id}:${day}`, to: await this.notify.staff(tx, p.workspaceId),
+      });
+      await tx.auditEvent.create({ data: { workspaceId: p.workspaceId, actorId: p.portalUserId, actorType: 'CLIENT_CONTACT', action: 'invoice.payment_notice', targetType: 'invoice', targetId: id, ipAddress: p.ip, metadata: { reference: ref ?? null } } });
+    });
   }
 
   async invoicePdf(p: PortalContext, id: string) {

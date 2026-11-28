@@ -127,7 +127,7 @@ export interface PChange {
 }
 export interface PInvoiceItem { id: string; number: string | null; status: 'PAID' | 'DUE' | 'OVERDUE' | 'VOID'; issueDate: string | null; dueDate: string | null; total: MoneyJson; outstanding: MoneyJson; project: { name: string; number: string } | null }
 export interface PInvoiceDetail {
-  id: string; number: string | null; status: string; issueDate: string | null; dueDate: string | null; paymentTermsDays: number; notes: string | null; howToPay: string | null;
+  id: string; number: string | null; status: string; issueDate: string | null; dueDate: string | null; paymentTermsDays: number; notes: string | null; pay: { instructions: string | null; upiLink: string | null; upiQrSvg: string | null; payLink: string | null } | null;
   supplier: { name: string | null; taxId: string | null; address: string | null }; billTo: { name: string | null; taxId: string | null; address: string | null };
   project: { name: string; number: string } | null;
   totals: { subtotal: MoneyJson; discount: MoneyJson; tax: MoneyJson; total: MoneyJson };

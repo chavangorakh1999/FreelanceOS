@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Body, Controller, Get, Header, HttpCode, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength, Min, ValidateNested } from 'class-validator';
@@ -25,6 +26,10 @@ class SignDto {
   @IsBoolean() agree: boolean;
   /** Optional: drawn or uploaded. Without it, the typed name is the signature. */
   @IsOptional() @ValidateNested() @Type(() => SignatureInput) signature?: SignatureInput;
+}
+class PaymentNoticeDto {
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(120) reference?: string;
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(500) note?: string;
 }
 class DeclineDto { @Transform(trim) @IsString() @MinLength(3) @MaxLength(1000) reason: string }
 class ScopeDecisionDto {
@@ -114,6 +119,7 @@ export class PortalDataController {
   // invoices
   @Get('invoices') invoices(@Portal() p: PortalContext) { return this.data.listInvoices(p); }
   @Get('invoices/:id') invoice(@Portal() p: PortalContext, @Param('id', uuid) id: string) { return this.data.getInvoice(p, id); }
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) @HttpCode(204) @Post('invoices/:id/payment-notice') paymentNotice(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Body() dto: PaymentNoticeDto) { return this.data.paymentNotice(p, id, dto); }
   @Get('invoices/:id/pdf') async invoicePdf(@Portal() p: PortalContext, @Param('id', uuid) id: string, @Res() res: Response) { this.pdf(res, await this.data.invoicePdf(p, id)); }
 
   // notifications (the person's own, never anyone else's)

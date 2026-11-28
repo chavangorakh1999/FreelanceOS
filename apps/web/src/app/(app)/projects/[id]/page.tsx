@@ -10,6 +10,7 @@ import { DocumentsPanel } from '@/components/documents/panel';
 import { ChangesTab } from '@/components/project/changes-tab';
 import { ScopeTab } from '@/components/project/scope-tab';
 import { WorkTab } from '@/components/project/work-tab';
+import { TimeTab } from '@/components/project/time-tab';
 import { AgreementsTab, InvoicesTab, NextStep, ProposalsTab } from '@/components/project/records-tabs';
 import { ClientAccessCard } from '@/components/project/client-access';
 import { ProjectBadge, ScopeBadge } from '@/components/status';
@@ -19,7 +20,7 @@ import { fmtDate } from '@/lib/format';
 import type { CommentItem } from '@/lib/portal-api';
 
 // Everything after the lead lives here, in the order the work happens.
-const TABS = [['overview', 'Overview'], ['proposals', 'Proposals'], ['agreements', 'Agreements'], ['scope', 'Scope'], ['work', 'Work'], ['changes', 'Changes'], ['invoices', 'Invoices'], ['documents', 'Documents']] as const;
+const TABS = [['overview', 'Overview'], ['proposals', 'Proposals'], ['agreements', 'Agreements'], ['scope', 'Scope'], ['work', 'Work'], ['time', 'Time'], ['changes', 'Changes'], ['invoices', 'Invoices'], ['documents', 'Documents']] as const;
 type Tab = (typeof TABS)[number][0];
 const NEXT: Record<ProjectStatus, ProjectStatus[]> = { PLANNING: ['ACTIVE', 'CANCELLED'], ACTIVE: ['ON_HOLD', 'COMPLETED', 'CANCELLED'], ON_HOLD: ['ACTIVE', 'CANCELLED'], COMPLETED: [], CANCELLED: [] };
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -94,6 +95,7 @@ function ProjectView() {
       )}
       {tab === 'proposals' && <ProposalsTab project={p} closed={closed} />}
       {tab === 'agreements' && <AgreementsTab project={p} closed={closed} />}
+      {tab === 'time' && <TimeTab projectId={id} projectName={p.name} closed={closed} />}
       {tab === 'invoices' && <InvoicesTab project={p} closed={closed} />}
       {tab === 'scope' && <ScopeTab projectId={id} closed={closed} onChanged={refresh} goChanges={() => go('changes')} />}
       {tab === 'work' && <WorkTab projectId={id} closed={closed} onChanged={refresh} />}

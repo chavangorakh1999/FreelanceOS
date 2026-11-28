@@ -11,14 +11,14 @@ import { CURRENCIES } from '@/lib/currency';
 export interface Profile {
   name: string; legalName: string | null; email: string | null; phone: string | null;
   addressLine1: string | null; addressLine2: string | null; city: string | null; region: string | null; postalCode: string | null; country: string | null;
-  taxIdentifier: string | null; paymentInstructions: string | null; defaultCurrency: string; timezone: string;
+  taxIdentifier: string | null; paymentInstructions: string | null; upiId: string | null; paymentLinkTemplate: string | null; defaultCurrency: string; timezone: string;
   invoicePrefix: string; defaultPaymentTermsDays: number; defaultTaxBps: number; complete: boolean;
 }
 type Form = Record<Exclude<keyof Profile, 'complete' | 'defaultPaymentTermsDays' | 'defaultTaxBps'>, string> & { defaultPaymentTermsDays: string; defaultTaxPct: string };
 
 const toForm = (p: Profile): Form => ({
   name: p.name, legalName: p.legalName ?? '', email: p.email ?? '', phone: p.phone ?? '', addressLine1: p.addressLine1 ?? '', addressLine2: p.addressLine2 ?? '',
-  city: p.city ?? '', region: p.region ?? '', postalCode: p.postalCode ?? '', country: p.country ?? '', taxIdentifier: p.taxIdentifier ?? '', paymentInstructions: p.paymentInstructions ?? '',
+  city: p.city ?? '', region: p.region ?? '', postalCode: p.postalCode ?? '', country: p.country ?? '', taxIdentifier: p.taxIdentifier ?? '', paymentInstructions: p.paymentInstructions ?? '', upiId: p.upiId ?? '', paymentLinkTemplate: p.paymentLinkTemplate ?? '',
   defaultCurrency: p.defaultCurrency, timezone: p.timezone, invoicePrefix: p.invoicePrefix, defaultPaymentTermsDays: String(p.defaultPaymentTermsDays), defaultTaxPct: String(p.defaultTaxBps / 100),
 });
 // The browser's list leaves out aliases such as UTC; the saved value is always offered so it is never changed by accident.
@@ -34,7 +34,7 @@ export function BusinessProfileCard() {
   const save = useMutation({
     mutationFn: () => api<Profile>('/workspace/profile', { method: 'PATCH', body: {
       name: f!.name, legalName: f!.legalName, email: f!.email, phone: f!.phone, addressLine1: f!.addressLine1, addressLine2: f!.addressLine2, city: f!.city, region: f!.region,
-      postalCode: f!.postalCode, country: f!.country.toUpperCase(), taxIdentifier: f!.taxIdentifier, paymentInstructions: f!.paymentInstructions, defaultCurrency: f!.defaultCurrency,
+      postalCode: f!.postalCode, country: f!.country.toUpperCase(), taxIdentifier: f!.taxIdentifier, paymentInstructions: f!.paymentInstructions, upiId: f!.upiId, paymentLinkTemplate: f!.paymentLinkTemplate, defaultCurrency: f!.defaultCurrency,
       timezone: f!.timezone, invoicePrefix: f!.invoicePrefix.toUpperCase(), defaultPaymentTermsDays: Number(f!.defaultPaymentTermsDays) || 0, defaultTaxBps: Math.round((Number(f!.defaultTaxPct) || 0) * 100),
     } }),
     onSuccess: (p) => { qc.setQueryData(['workspace-profile'], p); void reloadMe(); },
@@ -69,7 +69,11 @@ export function BusinessProfileCard() {
           <Field label="Tax ID (GSTIN, VAT, EIN)">{(id) => <Input id={id} value={f.taxIdentifier} onChange={set('taxIdentifier')} />}</Field>
           <div />
         </div>
-        <Field label="How clients pay you" hint="Bank account, IFSC or SWIFT, UPI ID, or a payment link. Shown on unpaid invoices and in the client portal.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="UPI ID" hint="Invoices in INR get a QR code and a pay button for any UPI app, with the amount filled in.">{(id, d) => <Input id={id} aria-describedby={d} value={f.upiId} onChange={set('upiId')} placeholder="yourname@okhdfcbank" />}</Field>
+          <Field label="Online payment link" hint="Your Razorpay, Stripe or PayPal page. {amount}, {currency} and {invoice} are filled in.">{(id, d) => <Input id={id} aria-describedby={d} type="url" value={f.paymentLinkTemplate} onChange={set('paymentLinkTemplate')} placeholder="https://rzp.io/l/yourpage" />}</Field>
+        </div>
+        <Field label="Other ways to pay" hint="Bank account, IFSC or SWIFT. Shown on unpaid invoices and in the client portal.">
           {(id, d) => <Textarea id={id} aria-describedby={d} rows={4} value={f.paymentInstructions} onChange={set('paymentInstructions')} placeholder={'Bank: HDFC Bank, A/C 1234567890, IFSC HDFC0001234\nUPI: you@upi'} />}
         </Field>
         <fieldset className="grid gap-4 sm:grid-cols-3"><legend className="mb-2 text-sm font-medium text-ink-2">Defaults for new records</legend>

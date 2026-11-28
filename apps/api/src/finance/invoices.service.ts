@@ -8,6 +8,7 @@ import { DomainError, notFound } from '../common/errors';
 import { moneyToJson } from '../common/money-dto';
 import { skipTake } from '../common/pagination';
 import { renderInvoiceHtml } from '../documents/html';
+import { payOptions } from './pay-options';
 import { PdfService } from '../documents/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -170,6 +171,7 @@ export class InvoicesService {
       const inv = await this.must(tx, a, id);
       if (inv.status !== 'DRAFT') throw new DomainError('INVOICE_ISSUED', 'Only a draft can be deleted. Void an issued invoice, or issue a credit note.', 409);
       await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
+      await tx.timeEntry.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } }); // hours on it can be billed again
       await tx.invoice.delete({ where: { id } });
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'invoice.draft_deleted', targetType: 'invoice', targetId: id, ip: a.ip });
     });
@@ -240,6 +242,7 @@ export class InvoicesService {
         throw new DomainError('HAS_ACTIVITY', 'This invoice has payments or credit notes applied. Issue a credit note for the remaining balance instead of voiding it.', 409);
       }
       await tx.invoice.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date(), voidReason: dto.reason } });
+      await tx.timeEntry.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } }); // a voided invoice frees its hours
       await this.audit.record(tx, { workspaceId: a.workspaceId, actorId: a.userId, action: 'invoice.voided', targetType: 'invoice', targetId: id, ip: a.ip, metadata: { number: inv.number, reason: dto.reason } });
     });
   }
@@ -279,12 +282,13 @@ export class InvoicesService {
 
   async pdfFor(a: AuthContext, id: string): Promise<{ filename: string; buffer: Buffer }> {
     const inv = await this.get(a, id);
-    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: a.workspaceId }, select: { locale: true, name: true, paymentInstructions: true } });
+    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: a.workspaceId }, select: { locale: true, name: true, legalName: true, paymentInstructions: true, upiId: true, paymentLinkTemplate: true } });
     const c = inv.currency;
+    const pay = inv.stored === 'ISSUED' ? await payOptions(ws, { number: inv.number, currency: c, outstandingMinor: BigInt(inv.balance.outstanding.amountMinor) }) : null;
     const html = renderInvoiceHtml({
       number: inv.number, status: inv.stored, currency: c, locale: ws.locale, issueDate: inv.issueDate ? ymd(inv.issueDate) : null, dueDate: inv.dueDate ? ymd(inv.dueDate) : null,
       supplier: { name: inv.supplier.name ?? ws.name, taxId: inv.supplier.taxId, address: inv.supplier.address }, billTo: { name: inv.billTo.name ?? inv.client.name, taxId: inv.billTo.taxId, address: inv.billTo.address },
-      notes: inv.notes, paymentInstructions: ws.paymentInstructions, lines: inv.lines.map((l) => ({ description: l.description, quantity: l.quantity, unitLabel: l.unitLabel, unitRateMinor: BigInt(l.unitRate.amountMinor), netMinor: BigInt(l.net.amountMinor), taxBps: l.taxBps })),
+      notes: inv.notes, paymentInstructions: ws.paymentInstructions, upiQrSvg: pay?.upiQrSvg ?? null, upiId: pay?.upiLink ? ws.upiId : null, payLink: pay?.payLink ?? null, lines: inv.lines.map((l) => ({ description: l.description, quantity: l.quantity, unitLabel: l.unitLabel, unitRateMinor: BigInt(l.unitRate.amountMinor), netMinor: BigInt(l.net.amountMinor), taxBps: l.taxBps })),
       subtotalMinor: BigInt(inv.totals.subtotal.amountMinor), discountMinor: BigInt(inv.totals.discount.amountMinor), taxMinor: BigInt(inv.totals.tax.amountMinor), totalMinor: BigInt(inv.totals.total.amountMinor),
       paidMinor: BigInt(inv.balance.cashReceived.amountMinor) + BigInt(inv.balance.withheld.amountMinor), creditedMinor: BigInt(inv.balance.credited.amountMinor), outstandingMinor: BigInt(inv.balance.outstanding.amountMinor),
     });
